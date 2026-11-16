@@ -20,7 +20,8 @@ function renderLive() {
   live.textContent = `Tổng frame nhận: ${total}\nLoại frame: ${c}\n\n` + (liveLines.slice(0, 12).join('\n\n') || 'Chưa có tin lampControl/* — gửi lệnh Dim rồi chờ vài giây.');
 }
 SLCP.openWs((m, raw) => {
-  total++; const key = (m.cmd || m.ctrl) ? `${m.cmd}/${m.ctrl}` : 'khác:' + Object.keys(m).slice(0, 4).join(','); counts[key] = (counts[key] || 0) + 1;
+  total++; const inner = (m.data && typeof m.data === 'object' && m.data.cmd) ? m.data : m;
+  const key = (inner.cmd || inner.ctrl) ? `${inner.cmd}/${inner.ctrl}` : 'khác:' + Object.keys(m).slice(0, 4).join(','); counts[key] = (counts[key] || 0) + 1;
   if (total <= 40 || WATCH.test(key) || /session|lampControl|unicast/i.test(key)) liveLines.unshift(`${new Date().toLocaleTimeString()}  ${key}\n${String(raw).slice(0, 600)}`);
   renderLive();
 }, st => { ws.textContent = st; wsState = st; renderLive(); });
