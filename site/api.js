@@ -126,11 +126,11 @@ const SLCP = {
     const base = window.SLCP_CONFIG.API_BASE.replace(/^http/, 'ws').replace(/:\d+$/, '');
     const url = `${base}:81/clesws`; let hb;
     const ws = new WebSocket(url);
-    ws.onopen = () => { onState('Đã kết nối'); ws.send(JSON.stringify({ cmd: 'session', ctrl: 'login', Authorization: this.token }));
+    ws.onopen = () => { onState('Đã kết nối ' + url); ws.send(JSON.stringify({ cmd: 'session', ctrl: 'login', Authorization: this.token }));
       hb = setInterval(() => ws.readyState === 1 && ws.send(JSON.stringify({ cmd: 'session', ctrl: 'heartbeat' })), 25000); };
     ws.onmessage = ev => { let m; try { m = JSON.parse(ev.data); } catch { m = { raw: ev.data }; } onFrame(m, ev.data); };
-    ws.onerror = () => onState('Lỗi WebSocket (kiểm tra Insecure content / cổng 81)');
-    ws.onclose = () => { clearInterval(hb); onState('Đã ngắt'); };
+    ws.onerror = () => onState(`Lỗi WebSocket tới ${url} (Insecure content chưa bật? cổng 81 bị chặn?)`);
+    ws.onclose = ev => { clearInterval(hb); onState(`Đã ngắt (code ${ev.code}) ${url}`); };
     return ws;
   },
   logout() { try { localStorage.removeItem('pid'); } catch {} sessionStorage.removeItem('slcp_token'); sessionStorage.removeItem('slcp_user'); },

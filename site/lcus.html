@@ -13,13 +13,18 @@ th,td{text-align:left;padding:8px;border-bottom:1px solid #334155;word-break:bre
 <script src="config.js"></script><script src="api.js"></script>
 <script>
 if (!SLCP.token) location.replace('index.html');
-const liveLines = [];
+const liveLines = [], counts = {}; let total = 0, wsState = 'đang kết nối…';
 const WATCH = /^lampControl\/(status|unicastStatus|data)$/;
+function renderLive() {
+  const c = Object.entries(counts).sort((x, y) => y[1] - x[1]).map(([k, n]) => `${k}: ${n}`).join(' | ') || '(chưa nhận frame nào)';
+  live.textContent = `Tổng frame nhận: ${total}\nLoại frame: ${c}\n\n` + (liveLines.slice(0, 12).join('\n\n') || 'Chưa có tin lampControl/* — gửi lệnh Dim rồi chờ vài giây.');
+}
 SLCP.openWs((m, raw) => {
-  const key = `${m.cmd}/${m.ctrl}`; if (!WATCH.test(key)) return;
-  liveLines.unshift(`${new Date().toLocaleTimeString()}  ${key}\n${raw.slice(0, 600)}`);
-  live.textContent = liveLines.slice(0, 12).join('\n\n');
-}, st => { ws.textContent = st; });
+  total++; const key = `${m.cmd}/${m.ctrl}`; counts[key] = (counts[key] || 0) + 1;
+  if (WATCH.test(key) || /session|lampControl|unicast/i.test(key)) liveLines.unshift(`${new Date().toLocaleTimeString()}  ${key}\n${String(raw).slice(0, 600)}`);
+  renderLive();
+}, st => { ws.textContent = st; wsState = st; renderLive(); });
+renderLive();
 (async () => {
   try {
     const { rows, report } = await SLCP.listAllLcus(m => { s.textContent = m; });
