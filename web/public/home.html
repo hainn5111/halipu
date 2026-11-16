@@ -1,0 +1,16 @@
+<!doctype html><html lang="vi"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Trang chính · SLCP</title><link rel="stylesheet" href="/style.css"></head><body>
+<div class="card">
+  <div class="ok">✅</div><h1>Đăng nhập thành công</h1>
+  <p class="sub">Xin chào, <b id="n"></b></p>
+  <pre id="j" hidden></pre>
+  <button id="o">Đăng xuất</button>
+</div>
+<script>
+fetch('/api/me').then(r => r.ok ? r.json() : location.replace('/login')).then(d => {
+  if (!d) return;
+  n.textContent = (d.user && (d.user.realName || d.user.userName)) || d.username;
+  if (d.user) { j.hidden = false; j.textContent = JSON.stringify(d.user, null, 2); }
+});
+o.onclick = () => fetch('/api/logout', { method: 'POST' }).then(() => location.replace('/login'));
+</script></body></html>
