@@ -119,5 +119,17 @@ const SLCP = {
     if (cmd === 'dimming') body.dimming = Number(dimming);
     return this.call('POST', `lampControl/unicast/${cmd}`, { projectId, body });
   },
+  // WebSocket realtime (docs/claude/11 §2). onFrame nhận {cmd, ctrl, data, raw}.
+  openWs(onFrame, onState) {
+    const base = window.SLCP_CONFIG.API_BASE.replace(/^http/, 'ws').replace(/:\d+$/, '');
+    const url = `${base}:81/clesws`; let hb;
+    const ws = new WebSocket(url);
+    ws.onopen = () => { onState('Đã kết nối'); ws.send(JSON.stringify({ cmd: 'session', ctrl: 'login', Authorization: this.token }));
+      hb = setInterval(() => ws.readyState === 1 && ws.send(JSON.stringify({ cmd: 'session', ctrl: 'heartbeat' })), 25000); };
+    ws.onmessage = ev => { let m; try { m = JSON.parse(ev.data); } catch { m = { raw: ev.data }; } onFrame(m, ev.data); };
+    ws.onerror = () => onState('Lỗi WebSocket (kiểm tra Insecure content / cổng 81)');
+    ws.onclose = () => { clearInterval(hb); onState('Đã ngắt'); };
+    return ws;
+  },
   logout() { try { localStorage.removeItem('pid'); } catch {} sessionStorage.removeItem('slcp_token'); sessionStorage.removeItem('slcp_user'); },
 };

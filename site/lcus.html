@@ -5,12 +5,21 @@ th,td{text-align:left;padding:8px;border-bottom:1px solid #334155;word-break:bre
 .row button{width:auto;margin:0;padding:8px 14px}.c{display:flex;gap:6px;align-items:center;flex-wrap:wrap;min-width:260px}.c label{margin:0;font-size:12px}.num{width:56px;padding:4px}.dim{width:90px;padding:0}
 .c button{width:auto;margin:0;padding:5px 10px;font-size:12px}.res{font-size:12px;margin-top:4px;color:#94a3b8}.res.bad{color:#f87171}.res.good{color:#4ade80}.diag{font-size:11px;max-height:200px;margin:6px 0 0}</style></head><body><div class="wrap"><div class="card">
 <div class="row"><h1>Danh sách LCU</h1><span><a href="home.html">← Trang chính</a></span></div>
-<p class="sub" id="s">Đang tải…</p><div style="overflow:auto"><table><thead><tr><th>#</th><th>UID (luid)</th><th>Tên</th><th>Mã</th><th>lcuId</th><th>Model</th><th>Dự án</th><th>Điều khiển</th></tr></thead><tbody id="t"></tbody></table></div>
+<p class="sub" id="s">Đang tải…</p><details open><summary>Phản hồi realtime từ đèn (WebSocket): <span id="ws">chưa kết nối</span></summary>
+<pre id="live" style="max-height:220px">Chờ dữ liệu… (gửi lệnh rồi xem ở đây đèn có đổi mức không)</pre></details>
+<div style="overflow:auto"><table><thead><tr><th>#</th><th>UID (luid)</th><th>Tên</th><th>Mã</th><th>lcuId</th><th>Model</th><th>Dự án</th><th>Điều khiển</th></tr></thead><tbody id="t"></tbody></table></div>
 <details><summary>Nguồn dữ liệu</summary><pre id="rep"></pre></details><details><summary>Dữ liệu thô (bản ghi đầu tiên)</summary><pre id="raw"></pre></details><div class="err" id="e"></div>
 </div></div>
 <script src="config.js"></script><script src="api.js"></script>
 <script>
 if (!SLCP.token) location.replace('index.html');
+const liveLines = [];
+const WATCH = /^lampControl\/(status|unicastStatus|data)$/;
+SLCP.openWs((m, raw) => {
+  const key = `${m.cmd}/${m.ctrl}`; if (!WATCH.test(key)) return;
+  liveLines.unshift(`${new Date().toLocaleTimeString()}  ${key}\n${raw.slice(0, 600)}`);
+  live.textContent = liveLines.slice(0, 12).join('\n\n');
+}, st => { ws.textContent = st; });
 (async () => {
   try {
     const { rows, report } = await SLCP.listAllLcus(m => { s.textContent = m; });
@@ -34,7 +43,8 @@ t.addEventListener('click', async ev => {
     pre.hidden = false; pre.textContent = 'Đang đọc…'; btn.disabled = true;
     const run = async (k, f) => { try { out[k] = await f(); } catch (x) { out[k] = 'LỖI: ' + x.message; } };
     await run('queryLcuAndRelatedByUid', () => SLCP.call('GET', `lcuActor/queryLcuAndRelatedByUid/${uid}`, { projectId: pid }));
-    await run('queryLampNumberOfLcu', () => SLCP.call('POST', 'lcuActor/queryLampNumberOfLcu', { projectId: pid, body: { luid: uid, uid, projectId: pid } }));
+    const lid = (out.queryLcuAndRelatedByUid || {}).deviceId;
+    await run('queryLampNumberOfLcu', () => SLCP.call('POST', 'lcuActor/queryLampNumberOfLcu', { projectId: pid, body: { lcuId: lid, projectId: pid } }));
     await run('unicast/queryStatus', () => SLCP.unicast('queryStatus', { luid: uid, num, projectId: pid }));
     pre.textContent = JSON.stringify(out, null, 2); btn.disabled = false; return;
   }
