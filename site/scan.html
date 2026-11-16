@@ -5,9 +5,12 @@ th,td{text-align:left;padding:8px;border-bottom:1px solid #334155;word-break:bre
 .row{display:flex;gap:12px;align-items:center;flex-wrap:wrap}.row input{width:90px}.row button,td button{width:auto;margin:0;padding:6px 12px;font-size:13px}</style></head><body><div class="wrap"><div class="card">
 <div class="row"><h1 style="flex:1">Quét dự án có LCU đo gần đây</h1><a href="home.html">← Trang chính</a></div>
 <p class="sub">Chỉ đọc (lcuActor/page + lcuLight/queryLcuLightByLcuIdAndNum, đèn số 1 của mỗi LCU). Không gửi lệnh điều khiển.</p>
+<p class="sub">Danh sách projectId lấy từ hồ sơ (getUser — phần "Đang tải hồ sơ" ở trang chính). Sửa/dán thêm nếu cần, mỗi ID một dòng.</p>
+<textarea id="ids" rows="5" style="width:100%;background:#0f172a;color:inherit;border:1px solid #334155;border-radius:8px;padding:8px;font-family:monospace;font-size:12px" placeholder="Đang đọc hồ sơ…"></textarea>
+<p class="sub" id="idn"></p>
 <div class="row"><label>Lấy lần đo từ năm <input id="yr" type="number" value="2026"></label><button id="go" type="button">Bắt đầu quét</button><button id="csv" type="button" hidden>Tải CSV</button></div>
 <p class="sub" id="st"></p>
-<div style="overflow:auto"><table><thead><tr><th>Dự án</th><th>projectId</th><th>LCU</th><th>LCU có đo ≥ năm</th><th>Lần đo gần nhất</th><th></th></tr></thead><tbody id="t"></tbody></table></div>
+<div style="overflow:auto"><table><thead><tr><th>projectId</th><th>LCU</th><th>LCU có đo ≥ năm</th><th>Lần đo gần nhất</th><th></th></tr></thead><tbody id="t"></tbody></table></div>
 <details><summary>Nhật ký lỗi</summary><pre id="log"></pre></details>
 </div></div>
 <script src="config.js"></script><script src="api.js"></script>
@@ -16,32 +19,49 @@ if (!SLCP.token) location.replace('index.html');
 const esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 const results = [], logs = [];
 async function pool(items, n, fn) { let i = 0; await Promise.all(Array.from({ length: n }, async () => { while (i < items.length) await fn(items[i++]); })); }
-async function projects() {   // [{id, name}] từ cây dự án (cha + con)
-  const out = new Map(), walk = v => {
-    if (!v || typeof v !== 'object') return;
-    if (Array.isArray(v)) return v.forEach(walk);
-    if (typeof v.projectId === 'string' && v.projectId && !out.has(v.projectId)) out.set(v.projectId, v.projectName || v.name || v.title || v.label || '');
-    Object.values(v).forEach(x => x && typeof x === 'object' && walk(x));
+// Gom mọi projectId trong hồ sơ getUser: khoá tên có "project" (chuỗi / mảng chuỗi / mảng object có id|projectId).
+function idsFromProfile(d) {
+  const out = new Map(), add = (id, name) => { if (typeof id === 'string' && id.trim() && !out.has(id.trim())) out.set(id.trim(), name || ''); };
+  const walk = (v, key) => {
+    if (v == null) return;
+    if (typeof v === 'string') { if (/project/i.test(key || '') && /id/i.test(key || '')) v.split(/[,\s]+/).forEach(x => add(x)); return; }
+    if (Array.isArray(v)) return v.forEach(x => (typeof x === 'string' && /project/i.test(key || '')) ? add(x) : walk(x, key));
+    if (typeof v === 'object') {
+      if (typeof v.projectId === 'string') add(v.projectId, v.projectName || v.name);
+      for (const k of Object.keys(v)) walk(v[k], k);
+    }
   };
-  walk(await SLCP.call('POST', 'project/queryTree', { body: {} }));
-  return [...out].map(([id, name]) => ({ id, name }));
+  walk(d, ''); return [...out].map(([id, name]) => ({ id, name }));
+}
+SLCP.getUser().then(d => {
+  window._profile = d; const l = idsFromProfile(d);
+  ids.value = l.map(x => x.id).join('\n'); idn.textContent = `Tìm thấy ${l.length} projectId trong hồ sơ.`;
+  if (!l.length) idn.textContent = 'Không thấy khoá projectId nào trong hồ sơ — dán ID vào ô trên (copy từ trang chính).';
+}).catch(e => { idn.textContent = 'Không đọc được hồ sơ: ' + e.message; });
+// Cùng luồng với lcus.html khi nhập ProjectID: lcuActor/page + getLcuListByProjectId, rồi đọc đèn 1 để lấy dtime.
+async function lcusOf(pid) {
+  const map = new Map();
+  try { for (const r of await SLCP.pageAll('lcuActor/page', pid)) { const k = r.lcuId || r.uid; if (k) map.set(k, { lcuId: r.lcuId, uid: r.uid }); } } catch (e) { logs.push(`${pid} page: ${e.message}`); }
+  try { for (const r of (await SLCP.call('POST', 'lcuActor/getLcuListByProjectId', { projectId: pid, body: { projectId: pid } })) || []) { if (r.lcuId && !map.has(r.lcuId)) map.set(r.lcuId, { lcuId: r.lcuId, uid: r.luid }); } } catch (e) { logs.push(`${pid} list: ${e.message}`); }
+  return [...map.values()].filter(x => x.lcuId);
 }
 function render() {
   const sorted = [...results].sort((a, b) => (b.latest || '').localeCompare(a.latest || ''));
-  t.innerHTML = sorted.filter(r => r.recent > 0).map(r => `<tr><td>${esc(r.name)}</td><td><code>${esc(r.id)}</code></td><td>${r.lcus}</td><td>${r.recent}</td><td>${esc(r.latest)}</td>
-<td><button type="button" data-pid="${esc(r.id)}">Chọn</button></td></tr>`).join('') || '<tr><td colspan="6">Chưa có dự án nào khớp.</td></tr>';
+  t.innerHTML = sorted.filter(r => r.recent > 0).map(r => `<tr><td><code>${esc(r.id)}</code></td><td>${r.lcus}</td><td>${r.recent}</td><td>${esc(r.latest)}</td>
+<td><button type="button" data-pid="${esc(r.id)}">Chọn</button></td></tr>`).join('') || '<tr><td colspan="5">Chưa có dự án nào khớp.</td></tr>';
 }
 t.onclick = e => { const b = e.target.closest('[data-pid]'); if (!b) return; localStorage.setItem('pid_fixed', b.dataset.pid); location.href = 'lcus.html'; };
 go.onclick = async () => {
   go.disabled = true; results.length = 0; logs.length = 0; const year = String(yr.value || '2026');
   try {
-    const ps = await projects(); let done = 0;
+    const ps = ids.value.split(/[\s,]+/).filter(Boolean).map(id => ({ id, name: '' })); let done = 0;
+    if (!ps.length) throw new Error('Chưa có projectId nào.');
     st.textContent = `Tìm thấy ${ps.length} dự án, đang quét…`;
     await pool(ps, 2, async p => {
       const r = { ...p, lcus: 0, recent: 0, latest: '' };
       try {
-        const rows = await SLCP.pageAll('lcuActor/page', p.id); r.lcus = rows.length;
-        await pool(rows.filter(x => x.lcuId), 4, async x => {
+        const rows = await lcusOf(p.id); r.lcus = rows.length;
+        await pool(rows, 4, async x => {
           try {
             const l = await SLCP.call('POST', 'lcuLight/queryLcuLightByLcuIdAndNum', { projectId: p.id, body: { lcuId: x.lcuId, num: 1, projectId: p.id } });
             const d = l && l.dtime ? String(l.dtime) : '';
@@ -57,7 +77,7 @@ go.onclick = async () => {
   go.disabled = false;
 };
 csv.onclick = () => {
-  const rows = [['project', 'projectId', 'lcus', 'lcu_recent', 'latest_dtime'], ...results.map(r => [r.name, r.id, r.lcus, r.recent, r.latest])];
+  const rows = [['projectId', 'lcus', 'lcu_recent', 'latest_dtime'], ...results.map(r => [r.id, r.lcus, r.recent, r.latest])];
   const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob(['﻿' + rows.map(r => r.map(c => `"${String(c).replace(/"/g, '""')}"`).join(',')).join('\n')], { type: 'text/csv' }));
   a.download = 'projects-scan.csv'; a.click();
 };
