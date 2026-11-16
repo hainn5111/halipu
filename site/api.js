@@ -113,5 +113,11 @@ const SLCP = {
     }
     return { rows: [...map.values()], report };
   },
+  // Lệnh điều khiển đơn (docs/08 §2). dimming đã xác nhận payload; turnOn/turnOff giả định cùng mẫu (chưa xác nhận).
+  async unicast(cmd, { luid, num, projectId, dimming }) {
+    const body = { luid, num: Number(num), projectId };
+    if (cmd === 'dimming') body.dimming = Number(dimming);
+    return this.call('POST', `lampControl/unicast/${cmd}`, { projectId, body });
+  },
   logout() { try { localStorage.removeItem('pid'); } catch {} sessionStorage.removeItem('slcp_token'); sessionStorage.removeItem('slcp_user'); },
 };

@@ -2,9 +2,10 @@
 <title>Danh sách LCU · SLCP</title><link rel="stylesheet" href="style.css">
 <style>body{display:block}.wrap{max-width:900px;margin:0 auto}.card{max-width:none}table{width:100%;border-collapse:collapse;font-size:13px}
 th,td{text-align:left;padding:8px;border-bottom:1px solid #334155;word-break:break-all}th{color:#94a3b8}a{color:#f59e0b}.row{display:flex;gap:12px;align-items:center;justify-content:space-between;flex-wrap:wrap}
-.row button{width:auto;margin:0;padding:8px 14px}</style></head><body><div class="wrap"><div class="card">
+.row button{width:auto;margin:0;padding:8px 14px}.c{display:flex;gap:6px;align-items:center;flex-wrap:wrap;min-width:260px}.c label{margin:0;font-size:12px}.num{width:56px;padding:4px}.dim{width:90px;padding:0}
+.c button{width:auto;margin:0;padding:5px 10px;font-size:12px}.res{font-size:12px;margin-top:4px;color:#94a3b8}.res.bad{color:#f87171}.res.good{color:#4ade80}</style></head><body><div class="wrap"><div class="card">
 <div class="row"><h1>Danh sách LCU</h1><span><a href="home.html">← Trang chính</a></span></div>
-<p class="sub" id="s">Đang tải…</p><div style="overflow:auto"><table><thead><tr><th>#</th><th>UID (luid)</th><th>Tên</th><th>Mã</th><th>lcuId</th><th>Model</th><th>Dự án</th></tr></thead><tbody id="t"></tbody></table></div>
+<p class="sub" id="s">Đang tải…</p><div style="overflow:auto"><table><thead><tr><th>#</th><th>UID (luid)</th><th>Tên</th><th>Mã</th><th>lcuId</th><th>Model</th><th>Dự án</th><th>Điều khiển</th></tr></thead><tbody id="t"></tbody></table></div>
 <details><summary>Nguồn dữ liệu</summary><pre id="rep"></pre></details><details><summary>Dữ liệu thô (bản ghi đầu tiên)</summary><pre id="raw"></pre></details><div class="err" id="e"></div>
 </div></div>
 <script src="config.js"></script><script src="api.js"></script>
@@ -15,9 +16,27 @@ if (!SLCP.token) location.replace('index.html');
     const { rows, report } = await SLCP.listAllLcus(m => { s.textContent = m; });
     s.textContent = `${rows.length} LCU`;
     rep.textContent = report.join('\n');
-    t.innerHTML = rows.map((r, i) => `<tr><td>${i+1}</td><td><b>${esc(r.uid)}</b></td><td>${esc(r.deviceName)}</td><td>${esc(r.deviceCode)}</td><td>${esc(r.lcuId)}</td><td>${esc(r.modelName)}</td><td>${esc((r._pid||'').slice(0,8))}</td></tr>`).join('');
+    t.innerHTML = rows.map((r, i) => `<tr><td>${i+1}</td><td><b>${esc(r.uid)}</b></td><td>${esc(r.deviceName)}</td><td>${esc(r.deviceCode)}</td><td>${esc(r.lcuId)}</td><td>${esc(r.modelName)}</td><td>${esc((r._pid||'').slice(0,8))}</td>
+<td class="ctl" data-uid="${esc(r.uid)}" data-pid="${esc(r._pid)}"><div class="c"><label>Đèn/kênh <input class="num" type="number" min="1" value="1"></label>
+<button type="button" data-cmd="turnOn">Bật</button><button type="button" data-cmd="turnOff">Tắt</button>
+<input class="dim" type="range" min="0" max="100" value="50"><output>50</output>%<button type="button" data-cmd="dimming">Dim</button></div><div class="res"></div></td></tr>`).join('');
     raw.textContent = JSON.stringify(rows[0] || null, null, 2);
   } catch (x) { s.textContent = ''; e.textContent = x.message; }
 })();
+const NAMES = { turnOn: 'BẬT', turnOff: 'TẮT', dimming: 'ĐẶT ĐỘ SÁNG' };
+t.addEventListener('input', ev => { if (ev.target.classList.contains('dim')) ev.target.nextElementSibling.textContent = ev.target.value; });
+t.addEventListener('click', async ev => {
+  const btn = ev.target.closest('button[data-cmd]'); if (!btn) return;
+  const td = btn.closest('.ctl'), res = td.querySelector('.res'), cmd = btn.dataset.cmd;
+  const num = td.querySelector('.num').value, level = td.querySelector('.dim').value;
+  const what = `${NAMES[cmd]}${cmd === 'dimming' ? ' ' + level + '%' : ''}`;
+  if (!confirm(`Gửi lệnh THẬT xuống đèn?\n\n${what}\nLCU: ${td.dataset.uid}\nĐèn/kênh: ${num}`)) return;
+  btn.disabled = true; res.className = 'res'; res.textContent = 'Đang gửi…';
+  try {
+    await SLCP.unicast(cmd, { luid: td.dataset.uid, num, projectId: td.dataset.pid, dimming: level });
+    res.className = 'res good'; res.textContent = `${what}: server đã nhận lệnh (${new Date().toLocaleTimeString()}). Chưa chắc đèn đã đổi.`;
+  } catch (x) { res.className = 'res bad'; res.textContent = x.message; }
+  btn.disabled = false;
+});
 function esc(v) { return String(v ?? '').replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
 </script></body></html>
