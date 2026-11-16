@@ -1,0 +1,23 @@
+<!doctype html><html lang="vi"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Danh sách LCU · SLCP</title><link rel="stylesheet" href="style.css">
+<style>body{display:block}.wrap{max-width:900px;margin:0 auto}.card{max-width:none}table{width:100%;border-collapse:collapse;font-size:13px}
+th,td{text-align:left;padding:8px;border-bottom:1px solid #334155;word-break:break-all}th{color:#94a3b8}a{color:#f59e0b}.row{display:flex;gap:12px;align-items:center;justify-content:space-between;flex-wrap:wrap}
+.row button{width:auto;margin:0;padding:8px 14px}</style></head><body><div class="wrap"><div class="card">
+<div class="row"><h1>Danh sách LCU</h1><span><a href="home.html">← Trang chính</a></span></div>
+<p class="sub" id="s">Đang tải…</p><div style="overflow:auto"><table><thead><tr><th>#</th><th>UID (luid)</th><th>Tên</th><th>Mã</th><th>lcuId</th><th>Model</th></tr></thead><tbody id="t"></tbody></table></div>
+<details><summary>Dữ liệu thô (bản ghi đầu tiên)</summary><pre id="raw"></pre></details><div class="err" id="e"></div>
+</div></div>
+<script src="config.js"></script><script src="api.js"></script>
+<script>
+if (!SLCP.token) location.replace('index.html');
+(async () => {
+  try {
+    const pid = await SLCP.getProjectId();
+    const rows = await SLCP.listLcus(pid);
+    s.textContent = `${rows.length} LCU · dự án ${pid}`;
+    t.innerHTML = rows.map((r, i) => `<tr><td>${i+1}</td><td><b>${esc(r.uid)}</b></td><td>${esc(r.deviceName)}</td><td>${esc(r.deviceCode)}</td><td>${esc(r.lcuId)}</td><td>${esc(r.modelName)}</td></tr>`).join('');
+    raw.textContent = JSON.stringify(rows[0] || null, null, 2);
+  } catch (x) { s.textContent = ''; e.textContent = x.message; }
+})();
+function esc(v) { return String(v ?? '').replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
+</script></body></html>

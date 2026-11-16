@@ -32,5 +32,29 @@ const SLCP = {
     if (![200, 20000].includes(body.code)) throw new Error(body.message || 'Phiên hết hạn');
     return body.data;
   },
+  // Gọi API có token. projectId đặt ở header (frontend Fonda làm vậy) và trong body khi cần.
+  async call(method, path, { body, projectId } = {}) {
+    const headers = { authorization: this.token, 'Content-Type': 'application/json' };
+    if (projectId) headers.projectId = projectId;
+    const res = await fetch(`${window.SLCP_CONFIG.API_BASE}/api/v1.0/${path}?lang=en-US`, {
+      method, headers, body: body ? JSON.stringify(body) : undefined });
+    const json = await res.json().catch(() => ({}));
+    if (json.code === 10002) { this.logout(); location.replace('index.html'); }
+    if (![200, 20000].includes(json.code)) throw new Error(`${path}: ${json.message || 'HTTP ' + res.status} (code ${json.code})`);
+    return json.data;
+  },
+  async getProjectId() {
+    const d = await this.call('GET', 'project/queryLastProject');
+    if (!d || !d.projectId) throw new Error('Không lấy được projectId');
+    return d.projectId;
+  },
+  async listLcus(projectId, size = 100) {
+    const out = []; let current = 1, pages = 1;
+    do {
+      const d = await this.call('POST', 'lcuActor/page', { projectId, body: { current, size, projectId, integratedQuery: '' } });
+      out.push(...(d.records || [])); pages = d.pages || 1; current++;
+    } while (current <= pages && current < 50);
+    return out;
+  },
   logout() { sessionStorage.removeItem('slcp_token'); sessionStorage.removeItem('slcp_user'); },
 };
