@@ -115,9 +115,11 @@ const SLCP = {
   },
   // Lệnh điều khiển đơn (docs/08 §2). dimming đã xác nhận payload; turnOn/turnOff giả định cùng mẫu (chưa xác nhận).
   async unicast(cmd, { luid, num, projectId, dimming }) {
-    const body = { luid, num: Number(num), projectId };
+    // Khớp đúng request đã test OK (doc 08): chỉ authorization + Content-Type, projectId nằm trong body, không có header projectId.
+    const body = { luid, num: Number(num) };
     if (cmd === 'dimming') body.dimming = Number(dimming);
-    return this.call('POST', `lampControl/unicast/${cmd}`, { projectId, body });
+    body.projectId = projectId;
+    return this.call('POST', `lampControl/unicast/${cmd}`, { body });
   },
   // WebSocket realtime (docs/claude/11 §2). onFrame nhận {cmd, ctrl, data, raw}.
   openWs(onFrame, onState) {
