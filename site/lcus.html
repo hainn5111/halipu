@@ -48,16 +48,36 @@ renderLive();
     t.innerHTML = rows.map((r, i) => `<tr><td>${i+1}</td><td><b>${esc(r.uid)}</b></td><td>${esc(r.deviceName)}</td><td>${esc(r.deviceCode)}</td><td>${esc(r.lcuId)}</td><td>${esc(r.modelName)}</td><td>${esc((r._pid||'').slice(0,8))}</td>
 <td class="ctl" data-uid="${esc(r.uid)}" data-pid="${esc(r._pid)}" data-lcuid="${esc(r.lcuId)}"><div class="c"><label>Đèn/kênh <input class="num" type="number" min="1" value="1"></label>
 <button type="button" data-cmd="turnOn">Bật</button><button type="button" data-cmd="turnOff">Tắt</button>
-<input class="dim" type="range" min="0" max="100" value="50"><output>50</output>%<button type="button" data-cmd="dimming">Dim</button><button type="button" data-cmd="diag">Đọc trạng thái</button></div><div class="res"></div><div class="rt res">Realtime: chưa nhận tin</div><pre class="diag" hidden></pre></td></tr>`).join('');
+<input class="dim" type="range" min="0" max="100" value="50"><output>50</output>%<button type="button" data-cmd="dimming">Dim</button><button type="button" data-cmd="diag">Đọc trạng thái</button></div><div class="res"></div><div class="rt res">Đang đọc trạng thái…</div><pre class="diag" hidden></pre></td></tr>`).join('');
     raw.textContent = JSON.stringify(rows[0] || null, null, 2);
+    const tds = [...document.querySelectorAll('.ctl')];
+    const loop = () => tds.forEach((td, i) => setTimeout(() => refreshRt(td), i * 400));
+    loop(); if (tds.length <= 10) setInterval(loop, 20000);   // tự làm mới mỗi 20 giây (tối đa 10 LCU)
   } catch (x) { s.textContent = ''; e.textContent = x.message; }
 })();
 async function readState(td, num) {   // đọc trạng thái qua HTTP (không cần WebSocket), chỉ đọc
   const pid = td.dataset.pid, lcuId = td.dataset.lcuid, uid = td.dataset.uid, out = {};
   const run = async (k, f) => { try { out[k] = await f(); } catch (x) { out[k] = 'LỖI: ' + x.message; } };
   await run('lcuLight/queryLcuLightByLcuIdAndNum', () => SLCP.call('POST', 'lcuLight/queryLcuLightByLcuIdAndNum', { projectId: pid, body: { lcuId, num: Number(num), projectId: pid } }));
-  await run('lcuActor/queryLcuDataRecords', () => SLCP.call('POST', 'lcuActor/queryLcuDataRecords', { projectId: pid, body: { current: 1, size: 1, lcuId, luid: uid, projectId: pid } }));
   return out;
+}
+async function ratedPower(td) {
+  if (td._rated === undefined) {
+    try { const d = await SLCP.call('GET', `lcuActor/queryLcuAndRelatedByUid/${td.dataset.uid}`, { projectId: td.dataset.pid });
+      td._rated = Number(d && d.deviceConfig && d.deviceConfig.lampPower) || 0; } catch { td._rated = 0; }
+  }
+  return td._rated;
+}
+const SRC = { 0: 'không rõ', 1: 'lệnh tay' }; // lastSource=1 quan sát được sau lệnh Dim; các giá trị khác chưa rõ
+async function refreshRt(td) {
+  const rt = td.querySelector('.rt'), num = td.querySelector('.num').value;
+  try {
+    const l = await SLCP.call('POST', 'lcuLight/queryLcuLightByLcuIdAndNum', { projectId: td.dataset.pid, body: { lcuId: td.dataset.lcuid, num: Number(num), projectId: td.dataset.pid } });
+    if (!l) { rt.textContent = 'Chưa có dữ liệu đèn'; return; }
+    const rated = await ratedPower(td), pct = rated && l.power != null ? Math.round(l.power / rated * 100) : null;
+    rt.className = 'rt res good';
+    rt.textContent = `Đo lúc ${l.dtime}: công suất ${l.power} W${pct != null ? ` (≈${pct}% định mức ${rated} W)` : ''} · ${l.voltage} V · ${l.current} A · cosφ ${l.powerFactor} · lux ${l.lux} · lỗi ${l.fault} · lastAction ${l.lastAction}, lastSource ${l.lastSource}`;
+  } catch (x) { rt.className = 'rt res bad'; rt.textContent = x.message; }
 }
 const NAMES = { turnOn: 'BẬT', turnOff: 'TẮT', dimming: 'ĐẶT ĐỘ SÁNG' };
 t.addEventListener('input', ev => { if (ev.target.classList.contains('dim')) ev.target.nextElementSibling.textContent = ev.target.value; });
@@ -85,8 +105,8 @@ t.addEventListener('click', async ev => {
   } catch (x) { res.className = 'res bad'; res.textContent = x.message; }
   btn.disabled = false;
   // Sau lệnh: chờ 4 giây rồi đọc lại trạng thái qua HTTP và hiện ở dưới ô điều khiển
-  const pre = td.querySelector('.diag'); pre.hidden = false; pre.textContent = 'Chờ 4 giây rồi đọc trạng thái…';
-  setTimeout(async () => { pre.textContent = JSON.stringify(await readState(td, num), null, 2); }, 4000);
+  const pre = td.querySelector('.diag');
+  pre.hidden = true; [4000, 10000, 20000].forEach(ms => setTimeout(() => refreshRt(td), ms));
 });
 function esc(v) { return String(v ?? '').replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
 </script></body></html>
