@@ -65,7 +65,7 @@ async function readState(td, num) {   // đọc trạng thái qua HTTP (không c
   return out;
 }
 // ---- Lịch sử đo: mỗi lần đo mới (khác dtime) thêm 1 dòng, không ghi đè. Lưu localStorage, tối đa 5000 dòng. ----
-const HKEY = 'slcp_hist', HMAX = 5000;
+const HKEY = 'slcp_hist_' + (SLCP.fixedProjectId() || 'default'), HMAX = 5000;
 function histLoad() { try { return JSON.parse(localStorage.getItem(HKEY) || '[]'); } catch { return []; } }
 function histSave(a) { try { localStorage.setItem(HKEY, JSON.stringify(a.slice(0, HMAX))); } catch { /* đầy hoặc bị chặn */ } }
 function histAdd(td, l) {
