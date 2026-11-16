@@ -58,7 +58,7 @@ t.addEventListener('click', async ev => {
   btn.disabled = true; res.className = 'res'; res.textContent = 'Đang gửi…';
   try {
     await SLCP.unicast(cmd, { luid: td.dataset.uid, num, projectId: td.dataset.pid, dimming: level });
-    res.className = 'res good'; res.textContent = `${what}: server đã nhận lệnh (${new Date().toLocaleTimeString()}). Chưa chắc đèn đã đổi.`;
+    res.className = 'res good'; res.textContent = `${what}: server đã nhận lệnh (${new Date().toLocaleTimeString()}) · phản hồi: ${JSON.stringify(SLCP.last && SLCP.last.json)}`;
   } catch (x) { res.className = 'res bad'; res.textContent = x.message; }
   btn.disabled = false;
 });

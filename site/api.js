@@ -39,6 +39,7 @@ const SLCP = {
     const res = await fetch(`${window.SLCP_CONFIG.API_BASE}/api/v1.0/${path}?lang=en-US`, {
       method, headers, body: body ? JSON.stringify(body) : undefined });
     const json = await res.json().catch(() => ({}));
+    this.last = { path, status: res.status, json };
     if (json.code === 10002) { this.logout(); location.replace('index.html'); }
     if (![200, 20000].includes(json.code)) throw new Error(`${path}: ${json.message || 'HTTP ' + res.status} (code ${json.code})`);
     return json.data;
@@ -126,9 +127,21 @@ const SLCP = {
     const base = window.SLCP_CONFIG.API_BASE.replace(/^http/, 'ws').replace(/:\d+$/, '');
     const url = `${base}:81/clesws`; let hb;
     const ws = new WebSocket(url);
-    ws.onopen = () => { onState('Đã kết nối ' + url); ws.send(JSON.stringify({ cmd: 'session', ctrl: 'login', Authorization: this.token }));
+    const T = this.token;
+    // Thử lần lượt các dạng frame đăng nhập (docs 08 §4 và 11 §2 khác nhau) cho tới khi hết 401.
+    const variants = [
+      { cmd: 'session', ctrl: 'login', Authorization: T },
+      { cmd: 'session', Authorization: T },
+      { cmd: 'session', ctrl: 'login', data: { Authorization: T } },
+      { cmd: 'session', ctrl: 'login', Authorization: T.replace(/^Bearer\s+/i, '') },
+    ];
+    let vi = 0;
+    ws.onopen = () => { onState('Đã kết nối ' + url + ' · thử đăng nhập dạng #1'); ws.send(JSON.stringify(variants[0]));
       hb = setInterval(() => ws.readyState === 1 && ws.send(JSON.stringify({ cmd: 'session', ctrl: 'heartbeat' })), 25000); };
-    ws.onmessage = ev => { let m; try { m = JSON.parse(ev.data); } catch { m = { raw: ev.data }; } onFrame(m, ev.data); };
+    ws.onmessage = ev => { let m; try { m = JSON.parse(ev.data); } catch { m = { raw: ev.data }; }
+      if (m.code === 401 && vi + 1 < variants.length) { vi++; onState(`Đã kết nối · 401 → thử đăng nhập dạng #${vi + 1}`); ws.send(JSON.stringify(variants[vi])); }
+      else if (m.code === 401) onState('Đã kết nối nhưng mọi dạng đăng nhập đều bị 401');
+      onFrame(m, ev.data); };
     ws.onerror = () => onState(`Lỗi WebSocket tới ${url} (Insecure content chưa bật? cổng 81 bị chặn?)`);
     ws.onclose = ev => { clearInterval(hb); onState(`Đã ngắt (code ${ev.code}) ${url}`); };
     return ws;
