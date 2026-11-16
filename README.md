@@ -1,2 +1,2 @@
 # hapulico
-Lập trình web cho hapulico, project smart lighting
+Lập trình web cho project smart lighting
