@@ -1,0 +1,16 @@
+<!doctype html><html lang="vi"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Trang chính · SLCP</title><link rel="stylesheet" href="style.css"></head><body>
+<div class="card">
+  <div class="ok">✅</div><h1>Đăng nhập thành công</h1>
+  <p class="sub">Xin chào, <b id="n"></b></p>
+  <pre id="j">Đang tải hồ sơ…</pre>
+  <button id="o">Đăng xuất</button>
+</div>
+<script src="config.js"></script><script src="api.js"></script>
+<script>
+if (!SLCP.token) location.replace('index.html');
+n.textContent = sessionStorage.getItem('slcp_user');
+SLCP.getUser().then(d => { j.textContent = JSON.stringify(d, null, 2); })
+  .catch(() => { SLCP.logout(); location.replace('index.html'); });
+o.onclick = () => { SLCP.logout(); location.replace('index.html'); };
+</script></body></html>
