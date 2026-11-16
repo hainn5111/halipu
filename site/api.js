@@ -138,8 +138,7 @@ const SLCP = {
       { cmd: 'session', ctrl: 'login', authorization: T },
     ];
     let vi = 0, loggedIn = false;
-    ws.onopen = () => { onState('Đã kết nối ' + url + ' · thử đăng nhập dạng #1'); ws.send(JSON.stringify(variants[0]));
-      hb = setInterval(() => ws.readyState === 1 && ws.send(JSON.stringify({ cmd: 'session', ctrl: 'heartbeat', Authorization: T })), 25000); };
+    ws.onopen = () => { onState('Đã kết nối ' + url + ' · thử đăng nhập dạng #1'); ws.send(JSON.stringify(variants[0])); };
     ws.onmessage = ev => { let m; try { m = JSON.parse(ev.data); } catch { m = { raw: ev.data }; }
       const inn = m.data && m.data.cmd ? m.data : {};
       if (m.code === 200 && inn.cmd === 'session' && inn.ctrl === 'login') { loggedIn = true; onState(`Đã đăng nhập WebSocket (dạng #${vi + 1})`); }
