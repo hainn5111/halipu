@@ -135,11 +135,14 @@ const SLCP = {
       { cmd: 'session', ctrl: 'login', data: { Authorization: T } },
       { cmd: 'session', ctrl: 'login', Authorization: T.replace(/^Bearer\s+/i, '') },
     ];
-    let vi = 0;
+    let vi = 0, loggedIn = false;
     ws.onopen = () => { onState('Đã kết nối ' + url + ' · thử đăng nhập dạng #1'); ws.send(JSON.stringify(variants[0]));
-      hb = setInterval(() => ws.readyState === 1 && ws.send(JSON.stringify({ cmd: 'session', ctrl: 'heartbeat' })), 25000); };
+      hb = setInterval(() => ws.readyState === 1 && ws.send(JSON.stringify({ cmd: 'session', ctrl: 'heartbeat', Authorization: T })), 25000); };
     ws.onmessage = ev => { let m; try { m = JSON.parse(ev.data); } catch { m = { raw: ev.data }; }
-      if (m.code === 401 && vi + 1 < variants.length) { vi++; onState(`Đã kết nối · 401 → thử đăng nhập dạng #${vi + 1}`); ws.send(JSON.stringify(variants[vi])); }
+      const inn = m.data && m.data.cmd ? m.data : {};
+      if (m.code === 200 && inn.cmd === 'session' && inn.ctrl === 'login') { loggedIn = true; onState(`Đã đăng nhập WebSocket (dạng #${vi + 1})`); }
+      else if (m.code === 401 && loggedIn) onState('Đã đăng nhập nhưng có tin 401 (có thể từ heartbeat) — xem nội dung bên dưới');
+      else if (m.code === 401 && vi + 1 < variants.length) { vi++; onState(`Đã kết nối · 401 → thử đăng nhập dạng #${vi + 1}`); ws.send(JSON.stringify(variants[vi])); }
       else if (m.code === 401) onState('Đã kết nối nhưng mọi dạng đăng nhập đều bị 401');
       onFrame(m, ev.data); };
     ws.onerror = () => onState(`Lỗi WebSocket tới ${url} (Insecure content chưa bật? cổng 81 bị chặn?)`);
