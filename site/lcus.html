@@ -17,12 +17,26 @@ const liveLines = [], counts = {}; let total = 0, wsState = 'đang kết nối�
 const WATCH = /^lampControl\/(status|unicastStatus|data)$/;
 function renderLive() {
   const c = Object.entries(counts).sort((x, y) => y[1] - x[1]).map(([k, n]) => `${k}: ${n}`).join(' | ') || '(chưa nhận frame nào)';
-  live.textContent = `Tổng frame nhận: ${total}\nLoại frame: ${c}\n\n` + (liveLines.slice(0, 12).join('\n\n') || 'Chưa có tin lampControl/* — gửi lệnh Dim rồi chờ vài giây.');
+  live.textContent = `Tổng frame nhận: ${total}\nLoại frame: ${c}\n\n` + (liveLines.slice(0, 12).join('\n\n') || 'Chưa có tin của LCU trong danh sách — server đẩy theo đợt, chờ vài chục giây hoặc gửi lệnh rồi xem lại.');
 }
+const asList = d => Array.isArray(d) ? d : (d ? [d] : []);
+function tdOf(id) { return [...document.querySelectorAll('.ctl')].find(td => td.dataset.lcuid === id); }
 SLCP.openWs((m, raw) => {
   total++; const inner = (m.data && typeof m.data === 'object' && m.data.cmd) ? m.data : m;
-  const key = (inner.cmd || inner.ctrl) ? `${inner.cmd}/${inner.ctrl}` : 'khác:' + Object.keys(m).slice(0, 4).join(','); counts[key] = (counts[key] || 0) + 1;
-  if (total <= 40 || WATCH.test(key) || /session|lampControl|unicast/i.test(key)) liveLines.unshift(`${new Date().toLocaleTimeString()}  ${key}\n${String(raw).slice(0, 600)}`);
+  const key = (inner.cmd || inner.ctrl) ? `${inner.cmd}/${inner.ctrl}` : 'khác:' + Object.keys(m).slice(0, 4).join(',');
+  counts[key] = (counts[key] || 0) + 1;
+  let mine = false;
+  if (key === 'lampControl/status' || key === 'lampControl/unicastStatus' || key === 'lampControl/data') {
+    for (const it of asList(inner.data)) {
+      const td = tdOf(it.deviceId || it.lcuId); if (!td) continue;
+      mine = true;
+      const rt = td.querySelector('.rt'), t = new Date().toLocaleTimeString();
+      if (Array.isArray(it.lampStatus)) rt.textContent = `Realtime ${t}: ` + it.lampStatus.map(l => `đèn ${l.num}: dim ${l.dimming}, ls=${l.ls}`).join(' · ');
+      else if (key === 'lampControl/unicastStatus') rt.textContent = `Phản hồi lệnh ${t}: ${JSON.stringify(it).slice(0, 200)}`;
+      else if (key === 'lampControl/data') rt.textContent = `Đo điện ${t}: ` + JSON.stringify(it.lcuData || it).slice(0, 200);
+    }
+  }
+  if (mine || /session/i.test(key) || total <= 5) liveLines.unshift(`${new Date().toLocaleTimeString()}  ${key}${mine ? '  ★ LCU của bạn' : ''}\n${String(raw).slice(0, 600)}`);
   renderLive();
 }, st => { ws.textContent = st; wsState = st; renderLive(); });
 renderLive();
@@ -34,7 +48,7 @@ renderLive();
     t.innerHTML = rows.map((r, i) => `<tr><td>${i+1}</td><td><b>${esc(r.uid)}</b></td><td>${esc(r.deviceName)}</td><td>${esc(r.deviceCode)}</td><td>${esc(r.lcuId)}</td><td>${esc(r.modelName)}</td><td>${esc((r._pid||'').slice(0,8))}</td>
 <td class="ctl" data-uid="${esc(r.uid)}" data-pid="${esc(r._pid)}" data-lcuid="${esc(r.lcuId)}"><div class="c"><label>Đèn/kênh <input class="num" type="number" min="1" value="1"></label>
 <button type="button" data-cmd="turnOn">Bật</button><button type="button" data-cmd="turnOff">Tắt</button>
-<input class="dim" type="range" min="0" max="100" value="50"><output>50</output>%<button type="button" data-cmd="dimming">Dim</button><button type="button" data-cmd="diag">Đọc trạng thái</button></div><div class="res"></div><pre class="diag" hidden></pre></td></tr>`).join('');
+<input class="dim" type="range" min="0" max="100" value="50"><output>50</output>%<button type="button" data-cmd="dimming">Dim</button><button type="button" data-cmd="diag">Đọc trạng thái</button></div><div class="res"></div><div class="rt res">Realtime: chưa nhận tin</div><pre class="diag" hidden></pre></td></tr>`).join('');
     raw.textContent = JSON.stringify(rows[0] || null, null, 2);
   } catch (x) { s.textContent = ''; e.textContent = x.message; }
 })();
