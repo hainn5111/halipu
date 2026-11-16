@@ -43,10 +43,28 @@ const SLCP = {
     if (![200, 20000].includes(json.code)) throw new Error(`${path}: ${json.message || 'HTTP ' + res.status} (code ${json.code})`);
     return json.data;
   },
+  // Thử lần lượt vài API; tìm projectId (hoặc id) trong kết quả, kể cả lồng trong mảng/records/children.
   async getProjectId() {
-    const d = await this.call('GET', 'project/queryLastProject');
-    if (!d || !d.projectId) throw new Error('Không lấy được projectId');
-    return d.projectId;
+    const saved = localStorage.getItem('pid');
+    if (saved) return saved;
+    const find = v => {
+      if (!v || typeof v !== 'object') return null;
+      if (typeof v.projectId === 'string' && v.projectId) return v.projectId;
+      for (const k of Array.isArray(v) ? v.keys() : ['records', 'children', 'data']) { const r = find(v[k]); if (r) return r; }
+      return null;
+    };
+    const tries = [['GET', 'project/queryLastProject'], ['POST', 'project/queryTree', {}],
+      ['POST', 'project/queryList', { current: 1, size: 10 }], ['POST', 'project/queryProjectByUserId', {}]];
+    const log = [];
+    for (const [m, p, body] of tries) {
+      try {
+        const d = await this.call(m, p, { body });
+        const id = find(d) || (d && d.records && d.records[0] && d.records[0].id);
+        if (id) { localStorage.setItem('pid', id); return id; }
+        log.push(`${p}: không có projectId (${JSON.stringify(d).slice(0, 150)})`);
+      } catch (e) { log.push(e.message); }
+    }
+    throw new Error('Không lấy được projectId:\n' + log.join('\n'));
   },
   async listLcus(projectId, size = 100) {
     const out = []; let current = 1, pages = 1;
@@ -56,5 +74,5 @@ const SLCP = {
     } while (current <= pages && current < 50);
     return out;
   },
-  logout() { sessionStorage.removeItem('slcp_token'); sessionStorage.removeItem('slcp_user'); },
+  logout() { try { localStorage.removeItem('pid'); } catch {} sessionStorage.removeItem('slcp_token'); sessionStorage.removeItem('slcp_user'); },
 };
