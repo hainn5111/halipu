@@ -134,6 +134,8 @@ const SLCP = {
       { cmd: 'session', Authorization: T },
       { cmd: 'session', ctrl: 'login', data: { Authorization: T } },
       { cmd: 'session', ctrl: 'login', Authorization: T.replace(/^Bearer\s+/i, '') },
+      { cmd: 'session', ctrl: 'login', Authorization: T, clientType: 'app', userAccount: sessionStorage.getItem('slcp_user') || '' },
+      { cmd: 'session', ctrl: 'login', authorization: T },
     ];
     let vi = 0, loggedIn = false;
     ws.onopen = () => { onState('Đã kết nối ' + url + ' · thử đăng nhập dạng #1'); ws.send(JSON.stringify(variants[0]));
