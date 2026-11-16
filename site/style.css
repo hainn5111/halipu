@@ -4,6 +4,6 @@ h1{margin:0 0 4px;font-size:22px}p.sub{margin:0 0 20px;color:#94a3b8;font-size:1
 label{display:block;font-size:13px;margin:12px 0 6px;color:#cbd5e1}
 input{width:100%;padding:10px 12px;border-radius:8px;border:1px solid #334155;background:#0f172a;color:inherit;font-size:15px}
 button{width:100%;margin-top:20px;padding:11px;border:0;border-radius:8px;background:#f59e0b;color:#111;font-weight:600;font-size:15px;cursor:pointer}
-button:disabled{opacity:.6}.err{color:#f87171;font-size:14px;min-height:20px;margin-top:12px}
+button:disabled{opacity:.6}.err{white-space:pre-wrap;color:#f87171;font-size:14px;min-height:20px;margin-top:12px}
 .ok{font-size:40px}pre{background:#0f172a;padding:12px;border-radius:8px;overflow:auto;font-size:12px;max-height:240px}
 details{margin-top:14px;font-size:13px;color:#94a3b8}
