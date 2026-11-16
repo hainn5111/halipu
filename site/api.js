@@ -66,13 +66,52 @@ const SLCP = {
     }
     throw new Error('Không lấy được projectId:\n' + log.join('\n'));
   },
-  async listLcus(projectId, size = 100) {
+  // Tất cả projectId (dự án cha + con) trong cây dự án
+  async allProjectIds(fallbackId) {
+    const ids = new Set(fallbackId ? [fallbackId] : []);
+    const walk = v => {
+      if (!v || typeof v !== 'object') return;
+      if (Array.isArray(v)) return v.forEach(walk);
+      if (typeof v.projectId === 'string' && v.projectId) ids.add(v.projectId);
+      Object.values(v).forEach(x => { if (x && typeof x === 'object') walk(x); });
+    };
+    try { walk(await this.call('POST', 'project/queryTree', { body: {} })); } catch { /* dùng fallback */ }
+    return [...ids];
+  },
+  async pageAll(path, projectId, size = 100) {
     const out = []; let current = 1, pages = 1;
     do {
-      const d = await this.call('POST', 'lcuActor/page', { projectId, body: { current, size, projectId, integratedQuery: '' } });
+      const d = await this.call('POST', path, { projectId, body: { current, size, projectId, integratedQuery: '' } });
       out.push(...(d.records || [])); pages = d.pages || 1; current++;
-    } while (current <= pages && current < 50);
+    } while (current <= pages && current < 100);
     return out;
+  },
+  // Gộp LCU từ mọi dự án, theo uid. Trả { rows, report }.
+  async listAllLcus(onProgress) {
+    const pid0 = await this.getProjectId();
+    const pids = await this.allProjectIds(pid0);
+    const map = new Map(), report = [];
+    for (const pid of pids) {
+      onProgress && onProgress(`Đang tải dự án ${pids.indexOf(pid) + 1}/${pids.length}…`);
+      let n = 0;
+      try {
+        for (const r of await this.pageAll('lcuActor/page', pid)) {
+          const k = r.uid || r.lcuId; if (!k) continue;
+          if (!map.has(k)) { map.set(k, { ...r, _pid: pid }); n++; }
+        }
+        report.push(`${pid}: lcuActor/page +${n}`);
+      } catch (e) { report.push(e.message); }
+      try {
+        const list = await this.call('POST', 'lcuActor/getLcuListByProjectId', { projectId: pid, body: { projectId: pid } });
+        let m = 0;
+        for (const r of list || []) {
+          const k = r.luid; if (!k || map.has(k)) continue;
+          map.set(k, { uid: r.luid, deviceName: r.lcuName, lcuId: r.lcuId, _pid: pid }); m++;
+        }
+        report.push(`${pid}: getLcuListByProjectId +${m}`);
+      } catch (e) { report.push(e.message); }
+    }
+    return { rows: [...map.values()], report };
   },
   logout() { try { localStorage.removeItem('pid'); } catch {} sessionStorage.removeItem('slcp_token'); sessionStorage.removeItem('slcp_user'); },
 };
