@@ -32,12 +32,19 @@ renderLive();
     s.textContent = `${rows.length} LCU`;
     rep.textContent = report.join('\n');
     t.innerHTML = rows.map((r, i) => `<tr><td>${i+1}</td><td><b>${esc(r.uid)}</b></td><td>${esc(r.deviceName)}</td><td>${esc(r.deviceCode)}</td><td>${esc(r.lcuId)}</td><td>${esc(r.modelName)}</td><td>${esc((r._pid||'').slice(0,8))}</td>
-<td class="ctl" data-uid="${esc(r.uid)}" data-pid="${esc(r._pid)}"><div class="c"><label>Đèn/kênh <input class="num" type="number" min="1" value="1"></label>
+<td class="ctl" data-uid="${esc(r.uid)}" data-pid="${esc(r._pid)}" data-lcuid="${esc(r.lcuId)}"><div class="c"><label>Đèn/kênh <input class="num" type="number" min="1" value="1"></label>
 <button type="button" data-cmd="turnOn">Bật</button><button type="button" data-cmd="turnOff">Tắt</button>
 <input class="dim" type="range" min="0" max="100" value="50"><output>50</output>%<button type="button" data-cmd="dimming">Dim</button><button type="button" data-cmd="diag">Đọc trạng thái</button></div><div class="res"></div><pre class="diag" hidden></pre></td></tr>`).join('');
     raw.textContent = JSON.stringify(rows[0] || null, null, 2);
   } catch (x) { s.textContent = ''; e.textContent = x.message; }
 })();
+async function readState(td, num) {   // đọc trạng thái qua HTTP (không cần WebSocket), chỉ đọc
+  const pid = td.dataset.pid, lcuId = td.dataset.lcuid, uid = td.dataset.uid, out = {};
+  const run = async (k, f) => { try { out[k] = await f(); } catch (x) { out[k] = 'LỖI: ' + x.message; } };
+  await run('lcuLight/queryLcuLightByLcuIdAndNum', () => SLCP.call('POST', 'lcuLight/queryLcuLightByLcuIdAndNum', { projectId: pid, body: { lcuId, num: Number(num), projectId: pid } }));
+  await run('lcuActor/queryLcuDataRecords', () => SLCP.call('POST', 'lcuActor/queryLcuDataRecords', { projectId: pid, body: { current: 1, size: 1, lcuId, luid: uid, projectId: pid } }));
+  return out;
+}
 const NAMES = { turnOn: 'BẬT', turnOff: 'TẮT', dimming: 'ĐẶT ĐỘ SÁNG' };
 t.addEventListener('input', ev => { if (ev.target.classList.contains('dim')) ev.target.nextElementSibling.textContent = ev.target.value; });
 t.addEventListener('click', async ev => {
@@ -52,6 +59,7 @@ t.addEventListener('click', async ev => {
     const lid = (out.queryLcuAndRelatedByUid || {}).deviceId;
     await run('queryLampNumberOfLcu', () => SLCP.call('POST', 'lcuActor/queryLampNumberOfLcu', { projectId: pid, body: { lcuId: lid, projectId: pid } }));
     await run('unicast/queryStatus', () => SLCP.unicast('queryStatus', { luid: uid, num, projectId: pid }));
+    Object.assign(out, await readState(td, num));
     pre.textContent = JSON.stringify(out, null, 2); btn.disabled = false; return;
   }
   const what = `${NAMES[cmd]}${cmd === 'dimming' ? ' ' + level + '%' : ''}`;
@@ -62,6 +70,9 @@ t.addEventListener('click', async ev => {
     res.className = 'res good'; res.textContent = `${what}: server đã nhận lệnh (${new Date().toLocaleTimeString()}) · phản hồi: ${JSON.stringify(SLCP.last && SLCP.last.json)}`;
   } catch (x) { res.className = 'res bad'; res.textContent = x.message; }
   btn.disabled = false;
+  // Sau lệnh: chờ 4 giây rồi đọc lại trạng thái qua HTTP và hiện ở dưới ô điều khiển
+  const pre = td.querySelector('.diag'); pre.hidden = false; pre.textContent = 'Chờ 4 giây rồi đọc trạng thái…';
+  setTimeout(async () => { pre.textContent = JSON.stringify(await readState(td, num), null, 2); }, 4000);
 });
 function esc(v) { return String(v ?? '').replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
 </script></body></html>
