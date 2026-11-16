@@ -1,0 +1,64 @@
+<!doctype html><html lang="vi"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Quét dự án · SLCP</title><link rel="stylesheet" href="style.css">
+<style>body{display:block}.wrap{max-width:900px;margin:0 auto}.card{max-width:none}table{width:100%;border-collapse:collapse;font-size:13px}
+th,td{text-align:left;padding:8px;border-bottom:1px solid #334155;word-break:break-all}th{color:#94a3b8}a{color:#f59e0b}
+.row{display:flex;gap:12px;align-items:center;flex-wrap:wrap}.row input{width:90px}.row button,td button{width:auto;margin:0;padding:6px 12px;font-size:13px}</style></head><body><div class="wrap"><div class="card">
+<div class="row"><h1 style="flex:1">Quét dự án có LCU đo gần đây</h1><a href="home.html">← Trang chính</a></div>
+<p class="sub">Chỉ đọc (lcuActor/page + lcuLight/queryLcuLightByLcuIdAndNum, đèn số 1 của mỗi LCU). Không gửi lệnh điều khiển.</p>
+<div class="row"><label>Lấy lần đo từ năm <input id="yr" type="number" value="2026"></label><button id="go" type="button">Bắt đầu quét</button><button id="csv" type="button" hidden>Tải CSV</button></div>
+<p class="sub" id="st"></p>
+<div style="overflow:auto"><table><thead><tr><th>Dự án</th><th>projectId</th><th>LCU</th><th>LCU có đo ≥ năm</th><th>Lần đo gần nhất</th><th></th></tr></thead><tbody id="t"></tbody></table></div>
+<details><summary>Nhật ký lỗi</summary><pre id="log"></pre></details>
+</div></div>
+<script src="config.js"></script><script src="api.js"></script>
+<script>
+if (!SLCP.token) location.replace('index.html');
+const esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+const results = [], logs = [];
+async function pool(items, n, fn) { let i = 0; await Promise.all(Array.from({ length: n }, async () => { while (i < items.length) await fn(items[i++]); })); }
+async function projects() {   // [{id, name}] từ cây dự án (cha + con)
+  const out = new Map(), walk = v => {
+    if (!v || typeof v !== 'object') return;
+    if (Array.isArray(v)) return v.forEach(walk);
+    if (typeof v.projectId === 'string' && v.projectId && !out.has(v.projectId)) out.set(v.projectId, v.projectName || v.name || v.title || v.label || '');
+    Object.values(v).forEach(x => x && typeof x === 'object' && walk(x));
+  };
+  walk(await SLCP.call('POST', 'project/queryTree', { body: {} }));
+  return [...out].map(([id, name]) => ({ id, name }));
+}
+function render() {
+  const sorted = [...results].sort((a, b) => (b.latest || '').localeCompare(a.latest || ''));
+  t.innerHTML = sorted.filter(r => r.recent > 0).map(r => `<tr><td>${esc(r.name)}</td><td><code>${esc(r.id)}</code></td><td>${r.lcus}</td><td>${r.recent}</td><td>${esc(r.latest)}</td>
+<td><button type="button" data-pid="${esc(r.id)}">Chọn</button></td></tr>`).join('') || '<tr><td colspan="6">Chưa có dự án nào khớp.</td></tr>';
+}
+t.onclick = e => { const b = e.target.closest('[data-pid]'); if (!b) return; localStorage.setItem('pid_fixed', b.dataset.pid); location.href = 'lcus.html'; };
+go.onclick = async () => {
+  go.disabled = true; results.length = 0; logs.length = 0; const year = String(yr.value || '2026');
+  try {
+    const ps = await projects(); let done = 0;
+    st.textContent = `Tìm thấy ${ps.length} dự án, đang quét…`;
+    await pool(ps, 2, async p => {
+      const r = { ...p, lcus: 0, recent: 0, latest: '' };
+      try {
+        const rows = await SLCP.pageAll('lcuActor/page', p.id); r.lcus = rows.length;
+        await pool(rows.filter(x => x.lcuId), 4, async x => {
+          try {
+            const l = await SLCP.call('POST', 'lcuLight/queryLcuLightByLcuIdAndNum', { projectId: p.id, body: { lcuId: x.lcuId, num: 1, projectId: p.id } });
+            const d = l && l.dtime ? String(l.dtime) : '';
+            if (d && d.slice(0, 4) >= year) r.recent++;
+            if (d > r.latest) r.latest = d;
+          } catch (e) { logs.push(`${p.id}/${x.lcuId}: ${e.message}`); }
+        });
+      } catch (e) { logs.push(`${p.id}: ${e.message}`); }
+      results.push(r); st.textContent = `Đã quét ${++done}/${ps.length} dự án…`; render(); log.textContent = logs.slice(0, 200).join('\n');
+    });
+    st.textContent = `Xong ${ps.length} dự án; ${results.filter(r => r.recent > 0).length} dự án có LCU đo từ ${year}.`; csv.hidden = false;
+  } catch (e) { st.textContent = 'Lỗi: ' + e.message; }
+  go.disabled = false;
+};
+csv.onclick = () => {
+  const rows = [['project', 'projectId', 'lcus', 'lcu_recent', 'latest_dtime'], ...results.map(r => [r.name, r.id, r.lcus, r.recent, r.latest])];
+  const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob(['﻿' + rows.map(r => r.map(c => `"${String(c).replace(/"/g, '""')}"`).join(',')).join('\n')], { type: 'text/csv' }));
+  a.download = 'projects-scan.csv'; a.click();
+};
+</script></body></html>
