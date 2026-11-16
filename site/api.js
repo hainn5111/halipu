@@ -44,10 +44,11 @@ const SLCP = {
     if (![200, 20000].includes(json.code)) throw new Error(`${path}: ${json.message || 'HTTP ' + res.status} (code ${json.code})`);
     return json.data;
   },
-  // projectId cố định: ?pid= trên URL > config.js PROJECT_ID. Có giá trị thì không dò cây dự án nữa (tránh lẫn sang Demo H).
+  // projectId cố định: ?pid= trên URL > ô nhập ở home.html (localStorage) > config.js PROJECT_ID. Có giá trị thì không dò cây dự án nữa (tránh lẫn sang Demo H).
   fixedProjectId() {
     const q = new URLSearchParams(location.search).get('pid');
-    return (q && q.trim()) || (window.SLCP_CONFIG.PROJECT_ID || '').trim();
+    let saved = ''; try { saved = localStorage.getItem('pid_fixed') || ''; } catch {}
+    return (q && q.trim()) || saved.trim() || (window.SLCP_CONFIG.PROJECT_ID || '').trim();
   },
   // Thử lần lượt vài API; tìm projectId (hoặc id) trong kết quả, kể cả lồng trong mảng/records/children.
   async getProjectId() {

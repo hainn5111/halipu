@@ -25,6 +25,9 @@ jobs:
       url: ${{ steps.deployment.outputs.page_url }}
     steps:
       - uses: actions/checkout@v4
+      - name: Stamp build info
+        run: |
+          echo "window.BUILD_INFO = { branch: '${GITHUB_REF_NAME}', commit: '${GITHUB_SHA::7}', time: '$(date -u '+%Y-%m-%d %H:%M')Z' };" > site/build-info.js
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3
         with: { path: site }
