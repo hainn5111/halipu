@@ -12,6 +12,12 @@ th,td{text-align:left;padding:8px;border-bottom:1px solid #334155;word-break:bre
 <span class="res">(chỉ chạy khi trang này đang mở; đóng tab/trình duyệt là dừng)</span></div><details open><summary>Phản hồi realtime từ đèn (WebSocket): <span id="ws">chưa kết nối</span></summary>
 <pre id="live" style="max-height:220px">Chờ dữ liệu… (gửi lệnh rồi xem ở đây đèn có đổi mức không)</pre></details>
 <div style="overflow:auto"><table><thead><tr><th>#</th><th>UID (luid)</th><th>Tên</th><th>Mã</th><th>lcuId</th><th>Model</th><th>Dự án</th><th>Điều khiển</th></tr></thead><tbody id="t"></tbody></table></div>
+<details><summary>Cứu lịch sử LCU đã xoá (nhập tay ID, chỉ đọc)</summary>
+<p class="res">Nhập ID của LCU đã xoá (lấy từ request <code>getLcuDataTrend</code> ở DevTools). Nếu server còn trả dữ liệu thì tải CSV về ngay.</p>
+<div class="c" style="display:grid;gap:6px;max-width:520px">
+<input id="rpid" placeholder="projectId (bỏ trống = dự án hiện tại)"><input id="rlid" placeholder="lcuId"><input id="ruid" placeholder="UID / luid"><input id="rname" placeholder="Tên LCU (lcuName)">
+<select id="rdays" style="padding:8px;border-radius:8px;background:#0f172a;color:inherit;border:1px solid #334155"><option value="30">30 ngày</option><option value="90">90 ngày</option><option value="180">180 ngày</option><option value="365">365 ngày</option></select>
+<button type="button" id="rgo" style="margin:0;padding:8px 12px;font-size:13px">Đọc lịch sử &amp; tải CSV</button></div><pre id="rout" hidden style="max-height:200px"></pre></details>
 <details><summary>Dò API lịch sử đo của server (chỉ đọc)</summary>
 <p class="res">Gọi thử các API lịch sử/biểu đồ của Fonda cho LCU đầu tiên, 24 giờ gần nhất. Chỉ truy vấn, không gửi lệnh xuống đèn. Lỗi 4xx cho biết thiếu tham số gì.</p>
 <label style="margin:0 0 8px">Chọn LCU để dò <select id="hps" style="width:100%;padding:8px;border-radius:8px;background:#0f172a;color:inherit;border:1px solid #334155"></select></label>
@@ -143,6 +149,23 @@ function autoInit(loop) {
   asec.onchange = () => { const c = autoCfg(); c.sec = Math.max(10, Math.floor(Number(asec.value)) || 20); autoSave(c); arm(); };
   arm();
 }
+rgo.onclick = async () => {   // đọc lịch sử bằng ID nhập tay (LCU đã xoá) → CSV. Chỉ truy vấn.
+  const first = document.querySelector('.ctl'), pid = rpid.value.trim() || (first && first.dataset.pid), lcuId = rlid.value.trim(), uid = ruid.value.trim() || lcuId;
+  if (!pid || !lcuId) { rout.hidden = false; rout.textContent = 'Cần lcuId (và projectId nếu chưa có LCU nào trong danh sách).'; return; }
+  rgo.disabled = true; rout.hidden = false; rout.textContent = 'Waiting....';
+  try {
+    const rows = await SLCP.lcuTrend({ pid, uid, lcuId, name: rname.value.trim() }, Number(rdays.value));
+    if (!rows.length) { rout.textContent = 'Server không trả điểm nào cho ID này (có thể đã xoá hẳn dữ liệu, hoặc ID/khoảng thời gian chưa đúng).'; }
+    else {
+      const cols = ['dtime', 'p', 'u', 'i', 'pf', 'e', 'dim', 'wp'];
+      const csv = [cols.join(','), ...rows.map(r => cols.map(c => `"${String(r[c] ?? '').replace(/"/g, '""')}"`).join(','))].join('\n');
+      const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob(['\ufeff' + csv], { type: 'text/csv' }));
+      a.download = `lich-su-da-xoa-${uid}-${new Date().toISOString().slice(0, 10)}.csv`; a.click();
+      rout.textContent = `Có ${rows.length} điểm, từ ${rows[rows.length - 1].dtime} đến ${rows[0].dtime}. Đã tải CSV.`;
+    }
+  } catch (x) { rout.textContent = 'LỖI ' + x.message; }
+  rgo.disabled = false;
+};
 hp.onclick = async () => {   // dò API lịch sử theo payload thật của web gốc (đã bắt từ Network). Chỉ truy vấn.
   const td = [...document.querySelectorAll('.ctl')].find(x => x.dataset.uid === hps.value); if (!td) return;
   const pid = td.dataset.pid, uid = td.dataset.uid, lcuId = td.dataset.lcuid, lcuName = td.dataset.name || '', num = Number(td.querySelector('.num').value) || 1;
