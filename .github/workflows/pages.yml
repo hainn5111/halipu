@@ -1,9 +1,8 @@
-name: Deploy to GitHub Pages (alt project)
+name: Deploy to GitHub Pages
 
-# Nhánh thử nghiệm: deploy từ claude/alt-project-id, KHÔNG đụng workflow/nhánh main.
 on:
   push:
-    branches: [claude/alt-project-id]
+    branches: [main, claude/alt-project-id]
     paths: ['site/**', '.github/workflows/pages.yml']
   workflow_dispatch:
 
@@ -13,7 +12,7 @@ permissions:
   id-token: write
 
 concurrency:
-  group: pages-alt-project
+  group: pages
   cancel-in-progress: true
 
 jobs:
