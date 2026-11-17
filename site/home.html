@@ -15,12 +15,18 @@ html,body{width:100%;height:100%}body{display:block;place-items:initial;padding:
 .main{display:flex;flex-direction:column;min-width:0;min-height:0}
 .crumb{padding:10px 16px;font-size:13px;color:#94a3b8;border-bottom:1px solid #334155}.crumb b{color:#e2e8f0}
 .pane{flex:1;min-height:0;width:100%;display:flex}
-.gis{flex:1;display:grid;grid-template-columns:minmax(0,1fr) 360px;width:100%;min-height:0}
-#map{background:#0f172a;min-height:300px}
-.side{border-left:1px solid #334155;display:flex;flex-direction:column;min-height:0}
-.side h2{margin:0;padding:12px 14px;font-size:14px;border-bottom:1px solid #334155}
-.stat{display:flex;gap:8px;padding:10px 14px;font-size:12px;color:#94a3b8;border-bottom:1px solid #334155}
-.stat span b{display:block;font-size:18px;color:#e2e8f0}
+.gis{position:relative;flex:1;min-width:0}#map{position:absolute;inset:0;background:#0f172a}
+.dd{position:absolute;top:12px;left:56px;z-index:1000;width:320px}
+.dd>button{margin:0;text-align:left;background:#1e293b;color:#e2e8f0;border:1px solid #334155;box-shadow:0 4px 14px #0006}
+.dd .menu{margin-top:4px;background:#1e293b;border:1px solid #334155;border-radius:8px;max-height:60vh;overflow:auto;box-shadow:0 8px 24px #0008}
+.dd .menu[hidden]{display:none}
+.drawer{position:absolute;top:0;right:0;bottom:0;width:400px;z-index:1000;background:#1e293b;border-left:1px solid #334155;box-shadow:-8px 0 24px #0006;overflow:auto;padding:14px}
+.drawer[hidden]{display:none}.drawer h2{margin:0;font-size:16px}.drawer .x{width:auto;margin:0;padding:2px 10px;background:#334155;color:#e2e8f0;float:right}
+.drawer h3{font-size:12px;text-transform:uppercase;letter-spacing:.06em;color:#94a3b8;margin:16px 0 8px}
+.drawer .c{display:flex;gap:6px;align-items:center;flex-wrap:wrap}.drawer .c button,.drawer .b{width:auto;margin:0;padding:6px 12px;font-size:13px}
+.drawer .num{width:56px;padding:4px}.drawer .dim{width:140px;padding:0}.drawer .b{background:#334155;color:#e2e8f0}
+.drawer .res{font-size:12px;margin-top:6px;color:#94a3b8;word-break:break-all}.res.bad{color:#f87171}.res.good{color:#4ade80}
+.drawer table{width:100%;border-collapse:collapse;font-size:12px}.drawer th,.drawer td{text-align:left;padding:5px;border-bottom:1px solid #334155}.drawer th{color:#94a3b8}
 .list{overflow:auto;flex:1}.it{padding:9px 14px;border-bottom:1px solid #1e293b;font-size:13px;cursor:pointer}
 .it:hover{background:#1e293b}.it small{display:block;color:#94a3b8}.it.nogeo{opacity:.55}
 .empty{margin:auto;color:#94a3b8;font-size:14px;padding:24px;text-align:center}
@@ -71,51 +77,132 @@ function open(id) {
   history.replaceState(null, '', '#' + t.id);
 }
 
-// ===== Tab GIS: bản đồ + danh sách LCU (marker khi có toạ độ) =====
+// ===== Tab GIS: bản đồ + dropdown LCU + drawer điều khiển (kế thừa logic lcus.html) =====
+const HKEY = 'slcp_hist_' + (SLCP.fixedProjectId() || 'default'), HMAX = 5000;   // cùng khoá với lcus.html → dùng chung lịch sử
+const histLoad = () => { try { return JSON.parse(localStorage.getItem(HKEY) || '[]'); } catch { return []; } };
+const histSave = a => { try { localStorage.setItem(HKEY, JSON.stringify(a.slice(0, HMAX))); } catch {} };
+function histAdd(r, l) {
+  const a = histLoad(), id = `${r.uid}|${l.num}|${l.dtime}`;
+  if (a.some(x => x.id === id)) return false;
+  a.unshift({ id, dtime: l.dtime, uid: r.uid, name: r.deviceName || '', num: l.num, power: l.power, voltage: l.voltage, current: l.current, pf: l.powerFactor, lux: l.lux, fault: l.fault, energy: l.energy, saved: new Date().toISOString() });
+  histSave(a); return true;
+}
+const NAMES = { turnOn: 'BẬT', turnOff: 'TẮT', dimming: 'ĐẶT ĐỘ SÁNG' };
+
 function renderGis(root) {
-  root.innerHTML = `<div class="gis"><div id="map"></div><aside class="side"><h2>Thiết bị</h2>
-    <div class="stat"><span><b id="gt">–</b>Tổng</span><span><b id="gg">–</b>Có toạ độ</span></div>
-    <div class="stat" id="dbg" style="display:block;word-break:break-all;font-family:monospace;border-bottom:1px solid #334155">Chưa có mẫu toạ độ</div>
-    <div class="list" id="gl"><div class="empty" id="gm">Đang tải…</div></div></aside></div>`;
+  root.innerHTML = `<div class="gis"><div id="map"></div>
+    <div class="dd"><button type="button" id="ddb">Danh sách LCU ▾</button><div class="menu" id="ddm" hidden><div class="empty" id="gm">Đang tải…</div></div></div>
+    <aside class="drawer" id="dr" hidden>
+      <button type="button" class="x" id="drx">✕</button><h2 id="dn"></h2><div class="res" id="di"></div>
+      <h3>Điều khiển</h3>
+      <div class="c"><label>Đèn/kênh <input class="num" id="dnum" type="number" min="1" value="1"></label>
+        <button type="button" data-cmd="turnOn">Bật</button><button type="button" data-cmd="turnOff">Tắt</button></div>
+      <div class="c" style="margin-top:8px"><input class="dim" id="dim" type="range" min="0" max="100" value="50"><output id="dimo">50</output>%<button type="button" data-cmd="dimming">Dim</button></div>
+      <div class="res" id="dres"></div>
+      <h3>Trạng thái</h3>
+      <div class="res" id="drt">Đang đọc trạng thái…</div>
+      <div class="c" style="margin-top:8px"><button type="button" class="b" id="drd">Đọc trạng thái</button></div>
+      <h3>Lịch sử đo</h3>
+      <div class="c"><button type="button" class="b" id="dht">▸ Show lịch sử</button><span class="res" id="dhn"></span></div>
+      <div id="dhw" hidden><div class="c" style="margin:8px 0"><button type="button" class="b" id="dhc">Tải CSV</button><button type="button" class="b" id="dhx">Xoá lịch sử</button></div>
+        <div style="overflow:auto;max-height:320px"><table><thead><tr><th>Giờ đo</th><th>Đèn</th><th>W</th><th>V</th><th>A</th><th>cosφ</th><th>lux</th><th>Lỗi</th><th>kWh</th></tr></thead><tbody id="dhb"></tbody></table></div></div>
+    </aside></div>`;
   const map = L.map('map').setView([16.0, 106.0], 5);
   L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19, attribution: '© OpenStreetMap' }).addTo(map);
-  const markers = {}; let dead = false;
+  const markers = {}; let dead = false, rows = [], cur = null, timer = null;
   setTimeout(() => map.invalidateSize(), 0);
-  // Toạ độ nằm trong lcuActor/queryLcuAndRelatedByUid/{uid} (cùng API nút "Đọc trạng thái" ở lcus.html): lấy trường lat, lng.
+  ddb.onclick = () => { ddm.hidden = !ddm.hidden; };
+
+  // --- toạ độ (xem lịch sử commit trước) ---
   const num = v => { const x = parseFloat(v); return isFinite(x) ? x : null; };
   const pick = d => { if (!d || typeof d !== 'object') return null;
     const la = num(d.lat ?? d.latitude), ln = num(d.lng ?? d.lon ?? d.longitude);
-    if (la != null && ln != null) return { lat: la, lng: ln, raw: { lat: d.lat, lng: d.lng, offSetLat: d.offSetLat, offSetLng: d.offSetLng } };
+    if (la != null && ln != null) return { lat: la, lng: ln };
     for (const v of Object.values(d)) { const r = v && typeof v === 'object' && pick(v); if (r) return r; }
     return null; };
   const geo = r => r._g && r._g.lat >= -90 && r._g.lat <= 90 && r._g.lng >= -180 && r._g.lng <= 180 && (r._g.lat || r._g.lng) ? [r._g.lat, r._g.lng] : null;
+
+  // --- drawer ---
+  const ratedOf = r => Number(r._d && r._d.deviceConfig && r._d.deviceConfig.lampPower) || 0;
+  async function refresh(r) {
+    if (r !== cur) return;
+    try {
+      const l = await SLCP.call('POST', 'lcuLight/queryLcuLightByLcuIdAndNum', { projectId: r._pid, body: { lcuId: r.lcuId, num: Number(dnum.value), projectId: r._pid } });
+      if (r !== cur || dead) return;
+      if (!l) { drt.className = 'res'; drt.textContent = 'Chưa có dữ liệu đèn'; return; }
+      if (histAdd(r, l)) renderHist();
+      const rated = ratedOf(r), pct = rated && l.power != null ? Math.round(l.power / rated * 100) : null;
+      drt.className = 'res good';
+      drt.textContent = `Đo lúc ${l.dtime}: công suất ${l.power} W${pct != null ? ` (≈${pct}% định mức ${rated} W)` : ''} · ${l.voltage} V · ${l.current} A · cosφ ${l.powerFactor} · lux ${l.lux} · lỗi ${l.fault} · lastAction ${l.lastAction}, lastSource ${l.lastSource}`;
+    } catch (x) { if (r === cur) { drt.className = 'res bad'; drt.textContent = x.message; } }
+  }
+  function renderHist() {
+    if (!cur) return;
+    const a = histLoad().filter(x => x.uid === cur.uid);
+    dhn.textContent = `${a.length} bản ghi`;
+    dhb.innerHTML = a.slice(0, 200).map(r => `<tr><td>${esc(r.dtime)}</td><td>${esc(r.num)}</td><td>${esc(r.power)}</td><td>${esc(r.voltage)}</td><td>${esc(r.current)}</td><td>${esc(r.pf)}</td><td>${esc(r.lux)}</td><td>${esc(r.fault)}</td><td>${esc(r.energy)}</td></tr>`).join('');
+  }
+  function select(i) {
+    const r = rows[i]; if (!r) return;
+    cur = r; clearInterval(timer);
+    dr.hidden = false; ddm.hidden = true;
+    dn.textContent = r.deviceName || r.uid; di.textContent = `UID ${r.uid} · lcuId ${r.lcuId || ''}`;
+    dres.textContent = ''; dres.className = 'res'; drt.className = 'res'; drt.textContent = 'Đang đọc trạng thái…';
+    dhw.hidden = true; dht.textContent = '▸ Show lịch sử'; renderHist();
+    if (markers[i]) map.panTo(markers[i].getLatLng());
+    refresh(r); timer = setInterval(() => refresh(r), 20000);
+  }
+  drx.onclick = () => { dr.hidden = true; cur = null; clearInterval(timer); };
+  dim.oninput = () => { dimo.textContent = dim.value; };
+  dnum.onchange = () => cur && refresh(cur);
+  drd.onclick = () => cur && refresh(cur);
+  dht.onclick = () => { dhw.hidden = !dhw.hidden; dht.textContent = (dhw.hidden ? '▸' : '▾') + ' Show lịch sử'; };
+  dhx.onclick = () => { if (cur && confirm(`Xoá lịch sử đo của LCU ${cur.uid} trên trình duyệt này?`)) { histSave(histLoad().filter(x => x.uid !== cur.uid)); renderHist(); } };
+  dhc.onclick = () => {
+    const cols = ['dtime', 'uid', 'name', 'num', 'power', 'voltage', 'current', 'pf', 'lux', 'fault', 'energy'];
+    const csv = [cols.join(','), ...histLoad().filter(r => r.uid === cur.uid).map(r => cols.map(c => `"${String(r[c] ?? '').replace(/"/g, '""')}"`).join(','))].join('\n');
+    const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob(['﻿' + csv], { type: 'text/csv' }));
+    a.download = `lich-su-${cur.uid}-${new Date().toISOString().slice(0, 10)}.csv`; a.click();
+  };
+  dr.addEventListener('click', async ev => {
+    const btn = ev.target.closest('button[data-cmd]'); if (!btn || !cur) return;
+    const r = cur, cmd = btn.dataset.cmd, level = dim.value, n = dnum.value;
+    const what = `${NAMES[cmd]}${cmd === 'dimming' ? ' ' + level + '%' : ''}`;
+    if (!confirm(`Gửi lệnh THẬT xuống đèn?\n\n${what}\nLCU: ${r.uid}\nĐèn/kênh: ${n}`)) return;
+    btn.disabled = true; dres.className = 'res'; dres.textContent = 'Đang gửi…';
+    try {
+      await SLCP.unicast(cmd, { luid: r.uid, num: n, projectId: r._pid, dimming: level });
+      dres.className = 'res good'; dres.textContent = `${what}: server đã nhận lệnh (${new Date().toLocaleTimeString()}) · phản hồi: ${JSON.stringify(SLCP.last && SLCP.last.json)}`;
+    } catch (x) { dres.className = 'res bad'; dres.textContent = x.message; }
+    btn.disabled = false;
+    [4000, 10000, 20000].forEach(ms => setTimeout(() => refresh(r), ms));   // như lcus.html: đọc lại sau lệnh
+  });
+
+  // --- tải LCU + toạ độ ---
   (async () => {
     try {
-      const { rows } = await SLCP.listAllLcus(m => { if (!dead) gm.textContent = m; });
+      rows = (await SLCP.listAllLcus(m => { if (!dead) gm.textContent = m; })).rows;
       if (dead) return;
-      gt.textContent = rows.length; gg.textContent = 0;
-      gl.innerHTML = rows.map((r, i) => `<div class="it nogeo" data-i="${i}"><b>${esc(r.deviceName || r.uid)}</b><small>${esc(r.deviceCode || r.lcuId || '')} · đang lấy toạ độ…</small></div>`).join('')
-        || '<div class="empty">Chưa có thiết bị.</div>';
-      const pts = [], cv = L.canvas({ padding: 0.5 }); let done = 0, sample = null;
-      gl.onclick = e => { const it = e.target.closest('.it'); const m = it && markers[it.dataset.i];
-        if (m) { map.setView(m.getLatLng(), Math.max(map.getZoom(), 17)); m.openPopup(); } };
+      ddb.textContent = `Danh sách LCU (${rows.length}) ▾`;
+      ddm.innerHTML = rows.map((r, i) => `<div class="it nogeo" data-i="${i}"><b>${esc(r.deviceName || r.uid)}</b><small>${esc(r.deviceCode || r.lcuId || '')} · đang lấy toạ độ…</small></div>`).join('') || '<div class="empty">Chưa có thiết bị.</div>';
+      ddm.onclick = e => { const it = e.target.closest('.it'); if (!it) return; const i = +it.dataset.i;
+        if (markers[i]) map.setView(markers[i].getLatLng(), Math.max(map.getZoom(), 17)); select(i); };
+      const pts = [], cv = L.canvas({ padding: 0.5 }); let done = 0;
       const one = async (r, i) => {
-        try { r._g = pick(await SLCP.call('GET', `lcuActor/queryLcuAndRelatedByUid/${r.uid}`, { projectId: r._pid })); } catch (x) { r._err = x.message; }
+        try { r._d = await SLCP.call('GET', `lcuActor/queryLcuAndRelatedByUid/${r.uid}`, { projectId: r._pid }); r._g = pick(r._d); } catch (x) { r._err = x.message; }
         if (dead) return;
-        const p = geo(r), el = gl.children[i];
-        if (r._g && !sample) { sample = r; dbg.textContent = `Mẫu ${r.deviceName || r.uid}: lat=${JSON.stringify(r._g.raw.lat)}, lng=${JSON.stringify(r._g.raw.lng)}, offSetLat=${JSON.stringify(r._g.raw.offSetLat)}, offSetLng=${JSON.stringify(r._g.raw.offSetLng)}`; }
-        if (el) { el.classList.toggle('nogeo', !p); el.querySelector('small').textContent = `${r.deviceCode || r.lcuId || ''} · ${p ? p[0].toFixed(5) + ', ' + p[1].toFixed(5) : (r._err || (r._g ? 'toạ độ không hợp lệ' : 'chưa có toạ độ'))}`; }
-        if (p) { pts.push(p); gg.textContent = pts.length;
-          markers[i] = L.circleMarker(p, { renderer: cv, radius: 7, color: '#0f172a', weight: 1.5, fillColor: '#f59e0b', fillOpacity: 0.95 })
-            .addTo(map).bindPopup(`<b>${esc(r.deviceName || r.uid)}</b><br>UID: ${esc(r.uid)}<br>lat ${p[0]}, lng ${p[1]}`); }
-        if (++done === rows.length || done % 5 === 0) { gm.textContent = ''; if (pts.length) map.fitBounds(pts, { padding: [40, 40], maxZoom: 18 }); }
+        const p = geo(r), el = ddm.children[i];
+        if (el) { el.classList.toggle('nogeo', !p); el.querySelector('small').textContent = `${r.deviceCode || r.lcuId || ''} · ${p ? p[0].toFixed(5) + ', ' + p[1].toFixed(5) : (r._err || 'chưa có toạ độ')}`; }
+        if (p) { pts.push(p);
+          markers[i] = L.circleMarker(p, { renderer: cv, radius: 8, color: '#0f172a', weight: 1.5, fillColor: '#f59e0b', fillOpacity: 0.95 })
+            .addTo(map).bindTooltip(esc(r.deviceName || r.uid)).on('click', () => select(i)); }
+        if (++done === rows.length || done % 5 === 0) { if (pts.length && !cur) map.fitBounds(pts, { padding: [40, 40], maxZoom: 18 }); }
       };
-      let next = 0;   // 4 request song song
+      let next = 0;
       await Promise.all(Array.from({ length: 4 }, async () => { while (next < rows.length && !dead) { const i = next++; await one(rows[i], i); } }));
-      if (!sample && !dead) dbg.textContent = 'Không LCU nào trả về cặp lat/lng trong queryLcuAndRelatedByUid.';
     } catch (x) { gm.textContent = x.message; }
   })();
-  return () => { dead = true; map.remove(); };
+  return () => { dead = true; clearInterval(timer); map.remove(); };
 }
 open(location.hash.slice(1) || 'gis');
 </script></body></html>
