@@ -14,6 +14,7 @@ th,td{text-align:left;padding:8px;border-bottom:1px solid #334155;word-break:bre
 <div style="overflow:auto"><table><thead><tr><th>#</th><th>UID (luid)</th><th>Tên</th><th>Mã</th><th>lcuId</th><th>Model</th><th>Dự án</th><th>Điều khiển</th></tr></thead><tbody id="t"></tbody></table></div>
 <details><summary>Dò API lịch sử đo của server (chỉ đọc)</summary>
 <p class="res">Gọi thử các API lịch sử/biểu đồ của Fonda cho LCU đầu tiên, 24 giờ gần nhất. Chỉ truy vấn, không gửi lệnh xuống đèn. Lỗi 4xx cho biết thiếu tham số gì.</p>
+<label style="margin:0 0 8px">Chọn LCU để dò <select id="hps" style="width:100%;padding:8px;border-radius:8px;background:#0f172a;color:inherit;border:1px solid #334155"></select></label>
 <button type="button" id="hp" style="width:auto;padding:6px 12px;font-size:13px;margin:0">Dò API lịch sử</button><pre id="hpo" style="max-height:420px" hidden></pre></details>
 <details><summary>Nguồn dữ liệu</summary><pre id="rep"></pre></details><details><summary>Dữ liệu thô (bản ghi đầu tiên)</summary><pre id="raw"></pre></details><div class="err" id="e"></div>
 </div></div>
@@ -61,6 +62,7 @@ renderLive();
     histRenderAll();
     raw.textContent = JSON.stringify(rows[0] || null, null, 2);
     const tds = [...document.querySelectorAll('.ctl')];
+    hps.innerHTML = tds.map(td => `<option value="${esc(td.dataset.uid)}">${esc(td.dataset.name || '(không tên)')} · ${esc(td.dataset.uid)} · lcuId ${esc(td.dataset.lcuid)}</option>`).join('');
     const loop = () => tds.forEach((td, i) => setTimeout(() => refreshRt(td), i * 400));
     loop(); autoInit(loop);   // chu kỳ tự đọc do người dùng cài (autoInit)
   } catch (x) { s.textContent = ''; e.textContent = x.message; }
@@ -125,7 +127,7 @@ function autoInit(loop) {
   arm();
 }
 hp.onclick = async () => {   // dò API lịch sử: chỉ truy vấn. Thử nhiều khoảng thời gian + biến thể tham số cho 3 API có vẻ dùng được.
-  const td = document.querySelector('.ctl'); if (!td) return;
+  const td = [...document.querySelectorAll('.ctl')].find(x => x.dataset.uid === hps.value); if (!td) return;
   const pid = td.dataset.pid, uid = td.dataset.uid, lcuId = td.dataset.lcuid, num = Number(td.querySelector('.num').value) || 1;
   const f = d => d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0') + ' ' + d.toTimeString().slice(0, 8);
   const day = d => f(d).slice(0, 10), end = new Date(), ago = n => new Date(end - n * 24 * 3600e3);
@@ -138,7 +140,7 @@ hp.onclick = async () => {   // dò API lịch sử: chỉ truy vấn. Thử nhi
     'E: tất cả tên (begin/start/end, date)': (st, en) => ({ projectId: pid, lcuId, luid: uid, deviceId: lcuId, num, current: 1, size: 20, startTime: f(st), endTime: f(en), beginTime: f(st), startDate: day(st), endDate: day(en), date: day(en), dateType: 1, type: 1 }),
   };
   const paths = ['energy/getLcuDataTrend', 'energy/getLcuDataDetails', 'lcuActor/queryLcuDataRecords'];
-  hp.disabled = true; hpo.hidden = false; const out = {}; let done = 0;
+  hp.disabled = true; hpo.hidden = false; const out = {}; hpo.textContent = 'Đang dò LCU: ' + (td.dataset.name || uid); let done = 0;
   for (const path of paths) for (const [vn, mk] of Object.entries(variants)) for (const [rn, n] of Object.entries(ranges)) {
     hpo.textContent = `Đang dò… ${++done}/${paths.length * 15}\n` + JSON.stringify(out, null, 1);
     const k = `${path} | ${vn} | ${rn}`;
