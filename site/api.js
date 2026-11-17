@@ -125,30 +125,13 @@ const SLCP = {
   },
   // Lệnh điều khiển đơn (docs/08 §2). dimming đã xác nhận payload; turnOn/turnOff giả định cùng mẫu (chưa xác nhận).
   // Lịch sử đo từ server (energy/getLcuDataTrend — payload bắt từ web gốc). startDate/endDate là epoch ms. Trả mảng mới nhất trước.
-  // LCU bị xoá rồi tạo lại có lcuId mới → lịch sử cũ nằm ở lcuId cũ. Alias (uid → [lcuId cũ]) lưu localStorage; lcuTrend gộp cả hai.
-  aliases() { try { return JSON.parse(localStorage.getItem('slcp_alias') || '{}'); } catch { return {}; } },
-  addAlias(uid, oldLcuId) {
-    const m = this.aliases(); m[uid] = [...new Set([...(m[uid] || []), oldLcuId])];
-    try { localStorage.setItem('slcp_alias', JSON.stringify(m)); } catch { /* bị chặn */ }
-    return m[uid];
-  },
-  removeAlias(uid, oldLcuId) {
-    const m = this.aliases(); m[uid] = (m[uid] || []).filter(x => x !== oldLcuId); if (!m[uid].length) delete m[uid];
-    try { localStorage.setItem('slcp_alias', JSON.stringify(m)); } catch {}
-  },
   async _trendOne({ pid, uid, lcuId, name, ctype = 53 }, days) {
     const end = Date.now();
     const d = await this.call('POST', 'energy/getLcuDataTrend', { projectId: pid, body: { lcuId, lcuName: name || '', luid: uid, uid, projectId: pid, channel: '', maxchannel: 1, ctype, queryType: 2, type: 1, startDate: end - days * 864e5, endDate: end } });
     const ts = (d && d.date) || [], at = (k, i) => (d[k] || [])[i];
     return ts.map((t, i) => ({ ts: t, dtime: at('dateFormat', i) || new Date(t).toLocaleString(), p: at('p', i), u: at('u', i), i: at('i', i), pf: at('pf', i), e: at('e', i), dim: at('dim', i), wp: at('wp', i), from: lcuId }));
   },
-  async lcuTrend(o, days = 1) {
-    const ids = [o.lcuId, ...(this.aliases()[o.uid] || []).filter(x => x && x !== o.lcuId)];
-    const parts = await Promise.all(ids.map((id, k) => this._trendOne({ ...o, lcuId: id }, days).catch(e => { if (k === 0) throw e; return []; })));
-    const seen = new Set(), all = [];
-    for (const r of parts.flat()) { if (seen.has(r.ts)) continue; seen.add(r.ts); all.push(r); }
-    return all.sort((x, y) => y.ts - x.ts);
-  },
+  async lcuTrend(o, days = 1) { return (await this._trendOne(o, days)).reverse(); },
   async unicast(cmd, { luid, num, projectId, dimming }) {
     // Khớp đúng request đã test OK (doc 08): chỉ authorization + Content-Type, projectId nằm trong body, không có header projectId.
     const body = { luid, num: Number(num) };

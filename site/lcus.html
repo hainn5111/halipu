@@ -6,19 +6,12 @@ th,td{text-align:left;padding:8px;border-bottom:1px solid #334155;word-break:bre
 .c button{width:auto;margin:0;padding:5px 10px;font-size:12px}.res{font-size:12px;margin-top:4px;color:#94a3b8}.res.bad{color:#f87171}.res.good{color:#4ade80}.diag{font-size:11px;max-height:200px;margin:6px 0 0}.tg{width:auto;margin:4px 0 0;padding:3px 8px;font-size:11px;background:#334155;color:#e2e8f0}.hrow>td{background:#0f172a}</style></head><body><div class="wrap"><div class="card">
 <div class="row"><h1>Danh sách LCU</h1><span><a href="home.html">← Trang chính</a></span></div>
 <p class="sub" id="s">Đang tải…</p>
-<div class="auto" style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin:0 0 12px;font-size:13px"><b>Tự động đọc</b>
-<label style="margin:0">mỗi <input id="asec" type="number" min="10" value="20" style="width:70px;padding:4px"> giây</label>
-<button type="button" id="aon" style="width:auto;margin:0;padding:6px 12px;font-size:13px">Bật</button><span id="ast" class="res"></span>
-<span class="res">(chỉ chạy khi trang này đang mở; đóng tab/trình duyệt là dừng)</span></div><details open><summary>Phản hồi realtime từ đèn (WebSocket): <span id="ws">chưa kết nối</span></summary>
-<pre id="live" style="max-height:220px">Chờ dữ liệu… (gửi lệnh rồi xem ở đây đèn có đổi mức không)</pre></details>
-<div style="overflow:auto"><table><thead><tr><th>#</th><th>UID (luid)</th><th>Tên</th><th>Mã</th><th>lcuId</th><th>Model</th><th>Dự án</th><th>Điều khiển</th></tr></thead><tbody id="t"></tbody></table></div>
 <details><summary>Cứu lịch sử LCU đã xoá (nhập tay ID, chỉ đọc)</summary>
 <p class="res">Nhập ID của LCU đã xoá (lấy từ request <code>getLcuDataTrend</code> ở DevTools). Nếu server còn trả dữ liệu thì tải CSV về ngay.</p>
 <div class="c" style="display:grid;gap:6px;max-width:520px">
 <input id="rpid" placeholder="projectId (bỏ trống = dự án hiện tại)"><input id="rlid" placeholder="lcuId"><input id="ruid" placeholder="UID / luid"><input id="rname" placeholder="Tên LCU (lcuName)">
 <select id="rdays" style="padding:8px;border-radius:8px;background:#0f172a;color:inherit;border:1px solid #334155"><option value="30">30 ngày</option><option value="90">90 ngày</option><option value="180">180 ngày</option><option value="365">365 ngày</option></select>
 <button type="button" id="rgo" style="margin:0;padding:8px 12px;font-size:13px">Đọc lịch sử &amp; tải CSV</button>
-<button type="button" id="ral" style="margin:0;padding:8px 12px;font-size:13px">Gắn lịch sử cũ vào LCU có UID này</button>
 <button type="button" id="rcf" style="margin:0;padding:8px 12px;font-size:13px">Xem cấu hình cũ (để tạo lại)</button></div><pre id="rout" hidden style="max-height:200px"></pre></details>
 <details><summary>Dò API lịch sử đo của server (chỉ đọc)</summary>
 <p class="res">Gọi thử các API lịch sử/biểu đồ của Fonda cho LCU đầu tiên, 24 giờ gần nhất. Chỉ truy vấn, không gửi lệnh xuống đèn. Lỗi 4xx cho biết thiếu tham số gì.</p>
@@ -65,14 +58,13 @@ renderLive();
 <td class="ctl" data-uid="${esc(r.uid)}" data-pid="${esc(r._pid)}" data-lcuid="${esc(r.lcuId)}" data-name="${esc(r.deviceName)}"><div class="c"><label>Đèn/kênh <input class="num" type="number" min="1" value="1"></label>
 <button type="button" data-cmd="turnOn">Bật</button><button type="button" data-cmd="turnOff">Tắt</button>
 <input class="dim" type="range" min="0" max="100" value="50"><output>50</output>%<button type="button" data-cmd="dimming">Dim</button><button type="button" data-cmd="diag">Đọc trạng thái</button></div><div class="res"></div><div class="rt res">Đang đọc trạng thái…</div><pre class="diag" hidden></pre></td></tr>
-<tr class="hrow" data-uid="${esc(r.uid)}" hidden><td colspan="8"><div class="row"><b>Lịch sử đo — ${esc(r.deviceName || r.uid)} (<span class="hn">0</span> bản ghi)</b><span><select class="hsrc"><option value="srv">Nguồn: Server</option><option value="loc">Nguồn: Trình duyệt</option></select> <select class="hdays"><option value="1">1 ngày</option><option value="7">7 ngày</option><option value="30">30 ngày</option></select> <button type="button" data-h="csv">Tải CSV</button> <button type="button" data-h="clr">Xoá lịch sử</button></span></div>
+<tr class="hrow" data-uid="${esc(r.uid)}" hidden><td colspan="8"><div class="row"><b>Lịch sử đo — ${esc(r.deviceName || r.uid)} (<span class="hn">0</span> bản ghi)</b><span><select class="hdays"><option value="1">1 ngày</option><option value="7">7 ngày</option><option value="30">30 ngày</option></select> <button type="button" data-h="csv">Tải CSV</button></span></div>
 <div style="overflow:auto;max-height:300px"><table><thead class="hh"></thead><tbody class="hb"></tbody></table></div></td></tr>`).join('');
-    histRenderAll();
     raw.textContent = JSON.stringify(rows[0] || null, null, 2);
     const tds = [...document.querySelectorAll('.ctl')];
     hps.innerHTML = tds.map(td => `<option value="${esc(td.dataset.uid)}">${esc(td.dataset.name || '(không tên)')} · ${esc(td.dataset.uid)} · lcuId ${esc(td.dataset.lcuid)}</option>`).join('');
     const loop = () => tds.forEach((td, i) => setTimeout(() => refreshRt(td), i * 400));
-    loop(); autoInit(loop);   // chu kỳ tự đọc do người dùng cài (autoInit)
+    loop();   // đọc trạng thái 1 lần khi mở trang
   } catch (x) { s.textContent = ''; e.textContent = x.message; }
 })();
 async function readState(td, num) {   // đọc trạng thái qua HTTP (không cần WebSocket), chỉ đọc
@@ -82,41 +74,27 @@ async function readState(td, num) {   // đọc trạng thái qua HTTP (không c
   return out;
 }
 // ---- Lịch sử đo: mỗi lần đo mới (khác dtime) thêm 1 dòng, không ghi đè. Lưu localStorage, tối đa 5000 dòng. ----
-const HKEY = 'slcp_hist_' + (SLCP.fixedProjectId() || 'default'), HMAX = 5000;
-function histLoad() { try { return JSON.parse(localStorage.getItem(HKEY) || '[]'); } catch { return []; } }
-function histSave(a) { try { localStorage.setItem(HKEY, JSON.stringify(a.slice(0, HMAX))); } catch { /* đầy hoặc bị chặn */ } }
-function histAdd(td, l) {
-  const a = histLoad(), id = `${td.dataset.uid}|${l.num}|${l.dtime}`;
-  if (a.some(r => r.id === id)) return;
-  a.unshift({ id, dtime: l.dtime, uid: td.dataset.uid, name: td.dataset.name || '', num: l.num, power: l.power, voltage: l.voltage, current: l.current, pf: l.powerFactor, lux: l.lux, fault: l.fault, energy: l.energy, saved: new Date().toISOString() });
-  histSave(a); histRenderRow(td.dataset.uid);
-}
-const LOC_H = ['Giờ đo', 'Đèn', 'W', 'V', 'A', 'cosφ', 'lux', 'Lỗi', 'kWh'], SRV_H = ['Giờ đo', 'P (W)', 'U (V)', 'I (A)', 'cosφ', 'E (kWh)', 'Dim %', 'wp'];
+const SRV_H = ['Giờ đo', 'P (W)', 'U (V)', 'I (A)', 'cosφ', 'E (kWh)', 'Dim %', 'wp'];
 const hrowOf = uid => [...document.querySelectorAll('.hrow')].find(x => x.dataset.uid === uid);
 function histRows(tr) {   // dữ liệu đang hiển thị (để xuất CSV)
-  return tr._src === 'srv' ? { cols: SRV_H, keys: ['dtime', 'p', 'u', 'i', 'pf', 'e', 'dim', 'wp'], rows: tr._srv || [] }
-    : { cols: LOC_H, keys: ['dtime', 'num', 'power', 'voltage', 'current', 'pf', 'lux', 'fault', 'energy'], rows: histLoad().filter(r => r.uid === tr.dataset.uid) };
+  return { cols: SRV_H, keys: ['dtime', 'p', 'u', 'i', 'pf', 'e', 'dim', 'wp'], rows: tr._srv || [] };
 }
-async function histRenderRow(uid, force) {
+async function histRenderRow(uid) {   // lịch sử lấy từ server (energy/getLcuDataTrend)
   const tr = hrowOf(uid); if (!tr) return;
-  const src = tr.querySelector('.hsrc').value, days = Number(tr.querySelector('.hdays').value);
-  tr._src = src; tr.querySelector('.hdays').style.display = src === 'srv' ? '' : 'none';
-  const { cols, keys } = histRows(tr);
+  const days = Number(tr.querySelector('.hdays').value), { cols, keys } = histRows(tr);
   tr.querySelector('.hh').innerHTML = '<tr>' + cols.map(c => `<th>${c}</th>`).join('') + '</tr>';
-  const draw = rows => { tr.querySelector('.hn').textContent = rows.length;
-    tr.querySelector('.hb').innerHTML = rows.slice(0, 500).map(r => '<tr>' + keys.map(k => `<td>${esc(r[k])}</td>`).join('') + '</tr>').join(''); };
-  if (src === 'loc') { draw(histRows(tr).rows); return; }
-  if (!force) return;   // nguồn server chỉ tải khi mở / đổi khoảng thời gian, không tải mỗi lần đo
   const td = [...document.querySelectorAll('.ctl')].find(x => x.dataset.uid === uid);
   tr.querySelector('.hb').innerHTML = `<tr><td colspan="${cols.length}">Waiting....</td></tr>`;
-  try { tr._srv = await SLCP.lcuTrend({ pid: td.dataset.pid, uid, lcuId: td.dataset.lcuid, name: td.dataset.name }, days); draw(tr._srv); }
-  catch (x) { tr.querySelector('.hb').innerHTML = `<tr><td colspan="${cols.length}" class="res bad">${esc(x.message)}</td></tr>`; }
+  try {
+    tr._srv = await SLCP.lcuTrend({ pid: td.dataset.pid, uid, lcuId: td.dataset.lcuid, name: td.dataset.name }, days);
+    tr.querySelector('.hn').textContent = tr._srv.length;
+    tr.querySelector('.hb').innerHTML = tr._srv.slice(0, 500).map(r => '<tr>' + keys.map(k => `<td>${esc(r[k])}</td>`).join('') + '</tr>').join('');
+  } catch (x) { tr.querySelector('.hb').innerHTML = `<tr><td colspan="${cols.length}" class="res bad">${esc(x.message)}</td></tr>`; }
 }
-function histRenderAll() { document.querySelectorAll('.hrow').forEach(tr => histRenderRow(tr.dataset.uid)); }
-t.addEventListener('change', ev => { const tr = ev.target.closest('.hrow'); if (tr && ev.target.matches('.hsrc,.hdays')) histRenderRow(tr.dataset.uid, true); });
+t.addEventListener('change', ev => { const tr = ev.target.closest('.hrow'); if (tr && ev.target.matches('.hdays')) histRenderRow(tr.dataset.uid); });
 t.addEventListener('click', ev => {
   const tg = ev.target.closest('[data-toggle]');
-  if (tg) { const tr = [...document.querySelectorAll('.hrow')].find(x => x.dataset.uid === tg.dataset.toggle); tr.hidden = !tr.hidden; if (!tr.hidden) histRenderRow(tg.dataset.toggle, true); tg.textContent = (tr.hidden ? '▸' : '▾') + ' Lịch sử'; return; }
+  if (tg) { const tr = [...document.querySelectorAll('.hrow')].find(x => x.dataset.uid === tg.dataset.toggle); tr.hidden = !tr.hidden; if (!tr.hidden) histRenderRow(tg.dataset.toggle); tg.textContent = (tr.hidden ? '▸' : '▾') + ' Lịch sử'; return; }
   const hb = ev.target.closest('[data-h]'); if (!hb) return;
   const uid = hb.closest('.hrow').dataset.uid;
   if (hb.dataset.h === 'csv') {
@@ -124,8 +102,7 @@ t.addEventListener('click', ev => {
     const csv = [h.cols.join(','), ...h.rows.map(r => h.keys.map(k => `"${String(r[k] ?? '').replace(/"/g, '""')}"`).join(','))].join('\n');
     const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob(['\ufeff' + csv], { type: 'text/csv' }));
     a.download = `lich-su-${uid}-${new Date().toISOString().slice(0, 10)}.csv`; a.click();
-  } else if (hb.closest('.hrow')._src === 'srv') { alert('Lịch sử Server không xoá được từ đây. Chuyển nguồn sang "Trình duyệt" nếu muốn xoá bản lưu cục bộ.'); }
-  else if (confirm(`Xoá lịch sử đo của LCU ${uid} trên trình duyệt này?`)) { histSave(histLoad().filter(r => r.uid !== uid)); histRenderRow(uid); }
+  }
 });
 async function ratedPower(td) {
   if (td._rated === undefined) {
@@ -134,90 +111,12 @@ async function ratedPower(td) {
   }
   return td._rated;
 }
-// ---- Tự động đọc theo chu kỳ cài sẵn. Cấu hình lưu localStorage (dùng chung origin), mặc định BẬT mỗi 20 giây như cũ. ----
-const AKEY = 'slcp_auto';
-function autoCfg() { try { return Object.assign({ sec: 20, on: true }, JSON.parse(localStorage.getItem(AKEY) || '{}')); } catch { return { sec: 20, on: true }; } }
-function autoSave(c) { try { localStorage.setItem(AKEY, JSON.stringify(c)); } catch {} }
-let autoTimer = null, autoNext = 0;
-function autoInit(loop) {
-  const paint = () => { const c = autoCfg(); asec.value = c.sec; aon.textContent = c.on ? 'Dừng' : 'Bật'; if (!c.on) ast.textContent = 'Đang dừng'; };
-  const arm = () => {
-    clearInterval(autoTimer); autoTimer = null; const c = autoCfg(); paint(); if (!c.on) return;
-    autoNext = Date.now() + c.sec * 1000;
-    autoTimer = setInterval(() => { loop(); autoNext = Date.now() + autoCfg().sec * 1000; }, c.sec * 1000);
-  };
-  setInterval(() => { const c = autoCfg(); if (c.on && autoTimer) ast.textContent = `Lần đọc kế tiếp sau ${Math.max(0, Math.round((autoNext - Date.now()) / 1000))} giây`; }, 1000);
-  aon.onclick = () => { const c = autoCfg(); c.on = !c.on; autoSave(c); arm(); };
-  asec.onchange = () => { const c = autoCfg(); c.sec = Math.max(10, Math.floor(Number(asec.value)) || 20); autoSave(c); arm(); };
-  arm();
-}
-ral.onclick = () => {   // lưu alias: lcuId cũ → UID đang dùng; lcuTrend sẽ gộp lịch sử cũ + mới
-  const uid = ruid.value.trim(), old = rlid.value.trim(); rout.hidden = false;
-  const cur = [...document.querySelectorAll('.ctl')].find(x => x.dataset.uid === uid);
-  if (!uid || !old) { rout.textContent = 'Cần nhập UID và lcuId cũ.'; return; }
-  if (!cur) { rout.textContent = 'Không thấy LCU nào có UID này trong danh sách (đã tạo lại chưa?).'; return; }
-  if (cur.dataset.lcuid === old) { rout.textContent = 'lcuId này chính là LCU hiện tại, không cần gắn.'; return; }
-  const l = SLCP.addAlias(uid, old);
-  rout.textContent = `Đã gắn. LCU ${cur.dataset.name || uid} (lcuId mới ${cur.dataset.lcuid}) sẽ gộp lịch sử của: ${l.join(', ')}.\nMở lại "▸ Lịch sử" để xem. (Lưu trong trình duyệt này, dùng chung với trang GIS.)`;
-};
-rcf.onclick = async () => {   // đọc cấu hình LCU đã xoá (nếu server còn). Chỉ đọc.
-  const first = document.querySelector('.ctl'), pid = rpid.value.trim() || (first && first.dataset.pid), uid = ruid.value.trim();
-  if (!pid || !uid) { rout.hidden = false; rout.textContent = 'Cần UID (và projectId nếu danh sách trống).'; return; }
-  rcf.disabled = true; rout.hidden = false; rout.style.maxHeight = '420px'; rout.textContent = 'Waiting....'; const out = {};
-  for (const [k, f] of Object.entries({
-    queryLcuAndRelatedByUid: () => SLCP.call('GET', `lcuActor/queryLcuAndRelatedByUid/${uid}`, { projectId: pid }),
-    queryParamById: () => SLCP.call('POST', 'lcuActor/queryParamById', { projectId: pid, body: { projectId: pid, lcuId: rlid.value.trim(), current: 1, size: 5 } }),
-  })) { try { out[k] = await f(); } catch (x) { out[k] = 'LỖI: ' + x.message; } }
-  rout.textContent = JSON.stringify(out, null, 2); rcf.disabled = false;
-};
-rgo.onclick = async () => {   // đọc lịch sử bằng ID nhập tay (LCU đã xoá) → CSV. Chỉ truy vấn.
-  const first = document.querySelector('.ctl'), pid = rpid.value.trim() || (first && first.dataset.pid), lcuId = rlid.value.trim(), uid = ruid.value.trim() || lcuId;
-  if (!pid || !lcuId) { rout.hidden = false; rout.textContent = 'Cần lcuId (và projectId nếu chưa có LCU nào trong danh sách).'; return; }
-  rgo.disabled = true; rout.hidden = false; rout.textContent = 'Waiting....';
-  try {
-    const rows = await SLCP.lcuTrend({ pid, uid, lcuId, name: rname.value.trim() }, Number(rdays.value));
-    if (!rows.length) { rout.textContent = 'Server không trả điểm nào cho ID này (có thể đã xoá hẳn dữ liệu, hoặc ID/khoảng thời gian chưa đúng).'; }
-    else {
-      const cols = ['dtime', 'p', 'u', 'i', 'pf', 'e', 'dim', 'wp'];
-      const csv = [cols.join(','), ...rows.map(r => cols.map(c => `"${String(r[c] ?? '').replace(/"/g, '""')}"`).join(','))].join('\n');
-      const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob(['\ufeff' + csv], { type: 'text/csv' }));
-      a.download = `lich-su-da-xoa-${uid}-${new Date().toISOString().slice(0, 10)}.csv`; a.click();
-      rout.textContent = `Có ${rows.length} điểm, từ ${rows[rows.length - 1].dtime} đến ${rows[0].dtime}. Đã tải CSV.`;
-    }
-  } catch (x) { rout.textContent = 'LỖI ' + x.message; }
-  rgo.disabled = false;
-};
-hp.onclick = async () => {   // dò API lịch sử theo payload thật của web gốc (đã bắt từ Network). Chỉ truy vấn.
-  const td = [...document.querySelectorAll('.ctl')].find(x => x.dataset.uid === hps.value); if (!td) return;
-  const pid = td.dataset.pid, uid = td.dataset.uid, lcuId = td.dataset.lcuid, lcuName = td.dataset.name || '', num = Number(td.querySelector('.num').value) || 1;
-  const now = Date.now(), DAY = 24 * 3600e3;
-  const tests = [];
-  for (const [rn, n] of Object.entries({ '1 ngày': 1, '7 ngày': 7, '30 ngày': 30 })) {
-    for (const qt of [1, 2, 3]) tests.push([`energy/getLcuDataTrend | queryType ${qt} | ${rn}`, 'energy/getLcuDataTrend',
-      { lcuId, lcuName, luid: uid, uid, projectId: pid, channel: '', maxchannel: 1, ctype: 53, queryType: qt, type: 1, startDate: now - n * DAY, endDate: now }]);
-    for (const ch of [1, '']) for (const path of ['energy/getLCUPeDataTrend', 'energy/getLcuPeDataTrend'])
-      tests.push([`${path} | channel ${JSON.stringify(ch)} | ${rn}`, path, { lcuId, lcuName, projectId: pid, channel: ch, type: 1, startDate: now - n * DAY, endDate: now }]);
-  }
-  hp.disabled = true; hpo.hidden = false; const out = {}; let done = 0;
-  hpo.textContent = 'Đang dò LCU: ' + (lcuName || uid);
-  for (const [k, path, body] of tests) {
-    hpo.textContent = `Đang dò ${lcuName || uid}… ${++done}/${tests.length}`;
-    try { const d = await SLCP.call('POST', path, { projectId: pid, body });
-      const len = d && d.date ? d.date.length : d && d.records ? d.records.length : null;
-      out[k] = len ? { soDiem: len, khoaTraVe: Object.keys(d), mau: Object.fromEntries(Object.entries(d).filter(([, v]) => Array.isArray(v)).map(([c, v]) => [c, v.slice(0, 3)])) } : 'rỗng ' + JSON.stringify(d).slice(0, 120);
-    } catch (x) { out[k] = 'LỖI ' + x.message; }
-  }
-  const hit = Object.fromEntries(Object.entries(out).filter(([, v]) => typeof v === 'object'));
-  hpo.textContent = `Xong. Có dữ liệu: ${Object.keys(hit).length}/${tests.length}\n` + JSON.stringify(Object.keys(hit).length ? hit : out, null, 2);
-  hp.disabled = false;
-};
 const SRC = { 0: 'không rõ', 1: 'lệnh tay' }; // lastSource=1 quan sát được sau lệnh Dim; các giá trị khác chưa rõ
 async function refreshRt(td) {
   const rt = td.querySelector('.rt'), num = td.querySelector('.num').value;
   try {
     const l = await SLCP.call('POST', 'lcuLight/queryLcuLightByLcuIdAndNum', { projectId: td.dataset.pid, body: { lcuId: td.dataset.lcuid, num: Number(num), projectId: td.dataset.pid } });
     if (!l) { rt.textContent = 'Chưa có dữ liệu đèn'; return; }
-    histAdd(td, l);
     const rated = await ratedPower(td), pct = rated && l.power != null ? Math.round(l.power / rated * 100) : null;
     rt.className = 'rt res good';
     rt.textContent = `Đo lúc ${l.dtime}: công suất ${l.power} W${pct != null ? ` (≈${pct}% định mức ${rated} W)` : ''} · ${l.voltage} V · ${l.current} A · cosφ ${l.powerFactor} · lux ${l.lux} · lỗi ${l.fault} · lastAction ${l.lastAction}, lastSource ${l.lastSource}`;
