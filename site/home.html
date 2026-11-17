@@ -1,21 +1,106 @@
 <!doctype html><html lang="vi"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Trang chính · SLCP</title><link rel="stylesheet" href="style.css"></head><body>
-<div class="card">
-  <p class="sub" id="b" style="font-family:monospace;font-size:12px"></p>
-  <div class="ok">✅</div><h1>Đăng nhập thành công</h1>
-  <p class="sub">Xin chào, <b id="n"></b></p>
-  <pre id="j">Đang tải hồ sơ…</pre>
-  <a href="lcus.html"><button type="button">Xem danh sách LCU</button></a>
-  <button id="o">Đăng xuất</button>
+<title>Trang chính · SLCP</title><link rel="stylesheet" href="style.css">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
+<style>
+body{display:block;padding:0;height:100vh;overflow:hidden}
+.app{display:grid;grid-template-columns:230px 1fr;grid-template-rows:48px 1fr;height:100vh}
+.top{grid-column:1/3;display:flex;align-items:center;gap:12px;padding:0 16px;background:#1e293b;border-bottom:1px solid #334155}
+.top b{flex:1}.top small{color:#94a3b8;font-family:monospace;font-size:11px}
+.top button{width:auto;margin:0;padding:6px 12px;font-size:13px}
+.nav{background:#1e293b;border-right:1px solid #334155;overflow:auto;padding:8px 0}
+.grp{padding:10px 16px 4px;font-size:11px;text-transform:uppercase;letter-spacing:.06em;color:#94a3b8}
+.tab{display:block;width:100%;margin:0;padding:9px 16px 9px 28px;border-radius:0;background:none;color:#cbd5e1;text-align:left;font-weight:400;font-size:14px}
+.tab:hover{background:#334155}.tab.on{background:#0f172a;color:#f59e0b;font-weight:600;box-shadow:inset 3px 0 #f59e0b}
+.tab.soon{opacity:.45}
+.main{display:flex;flex-direction:column;min-width:0;min-height:0}
+.crumb{padding:10px 16px;font-size:13px;color:#94a3b8;border-bottom:1px solid #334155}.crumb b{color:#e2e8f0}
+.pane{flex:1;min-height:0;display:flex}
+.gis{flex:1;display:grid;grid-template-columns:1fr 300px;min-height:0}
+#map{background:#0f172a;min-height:300px}
+.side{border-left:1px solid #334155;display:flex;flex-direction:column;min-height:0}
+.side h2{margin:0;padding:12px 14px;font-size:14px;border-bottom:1px solid #334155}
+.stat{display:flex;gap:8px;padding:10px 14px;font-size:12px;color:#94a3b8;border-bottom:1px solid #334155}
+.stat span b{display:block;font-size:18px;color:#e2e8f0}
+.list{overflow:auto;flex:1}.it{padding:9px 14px;border-bottom:1px solid #1e293b;font-size:13px;cursor:pointer}
+.it:hover{background:#1e293b}.it small{display:block;color:#94a3b8}.it.nogeo{opacity:.55}
+.empty{margin:auto;color:#94a3b8;font-size:14px;padding:24px;text-align:center}
+@media(max-width:720px){.app{grid-template-columns:1fr;grid-template-rows:48px auto 1fr}.top{grid-column:1}
+.nav{display:flex;overflow:auto;border-right:0;border-bottom:1px solid #334155;padding:0}.grp{display:none}.tab{width:auto;white-space:nowrap;padding:10px 14px}
+.gis{grid-template-columns:1fr;grid-template-rows:55vh 1fr}.side{border-left:0;border-top:1px solid #334155}}
+</style></head><body>
+<div class="app">
+  <header class="top"><b>SLCP</b><small id="b"></small><span>Xin chào, <b id="n" style="flex:none"></b></span><button id="o">Đăng xuất</button></header>
+  <nav class="nav" id="nav"></nav>
+  <section class="main"><div class="crumb" id="crumb"></div><div class="pane" id="pane"></div></section>
 </div>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
 <script src="build-info.js"></script><script src="config.js"></script><script src="api.js"></script>
 <script>
 if (!SLCP.token) location.replace('index.html');
 n.textContent = sessionStorage.getItem('slcp_user');
-SLCP.getUser().then(d => { j.textContent = JSON.stringify(d, null, 2); })
-  .catch(() => { SLCP.logout(); location.replace('index.html'); });
 const bi = window.BUILD_INFO || { branch: 'local', commit: 'dev', time: '' };
-b.textContent = `build: ${bi.branch} @ ${bi.commit}${bi.time ? ' · ' + bi.time : ''}`;
-try { localStorage.removeItem('pid_fixed'); } catch {}   // home = luồng gốc: tự dò dự án (bỏ ProjectID đã chọn từ scan.html)
+b.textContent = `${bi.branch} @ ${bi.commit}`;
+try { localStorage.removeItem('pid_fixed'); } catch {}   // home = luồng gốc: tự dò dự án
 o.onclick = () => { SLCP.logout(); location.replace('index.html'); };
+const esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+
+// ===== Cây điều hướng: nhóm → tab. Thêm tab mới = thêm 1 mục vào TREE + 1 hàm render =====
+const TREE = [
+  { group: 'Giám sát', tabs: [
+    { id: 'gis', label: 'GIS', render: renderGis },
+    { id: 'overview', label: 'Tổng quan' },
+    { id: 'alarm', label: 'Cảnh báo' } ] },
+  { group: 'Thiết bị', tabs: [
+    { id: 'lcus', label: 'Danh sách LCU', href: 'lcus.html' },
+    { id: 'groups', label: 'Nhóm đèn' } ] },
+  { group: 'Vận hành', tabs: [
+    { id: 'schedule', label: 'Lịch điều khiển' },
+    { id: 'report', label: 'Báo cáo' } ] },
+];
+const find = id => TREE.flatMap(g => g.tabs.map(t => ({ ...t, group: g.group }))).find(t => t.id === id);
+let cleanup = null;
+nav.innerHTML = TREE.map(g => `<div class="grp">${esc(g.group)}</div>` + g.tabs.map(t =>
+  `<button type="button" class="tab${t.render || t.href ? '' : ' soon'}" data-id="${t.id}">${esc(t.label)}${t.render || t.href ? '' : ' · sắp có'}</button>`).join('')).join('');
+nav.onclick = e => { const bt = e.target.closest('.tab'); if (bt) open(bt.dataset.id); };
+function open(id) {
+  const t = find(id) || find('gis');
+  if (t.href) { location.href = t.href; return; }
+  if (cleanup) { cleanup(); cleanup = null; }
+  nav.querySelectorAll('.tab').forEach(x => x.classList.toggle('on', x.dataset.id === t.id));
+  crumb.innerHTML = `${esc(t.group)} › <b>${esc(t.label)}</b>`;
+  pane.innerHTML = '';
+  if (t.render) cleanup = t.render(pane) || null;
+  else pane.innerHTML = `<div class="empty">Tab “${esc(t.label)}” chưa được dựng.</div>`;
+  history.replaceState(null, '', '#' + t.id);
+}
+
+// ===== Tab GIS: bản đồ + danh sách LCU (marker khi có toạ độ) =====
+function renderGis(root) {
+  root.innerHTML = `<div class="gis"><div id="map"></div><aside class="side"><h2>Thiết bị</h2>
+    <div class="stat"><span><b id="gt">–</b>Tổng</span><span><b id="gg">–</b>Có toạ độ</span></div>
+    <div class="list" id="gl"><div class="empty" id="gm">Đang tải…</div></div></aside></div>`;
+  const map = L.map('map').setView([16.0, 106.0], 5);
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19, attribution: '© OpenStreetMap' }).addTo(map);
+  const markers = {}; let dead = false;
+  setTimeout(() => map.invalidateSize(), 0);
+  (async () => {
+    try {
+      const { rows } = await SLCP.listAllLcus(m => { if (!dead) gm.textContent = m; });
+      if (dead) return;
+      const geo = r => { const la = parseFloat(r.lat ?? r.latitude), ln = parseFloat(r.lng ?? r.lon ?? r.longitude);
+        return isFinite(la) && isFinite(ln) && (la || ln) ? [la, ln] : null; };
+      gt.textContent = rows.length; gg.textContent = rows.filter(geo).length;
+      gl.innerHTML = rows.map((r, i) => `<div class="it${geo(r) ? '' : ' nogeo'}" data-i="${i}"><b>${esc(r.deviceName || r.uid)}</b><small>${esc(r.deviceCode || r.lcuId)}${geo(r) ? '' : ' · chưa có toạ độ'}</small></div>`).join('')
+        || '<div class="empty">Chưa có thiết bị.</div>';
+      const pts = [];
+      rows.forEach((r, i) => { const p = geo(r); if (!p) return; pts.push(p);
+        markers[i] = L.marker(p).addTo(map).bindPopup(`<b>${esc(r.deviceName || r.uid)}</b><br>${esc(r.lcuId)}`); });
+      if (pts.length) map.fitBounds(pts, { padding: [40, 40], maxZoom: 16 });
+      gl.onclick = e => { const it = e.target.closest('.it'); const m = it && markers[it.dataset.i];
+        if (m) { map.setView(m.getLatLng(), 16); m.openPopup(); } };
+    } catch (x) { gm.textContent = x.message; }
+  })();
+  return () => { dead = true; map.remove(); };
+}
+open(location.hash.slice(1) || 'gis');
 </script></body></html>
