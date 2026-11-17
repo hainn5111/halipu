@@ -17,10 +17,5 @@ SLCP.getUser().then(d => { j.textContent = JSON.stringify(d, null, 2); })
 const bi = window.BUILD_INFO || { branch: 'local', commit: 'dev', time: '' };
 b.textContent = `build: ${bi.branch} @ ${bi.commit}${bi.time ? ' · ' + bi.time : ''}`;
 try { localStorage.removeItem('pid_fixed'); } catch {}   // home = luồng gốc: tự dò dự án (bỏ ProjectID đã chọn từ scan.html)
-o.onclick = () => {
-  const v = pid.value.trim();
-  try { v ? localStorage.setItem('pid_fixed', v) : localStorage.removeItem('pid_fixed'); } catch {}
-  location.href = 'lcus.html';
-};
 o.onclick = () => { SLCP.logout(); location.replace('index.html'); };
 </script></body></html>
