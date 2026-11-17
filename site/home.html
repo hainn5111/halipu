@@ -101,7 +101,7 @@ function renderGis(root) {
       <div class="res" id="dres"></div>
       <h3>Trạng thái</h3>
       <div class="res" id="drt">Waiting....</div>
-      <div class="c" style="margin-top:8px"><button type="button" class="b" id="drd">Đọc trạng thái</button></div><pre class="diag" id="ddg" hidden style="font-size:11px;max-height:240px;margin:6px 0 0"></pre>
+      <div class="c" style="margin-top:8px"><button type="button" id="drd">Đọc trạng thái</button></div>
       <h3>Lịch sử đo</h3>
       <div class="c"><button type="button" class="b" id="dht">▸ Show lịch sử</button><span class="res" id="dhn"></span></div>
       <div id="dhw" hidden><div class="c" style="margin:8px 0"><button type="button" class="b" id="dhc">Tải CSV</button><button type="button" class="b" id="dhx">Xoá lịch sử</button></div>
@@ -154,7 +154,7 @@ function renderGis(root) {
     cur = r; mark(); clearInterval(timer);
     dr.hidden = false; ddm.hidden = true;
     dn.textContent = r.deviceName || r.uid; di.textContent = `UID ${r.uid} · lcuId ${r.lcuId || ''}`;
-    ddg.hidden = true; dres.textContent = ''; dres.className = 'res'; drt.className = 'res'; drt.textContent = 'Waiting....';
+    dres.textContent = ''; dres.className = 'res'; drt.className = 'res'; drt.textContent = 'Waiting....';
     dhw.hidden = true; dht.textContent = '▸ Show lịch sử'; renderHist();
     if (markers[i]) map.panTo(markers[i].getLatLng());
     refresh(r); timer = setInterval(() => refresh(r, true), 20000);
@@ -165,7 +165,7 @@ function renderGis(root) {
   drd.onclick = async () => {   // giống nút "Đọc trạng thái" ở lcus.html: chỉ đọc, không gửi lệnh bật/tắt/dim
     const r = cur; if (!r) return;
     const pid = r._pid, uid = r.uid, out = {};
-    ddg.hidden = false; ddg.textContent = 'Waiting....'; drd.disabled = true; drd.textContent = 'Waiting....';
+    drd.disabled = true;
     drt.className = 'res'; drt.textContent = 'Waiting....';
     const run = async (k, f) => { try { out[k] = await f(); } catch (x) { out[k] = 'LỖI: ' + x.message; } };
     await run('queryLcuAndRelatedByUid', () => SLCP.call('GET', `lcuActor/queryLcuAndRelatedByUid/${uid}`, { projectId: pid }));
@@ -174,10 +174,9 @@ function renderGis(root) {
     await run('unicast/queryStatus', () => SLCP.unicast('queryStatus', { luid: uid, num: dnum.value, projectId: pid }));
     await run('lcuLight/queryLcuLightByLcuIdAndNum', () => SLCP.call('POST', 'lcuLight/queryLcuLightByLcuIdAndNum', { projectId: pid, body: { lcuId: r.lcuId, num: Number(dnum.value), projectId: pid } }));
     if (dead) return;
-    drd.disabled = false; drd.textContent = 'Đọc trạng thái';
+    drd.disabled = false;
     if (r !== cur) return;
-    ddg.textContent = JSON.stringify(out, null, 2);
-    refresh(r, true);   // cập nhật dòng số liệu + lịch sử từ kết quả đo mới nhất
+    refresh(r, true);   // chỉ hiện dòng text số liệu (+ ghi lịch sử), không hiện JSON
   };
   dht.onclick = () => { dhw.hidden = !dhw.hidden; dht.textContent = (dhw.hidden ? '▸' : '▾') + ' Show lịch sử'; };
   dhx.onclick = () => { if (cur && confirm(`Xoá lịch sử đo của LCU ${cur.uid} trên trình duyệt này?`)) { histSave(histLoad().filter(x => x.uid !== cur.uid)); renderHist(); } };
