@@ -80,21 +80,41 @@ function renderGis(root) {
   L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19, attribution: '© OpenStreetMap' }).addTo(map);
   const markers = {}; let dead = false;
   setTimeout(() => map.invalidateSize(), 0);
+  // Nguồn toạ độ: device/queryDevicePage (có lat/lng từng thiết bị). Lỗi/không có → rơi về lcuActor/page.
+  async function loadDevices() {
+    const pids = await SLCP.allProjectIds(await SLCP.getProjectId());
+    const out = new Map(), notes = [];
+    for (const pid of pids) {
+      if (dead) return { rows: [], notes };
+      gm.textContent = `Đang tải thiết bị ${pids.indexOf(pid) + 1}/${pids.length}…`;
+      let cur = 1, pages = 1;
+      try {
+        do {
+          const d = await SLCP.call('POST', 'device/queryDevicePage', { projectId: pid, body: { current: cur, size: 200, projectId: pid } });
+          for (const r of d.records || []) { const k = r.uid || r.deviceId; if (k && !out.has(k)) out.set(k, { ...r, _pid: pid }); }
+          pages = d.pages || 1; cur++;
+        } while (cur <= pages && cur < 50);
+      } catch (e) { notes.push(`${pid}: ${e.message}`); }
+    }
+    return { rows: [...out.values()], notes };
+  }
+  const geo = r => { const la = parseFloat(r.lat ?? r.latitude), ln = parseFloat(r.lng ?? r.lon ?? r.longitude);
+    return isFinite(la) && isFinite(ln) && la >= -90 && la <= 90 && ln >= -180 && ln <= 180 && (la || ln) ? [la, ln] : null; };
   (async () => {
     try {
-      const { rows } = await SLCP.listAllLcus(m => { if (!dead) gm.textContent = m; });
+      let { rows, notes } = await loadDevices();
+      if (!rows.length) rows = (await SLCP.listAllLcus(m => { if (!dead) gm.textContent = m; })).rows;
       if (dead) return;
-      const geo = r => { const la = parseFloat(r.lat ?? r.latitude), ln = parseFloat(r.lng ?? r.lon ?? r.longitude);
-        return isFinite(la) && isFinite(ln) && (la || ln) ? [la, ln] : null; };
       gt.textContent = rows.length; gg.textContent = rows.filter(geo).length;
-      gl.innerHTML = rows.map((r, i) => `<div class="it${geo(r) ? '' : ' nogeo'}" data-i="${i}"><b>${esc(r.deviceName || r.uid)}</b><small>${esc(r.deviceCode || r.lcuId)}${geo(r) ? '' : ' · chưa có toạ độ'}</small></div>`).join('')
-        || '<div class="empty">Chưa có thiết bị.</div>';
-      const pts = [];
+      gl.innerHTML = rows.map((r, i) => `<div class="it${geo(r) ? '' : ' nogeo'}" data-i="${i}"><b>${esc(r.deviceName || r.uid)}</b><small>${esc(r.deviceTypeName || r.deviceModelName || r.deviceCode || r.lcuId || '')}${geo(r) ? '' : ' · chưa có toạ độ'}</small></div>`).join('')
+        || `<div class="empty">Chưa có thiết bị.${notes.length ? '<br>' + esc(notes[0]) : ''}</div>`;
+      const pts = [], cv = L.canvas({ padding: 0.5 });
       rows.forEach((r, i) => { const p = geo(r); if (!p) return; pts.push(p);
-        markers[i] = L.marker(p).addTo(map).bindPopup(`<b>${esc(r.deviceName || r.uid)}</b><br>${esc(r.lcuId)}`); });
-      if (pts.length) map.fitBounds(pts, { padding: [40, 40], maxZoom: 16 });
+        markers[i] = L.circleMarker(p, { renderer: cv, radius: 6, color: '#0f172a', weight: 1.5, fillColor: '#f59e0b', fillOpacity: 0.95 })
+          .addTo(map).bindPopup(`<b>${esc(r.deviceName || r.uid)}</b><br>${esc(r.deviceTypeName || '')} ${esc(r.deviceModelName || '')}<br>UID: ${esc(r.uid || r.lcuId)}<br>${p[0].toFixed(6)}, ${p[1].toFixed(6)}`); });
+      if (pts.length) map.fitBounds(pts, { padding: [40, 40], maxZoom: 18 });
       gl.onclick = e => { const it = e.target.closest('.it'); const m = it && markers[it.dataset.i];
-        if (m) { map.setView(m.getLatLng(), 16); m.openPopup(); } };
+        if (m) { map.setView(m.getLatLng(), Math.max(map.getZoom(), 17)); m.openPopup(); } };
     } catch (x) { gm.textContent = x.message; }
   })();
   return () => { dead = true; map.remove(); };
