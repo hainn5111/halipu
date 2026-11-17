@@ -100,8 +100,8 @@ function renderGis(root) {
       <div class="c" style="margin-top:8px"><input class="dim" id="dim" type="range" min="0" max="100" value="50"><output id="dimo">50</output>%<button type="button" data-cmd="dimming">Dim</button></div>
       <div class="res" id="dres"></div>
       <h3>Trạng thái</h3>
-      <div class="res" id="drt">Đang đọc trạng thái…</div>
-      <div class="c" style="margin-top:8px"><button type="button" class="b" id="drd">Đọc trạng thái</button></div>
+      <div class="res" id="drt">Waiting....</div>
+      <div class="c" style="margin-top:8px"><button type="button" class="b" id="drd">Đọc trạng thái</button></div><pre class="diag" id="ddg" hidden style="font-size:11px;max-height:240px;margin:6px 0 0"></pre>
       <h3>Lịch sử đo</h3>
       <div class="c"><button type="button" class="b" id="dht">▸ Show lịch sử</button><span class="res" id="dhn"></span></div>
       <div id="dhw" hidden><div class="c" style="margin:8px 0"><button type="button" class="b" id="dhc">Tải CSV</button><button type="button" class="b" id="dhx">Xoá lịch sử</button></div>
@@ -124,8 +124,9 @@ function renderGis(root) {
 
   // --- drawer ---
   const ratedOf = r => Number(r._d && r._d.deviceConfig && r._d.deviceConfig.lampPower) || 0;
-  async function refresh(r) {
+  async function refresh(r, silent) {
     if (r !== cur) return;
+    if (!silent) { drt.className = 'res'; drt.textContent = 'Waiting....'; }
     try {
       const l = await SLCP.call('POST', 'lcuLight/queryLcuLightByLcuIdAndNum', { projectId: r._pid, body: { lcuId: r.lcuId, num: Number(dnum.value), projectId: r._pid } });
       if (r !== cur || dead) return;
@@ -153,15 +154,31 @@ function renderGis(root) {
     cur = r; mark(); clearInterval(timer);
     dr.hidden = false; ddm.hidden = true;
     dn.textContent = r.deviceName || r.uid; di.textContent = `UID ${r.uid} · lcuId ${r.lcuId || ''}`;
-    dres.textContent = ''; dres.className = 'res'; drt.className = 'res'; drt.textContent = 'Đang đọc trạng thái…';
+    ddg.hidden = true; dres.textContent = ''; dres.className = 'res'; drt.className = 'res'; drt.textContent = 'Waiting....';
     dhw.hidden = true; dht.textContent = '▸ Show lịch sử'; renderHist();
     if (markers[i]) map.panTo(markers[i].getLatLng());
-    refresh(r); timer = setInterval(() => refresh(r), 20000);
+    refresh(r); timer = setInterval(() => refresh(r, true), 20000);
   }
   drx.onclick = () => { dr.hidden = true; cur = null; clearInterval(timer); mark(); };
   dim.oninput = () => { dimo.textContent = dim.value; };
   dnum.onchange = () => cur && refresh(cur);
-  drd.onclick = () => cur && refresh(cur);
+  drd.onclick = async () => {   // giống nút "Đọc trạng thái" ở lcus.html: chỉ đọc, không gửi lệnh bật/tắt/dim
+    const r = cur; if (!r) return;
+    const pid = r._pid, uid = r.uid, out = {};
+    ddg.hidden = false; ddg.textContent = 'Waiting....'; drd.disabled = true; drd.textContent = 'Waiting....';
+    drt.className = 'res'; drt.textContent = 'Waiting....';
+    const run = async (k, f) => { try { out[k] = await f(); } catch (x) { out[k] = 'LỖI: ' + x.message; } };
+    await run('queryLcuAndRelatedByUid', () => SLCP.call('GET', `lcuActor/queryLcuAndRelatedByUid/${uid}`, { projectId: pid }));
+    const lid = (out.queryLcuAndRelatedByUid || {}).deviceId;
+    await run('queryLampNumberOfLcu', () => SLCP.call('POST', 'lcuActor/queryLampNumberOfLcu', { projectId: pid, body: { lcuId: lid, projectId: pid } }));
+    await run('unicast/queryStatus', () => SLCP.unicast('queryStatus', { luid: uid, num: dnum.value, projectId: pid }));
+    await run('lcuLight/queryLcuLightByLcuIdAndNum', () => SLCP.call('POST', 'lcuLight/queryLcuLightByLcuIdAndNum', { projectId: pid, body: { lcuId: r.lcuId, num: Number(dnum.value), projectId: pid } }));
+    if (dead) return;
+    drd.disabled = false; drd.textContent = 'Đọc trạng thái';
+    if (r !== cur) return;
+    ddg.textContent = JSON.stringify(out, null, 2);
+    refresh(r, true);   // cập nhật dòng số liệu + lịch sử từ kết quả đo mới nhất
+  };
   dht.onclick = () => { dhw.hidden = !dhw.hidden; dht.textContent = (dhw.hidden ? '▸' : '▾') + ' Show lịch sử'; };
   dhx.onclick = () => { if (cur && confirm(`Xoá lịch sử đo của LCU ${cur.uid} trên trình duyệt này?`)) { histSave(histLoad().filter(x => x.uid !== cur.uid)); renderHist(); } };
   dhc.onclick = () => {
