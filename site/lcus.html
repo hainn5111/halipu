@@ -57,8 +57,8 @@ renderLive();
 <td class="ctl" data-uid="${esc(r.uid)}" data-pid="${esc(r._pid)}" data-lcuid="${esc(r.lcuId)}" data-name="${esc(r.deviceName)}"><div class="c"><label>Đèn/kênh <input class="num" type="number" min="1" value="1"></label>
 <button type="button" data-cmd="turnOn">Bật</button><button type="button" data-cmd="turnOff">Tắt</button>
 <input class="dim" type="range" min="0" max="100" value="50"><output>50</output>%<button type="button" data-cmd="dimming">Dim</button><button type="button" data-cmd="diag">Đọc trạng thái</button></div><div class="res"></div><div class="rt res">Đang đọc trạng thái…</div><pre class="diag" hidden></pre></td></tr>
-<tr class="hrow" data-uid="${esc(r.uid)}" hidden><td colspan="8"><div class="row"><b>Lịch sử đo — ${esc(r.deviceName || r.uid)} (<span class="hn">0</span> bản ghi)</b><span><button type="button" data-h="csv">Tải CSV</button> <button type="button" data-h="clr">Xoá lịch sử</button></span></div>
-<div style="overflow:auto;max-height:300px"><table><thead><tr><th>Giờ đo</th><th>Đèn</th><th>W</th><th>V</th><th>A</th><th>cosφ</th><th>lux</th><th>Lỗi</th><th>kWh</th></tr></thead><tbody class="hb"></tbody></table></div></td></tr>`).join('');
+<tr class="hrow" data-uid="${esc(r.uid)}" hidden><td colspan="8"><div class="row"><b>Lịch sử đo — ${esc(r.deviceName || r.uid)} (<span class="hn">0</span> bản ghi)</b><span><select class="hsrc"><option value="srv">Nguồn: Server</option><option value="loc">Nguồn: Trình duyệt</option></select> <select class="hdays"><option value="1">1 ngày</option><option value="7">7 ngày</option><option value="30">30 ngày</option></select> <button type="button" data-h="csv">Tải CSV</button> <button type="button" data-h="clr">Xoá lịch sử</button></span></div>
+<div style="overflow:auto;max-height:300px"><table><thead class="hh"></thead><tbody class="hb"></tbody></table></div></td></tr>`).join('');
     histRenderAll();
     raw.textContent = JSON.stringify(rows[0] || null, null, 2);
     const tds = [...document.querySelectorAll('.ctl')];
@@ -83,24 +83,41 @@ function histAdd(td, l) {
   a.unshift({ id, dtime: l.dtime, uid: td.dataset.uid, name: td.dataset.name || '', num: l.num, power: l.power, voltage: l.voltage, current: l.current, pf: l.powerFactor, lux: l.lux, fault: l.fault, energy: l.energy, saved: new Date().toISOString() });
   histSave(a); histRenderRow(td.dataset.uid);
 }
-function histRenderRow(uid) {
-  const tr = [...document.querySelectorAll('.hrow')].find(x => x.dataset.uid === uid); if (!tr) return;
-  const a = histLoad().filter(r => r.uid === uid);
-  tr.querySelector('.hn').textContent = a.length;
-  tr.querySelector('.hb').innerHTML = a.slice(0, 200).map(r => `<tr><td>${esc(r.dtime)}</td><td>${esc(r.num)}</td><td>${esc(r.power)}</td><td>${esc(r.voltage)}</td><td>${esc(r.current)}</td><td>${esc(r.pf)}</td><td>${esc(r.lux)}</td><td>${esc(r.fault)}</td><td>${esc(r.energy)}</td></tr>`).join('');
+const LOC_H = ['Giờ đo', 'Đèn', 'W', 'V', 'A', 'cosφ', 'lux', 'Lỗi', 'kWh'], SRV_H = ['Giờ đo', 'P (W)', 'U (V)', 'I (A)', 'cosφ', 'E (kWh)', 'Dim %', 'wp'];
+const hrowOf = uid => [...document.querySelectorAll('.hrow')].find(x => x.dataset.uid === uid);
+function histRows(tr) {   // dữ liệu đang hiển thị (để xuất CSV)
+  return tr._src === 'srv' ? { cols: SRV_H, keys: ['dtime', 'p', 'u', 'i', 'pf', 'e', 'dim', 'wp'], rows: tr._srv || [] }
+    : { cols: LOC_H, keys: ['dtime', 'num', 'power', 'voltage', 'current', 'pf', 'lux', 'fault', 'energy'], rows: histLoad().filter(r => r.uid === tr.dataset.uid) };
+}
+async function histRenderRow(uid, force) {
+  const tr = hrowOf(uid); if (!tr) return;
+  const src = tr.querySelector('.hsrc').value, days = Number(tr.querySelector('.hdays').value);
+  tr._src = src; tr.querySelector('.hdays').style.display = src === 'srv' ? '' : 'none';
+  const { cols, keys } = histRows(tr);
+  tr.querySelector('.hh').innerHTML = '<tr>' + cols.map(c => `<th>${c}</th>`).join('') + '</tr>';
+  const draw = rows => { tr.querySelector('.hn').textContent = rows.length;
+    tr.querySelector('.hb').innerHTML = rows.slice(0, 500).map(r => '<tr>' + keys.map(k => `<td>${esc(r[k])}</td>`).join('') + '</tr>').join(''); };
+  if (src === 'loc') { draw(histRows(tr).rows); return; }
+  if (!force) return;   // nguồn server chỉ tải khi mở / đổi khoảng thời gian, không tải mỗi lần đo
+  const td = [...document.querySelectorAll('.ctl')].find(x => x.dataset.uid === uid);
+  tr.querySelector('.hb').innerHTML = `<tr><td colspan="${cols.length}">Waiting....</td></tr>`;
+  try { tr._srv = await SLCP.lcuTrend({ pid: td.dataset.pid, uid, lcuId: td.dataset.lcuid, name: td.dataset.name }, days); draw(tr._srv); }
+  catch (x) { tr.querySelector('.hb').innerHTML = `<tr><td colspan="${cols.length}" class="res bad">${esc(x.message)}</td></tr>`; }
 }
 function histRenderAll() { document.querySelectorAll('.hrow').forEach(tr => histRenderRow(tr.dataset.uid)); }
+t.addEventListener('change', ev => { const tr = ev.target.closest('.hrow'); if (tr && ev.target.matches('.hsrc,.hdays')) histRenderRow(tr.dataset.uid, true); });
 t.addEventListener('click', ev => {
   const tg = ev.target.closest('[data-toggle]');
-  if (tg) { const tr = [...document.querySelectorAll('.hrow')].find(x => x.dataset.uid === tg.dataset.toggle); tr.hidden = !tr.hidden; tg.textContent = (tr.hidden ? '▸' : '▾') + ' Lịch sử'; return; }
+  if (tg) { const tr = [...document.querySelectorAll('.hrow')].find(x => x.dataset.uid === tg.dataset.toggle); tr.hidden = !tr.hidden; if (!tr.hidden) histRenderRow(tg.dataset.toggle, true); tg.textContent = (tr.hidden ? '▸' : '▾') + ' Lịch sử'; return; }
   const hb = ev.target.closest('[data-h]'); if (!hb) return;
   const uid = hb.closest('.hrow').dataset.uid;
   if (hb.dataset.h === 'csv') {
-    const cols = ['dtime', 'uid', 'name', 'num', 'power', 'voltage', 'current', 'pf', 'lux', 'fault', 'energy'];
-    const csv = [cols.join(','), ...histLoad().filter(r => r.uid === uid).map(r => cols.map(c => `"${String(r[c] ?? '').replace(/"/g, '""')}"`).join(','))].join('\n');
+    const tr = hb.closest('.hrow'), h = histRows(tr);
+    const csv = [h.cols.join(','), ...h.rows.map(r => h.keys.map(k => `"${String(r[k] ?? '').replace(/"/g, '""')}"`).join(','))].join('\n');
     const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob(['\ufeff' + csv], { type: 'text/csv' }));
     a.download = `lich-su-${uid}-${new Date().toISOString().slice(0, 10)}.csv`; a.click();
-  } else if (confirm(`Xoá lịch sử đo của LCU ${uid} trên trình duyệt này?`)) { histSave(histLoad().filter(r => r.uid !== uid)); histRenderRow(uid); }
+  } else if (hb.closest('.hrow')._src === 'srv') { alert('Lịch sử Server không xoá được từ đây. Chuyển nguồn sang "Trình duyệt" nếu muốn xoá bản lưu cục bộ.'); }
+  else if (confirm(`Xoá lịch sử đo của LCU ${uid} trên trình duyệt này?`)) { histSave(histLoad().filter(r => r.uid !== uid)); histRenderRow(uid); }
 });
 async function ratedPower(td) {
   if (td._rated === undefined) {

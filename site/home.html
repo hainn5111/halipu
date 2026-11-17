@@ -78,15 +78,6 @@ function open(id) {
 }
 
 // ===== Tab GIS: bản đồ + dropdown LCU + drawer điều khiển (kế thừa logic lcus.html) =====
-const HKEY = 'slcp_hist_' + (SLCP.fixedProjectId() || 'default'), HMAX = 5000;   // cùng khoá với lcus.html → dùng chung lịch sử
-const histLoad = () => { try { return JSON.parse(localStorage.getItem(HKEY) || '[]'); } catch { return []; } };
-const histSave = a => { try { localStorage.setItem(HKEY, JSON.stringify(a.slice(0, HMAX))); } catch {} };
-function histAdd(r, l) {
-  const a = histLoad(), id = `${r.uid}|${l.num}|${l.dtime}`;
-  if (a.some(x => x.id === id)) return false;
-  a.unshift({ id, dtime: l.dtime, uid: r.uid, name: r.deviceName || '', num: l.num, power: l.power, voltage: l.voltage, current: l.current, pf: l.powerFactor, lux: l.lux, fault: l.fault, energy: l.energy, saved: new Date().toISOString() });
-  histSave(a); return true;
-}
 const NAMES = { turnOn: 'BẬT', turnOff: 'TẮT', dimming: 'ĐẶT ĐỘ SÁNG' };
 
 function renderGis(root) {
@@ -102,10 +93,10 @@ function renderGis(root) {
       <h3>Trạng thái</h3>
       <div class="res" id="drt">Waiting....</div>
       <div class="c" style="margin-top:8px"><button type="button" id="drd">Đọc trạng thái</button></div>
-      <h3>Lịch sử đo</h3><div class="res" style="margin:-4px 0 8px">Đọc từ lịch sử của trang Danh sách LCU (tự đọc theo chu kỳ cài ở đó).</div>
-      <div class="c"><button type="button" class="b" id="dht">▸ Show lịch sử</button><span class="res" id="dhn"></span></div>
-      <div id="dhw" hidden><div class="c" style="margin:8px 0"><button type="button" class="b" id="dhc">Tải CSV</button><button type="button" class="b" id="dhx">Xoá lịch sử</button></div>
-        <div style="overflow:auto;max-height:320px"><table><thead><tr><th>Giờ đo</th><th>Đèn</th><th>W</th><th>V</th><th>A</th><th>cosφ</th><th>lux</th><th>Lỗi</th><th>kWh</th></tr></thead><tbody id="dhb"></tbody></table></div></div>
+      <h3>Lịch sử đo</h3>
+      <div class="c"><button type="button" class="b" id="dht">▸ Show lịch sử</button><select id="dhd" style="padding:6px;border-radius:8px;background:#0f172a;color:inherit;border:1px solid #334155"><option value="1">1 ngày</option><option value="7">7 ngày</option><option value="30">30 ngày</option></select><span class="res" id="dhn"></span></div>
+      <div id="dhw" hidden><div class="c" style="margin:8px 0"><button type="button" class="b" id="dhc">Tải CSV</button></div>
+        <div style="overflow:auto;max-height:320px"><table><thead><tr><th>Giờ đo</th><th>P (W)</th><th>U (V)</th><th>I (A)</th><th>cosφ</th><th>E (kWh)</th><th>Dim %</th><th>wp</th></tr></thead><tbody id="dhb"></tbody></table></div></div>
     </aside></div>`;
   const map = L.map('map').setView([16.0, 106.0], 5);
   L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19, attribution: '© OpenStreetMap' }).addTo(map);
@@ -136,11 +127,17 @@ function renderGis(root) {
       drt.textContent = `Đo lúc ${l.dtime}: công suất ${l.power} W${pct != null ? ` (≈${pct}% định mức ${rated} W)` : ''} · ${l.voltage} V · ${l.current} A · cosφ ${l.powerFactor} · lux ${l.lux} · lỗi ${l.fault} · lastAction ${l.lastAction}, lastSource ${l.lastSource}`;
     } catch (x) { if (r === cur) { drt.className = 'res bad'; drt.textContent = x.message; } }
   }
-  function renderHist() {
-    if (!cur) return;
-    const a = histLoad().filter(x => x.uid === cur.uid);
-    dhn.textContent = `${a.length} bản ghi`;
-    dhb.innerHTML = a.slice(0, 200).map(r => `<tr><td>${esc(r.dtime)}</td><td>${esc(r.num)}</td><td>${esc(r.power)}</td><td>${esc(r.voltage)}</td><td>${esc(r.current)}</td><td>${esc(r.pf)}</td><td>${esc(r.lux)}</td><td>${esc(r.fault)}</td><td>${esc(r.energy)}</td></tr>`).join('');
+  const HK = ['dtime', 'p', 'u', 'i', 'pf', 'e', 'dim', 'wp'];
+  let hrows = [];
+  async function renderHist() {   // lịch sử từ server (energy/getLcuDataTrend), giống lcus.html
+    if (!cur || dhw.hidden) return;
+    const r = cur; dhn.textContent = 'Waiting....'; dhb.innerHTML = '';
+    try {
+      const rows = await SLCP.lcuTrend({ pid: r._pid, uid: r.uid, lcuId: r.lcuId, name: r.deviceName }, Number(dhd.value));
+      if (r !== cur || dead) return;
+      hrows = rows; dhn.textContent = `${rows.length} bản ghi`;
+      dhb.innerHTML = rows.slice(0, 500).map(x => '<tr>' + HK.map(k => `<td>${esc(x[k])}</td>`).join('') + '</tr>').join('');
+    } catch (x) { if (r === cur) { dhn.textContent = ''; dhb.innerHTML = `<tr><td colspan="8" class="res bad">${esc(x.message)}</td></tr>`; } }
   }
   const STY = { color: '#0f172a', weight: 1.5, radius: 8, fillColor: '#f59e0b' }, SEL = { color: '#ffffff', weight: 4, radius: 11, fillColor: '#ef4444' };
   function mark() {   // viền cho LCU đang chọn: chấm trên bản đồ + dòng trong dropdown
@@ -148,16 +145,13 @@ function renderGis(root) {
     Object.entries(markers).forEach(([k, m]) => { const on = +k === ci; m.setStyle(on ? SEL : STY); m.setRadius(on ? SEL.radius : STY.radius); if (on) m.bringToFront(); });
     [...ddm.children].forEach((el, k) => el.classList.toggle('sel', k === ci));
   }
-  const onStore = e => { if (!e.key || e.key === HKEY) renderHist(); };
-  window.addEventListener('storage', onStore);
-  const histTimer = setInterval(renderHist, 5000);
   function select(i) {
     const r = rows[i]; if (!r) return;
     cur = r; mark(); clearInterval(timer);
     dr.hidden = false; ddm.hidden = true;
     dn.textContent = r.deviceName || r.uid; di.textContent = `UID ${r.uid} · lcuId ${r.lcuId || ''}`;
     dres.textContent = ''; dres.className = 'res'; drt.className = 'res'; drt.textContent = 'Waiting....';
-    dhw.hidden = true; dht.textContent = '▸ Show lịch sử'; renderHist();
+    dhw.hidden = true; dht.textContent = '▸ Show lịch sử'; dhn.textContent = '';
     if (markers[i]) map.panTo(markers[i].getLatLng());
     refresh(r); timer = setInterval(() => refresh(r, true), 20000);
   }
@@ -180,12 +174,11 @@ function renderGis(root) {
     if (r !== cur) return;
     refresh(r, true);   // chỉ hiện dòng text số liệu (+ ghi lịch sử), không hiện JSON
   };
-  dht.onclick = () => { dhw.hidden = !dhw.hidden; dht.textContent = (dhw.hidden ? '▸' : '▾') + ' Show lịch sử'; };
-  dhx.onclick = () => { if (cur && confirm(`Xoá lịch sử đo của LCU ${cur.uid} trên trình duyệt này?`)) { histSave(histLoad().filter(x => x.uid !== cur.uid)); renderHist(); } };
+  dht.onclick = () => { dhw.hidden = !dhw.hidden; dht.textContent = (dhw.hidden ? '▸' : '▾') + ' Show lịch sử'; renderHist(); };
+  dhd.onchange = renderHist;
   dhc.onclick = () => {
-    const cols = ['dtime', 'uid', 'name', 'num', 'power', 'voltage', 'current', 'pf', 'lux', 'fault', 'energy'];
-    const csv = [cols.join(','), ...histLoad().filter(r => r.uid === cur.uid).map(r => cols.map(c => `"${String(r[c] ?? '').replace(/"/g, '""')}"`).join(','))].join('\n');
-    const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob(['﻿' + csv], { type: 'text/csv' }));
+    const csv = [['Giờ đo', 'P (W)', 'U (V)', 'I (A)', 'cosφ', 'E (kWh)', 'Dim %', 'wp'].join(','), ...hrows.map(r => HK.map(k => `"${String(r[k] ?? '').replace(/"/g, '""')}"`).join(','))].join('\n');
+    const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob(['\ufeff' + csv], { type: 'text/csv' }));
     a.download = `lich-su-${cur.uid}-${new Date().toISOString().slice(0, 10)}.csv`; a.click();
   };
   dr.addEventListener('click', async ev => {
@@ -226,7 +219,7 @@ function renderGis(root) {
       await Promise.all(Array.from({ length: 4 }, async () => { while (next < rows.length && !dead) { const i = next++; await one(rows[i], i); } }));
     } catch (x) { gm.textContent = x.message; }
   })();
-  return () => { dead = true; clearInterval(timer); clearInterval(histTimer); window.removeEventListener('storage', onStore); map.remove(); };
+  return () => { dead = true; clearInterval(timer); map.remove(); };
 }
 open(location.hash.slice(1) || 'gis');
 </script></body></html>

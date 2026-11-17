@@ -124,6 +124,13 @@ const SLCP = {
     return { rows: [...map.values()], report };
   },
   // Lệnh điều khiển đơn (docs/08 §2). dimming đã xác nhận payload; turnOn/turnOff giả định cùng mẫu (chưa xác nhận).
+  // Lịch sử đo từ server (energy/getLcuDataTrend — payload bắt từ web gốc). startDate/endDate là epoch ms. Trả mảng mới nhất trước.
+  async lcuTrend({ pid, uid, lcuId, name, ctype = 53 }, days = 1) {
+    const end = Date.now();
+    const d = await this.call('POST', 'energy/getLcuDataTrend', { projectId: pid, body: { lcuId, lcuName: name || '', luid: uid, uid, projectId: pid, channel: '', maxchannel: 1, ctype, queryType: 2, type: 1, startDate: end - days * 864e5, endDate: end } });
+    const ts = (d && d.date) || [], at = (k, i) => (d[k] || [])[i];
+    return ts.map((t, i) => ({ ts: t, dtime: at('dateFormat', i) || new Date(t).toLocaleString(), p: at('p', i), u: at('u', i), i: at('i', i), pf: at('pf', i), e: at('e', i), dim: at('dim', i), wp: at('wp', i) })).reverse();
+  },
   async unicast(cmd, { luid, num, projectId, dimming }) {
     // Khớp đúng request đã test OK (doc 08): chỉ authorization + Content-Type, projectId nằm trong body, không có header projectId.
     const body = { luid, num: Number(num) };
