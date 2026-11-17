@@ -17,7 +17,8 @@ th,td{text-align:left;padding:8px;border-bottom:1px solid #334155;word-break:bre
 <div class="c" style="display:grid;gap:6px;max-width:520px">
 <input id="rpid" placeholder="projectId (bỏ trống = dự án hiện tại)"><input id="rlid" placeholder="lcuId"><input id="ruid" placeholder="UID / luid"><input id="rname" placeholder="Tên LCU (lcuName)">
 <select id="rdays" style="padding:8px;border-radius:8px;background:#0f172a;color:inherit;border:1px solid #334155"><option value="30">30 ngày</option><option value="90">90 ngày</option><option value="180">180 ngày</option><option value="365">365 ngày</option></select>
-<button type="button" id="rgo" style="margin:0;padding:8px 12px;font-size:13px">Đọc lịch sử &amp; tải CSV</button></div><pre id="rout" hidden style="max-height:200px"></pre></details>
+<button type="button" id="rgo" style="margin:0;padding:8px 12px;font-size:13px">Đọc lịch sử &amp; tải CSV</button>
+<button type="button" id="rcf" style="margin:0;padding:8px 12px;font-size:13px">Xem cấu hình cũ (để tạo lại)</button></div><pre id="rout" hidden style="max-height:200px"></pre></details>
 <details><summary>Dò API lịch sử đo của server (chỉ đọc)</summary>
 <p class="res">Gọi thử các API lịch sử/biểu đồ của Fonda cho LCU đầu tiên, 24 giờ gần nhất. Chỉ truy vấn, không gửi lệnh xuống đèn. Lỗi 4xx cho biết thiếu tham số gì.</p>
 <label style="margin:0 0 8px">Chọn LCU để dò <select id="hps" style="width:100%;padding:8px;border-radius:8px;background:#0f172a;color:inherit;border:1px solid #334155"></select></label>
@@ -149,6 +150,16 @@ function autoInit(loop) {
   asec.onchange = () => { const c = autoCfg(); c.sec = Math.max(10, Math.floor(Number(asec.value)) || 20); autoSave(c); arm(); };
   arm();
 }
+rcf.onclick = async () => {   // đọc cấu hình LCU đã xoá (nếu server còn). Chỉ đọc.
+  const first = document.querySelector('.ctl'), pid = rpid.value.trim() || (first && first.dataset.pid), uid = ruid.value.trim();
+  if (!pid || !uid) { rout.hidden = false; rout.textContent = 'Cần UID (và projectId nếu danh sách trống).'; return; }
+  rcf.disabled = true; rout.hidden = false; rout.style.maxHeight = '420px'; rout.textContent = 'Waiting....'; const out = {};
+  for (const [k, f] of Object.entries({
+    queryLcuAndRelatedByUid: () => SLCP.call('GET', `lcuActor/queryLcuAndRelatedByUid/${uid}`, { projectId: pid }),
+    queryParamById: () => SLCP.call('POST', 'lcuActor/queryParamById', { projectId: pid, body: { projectId: pid, lcuId: rlid.value.trim(), current: 1, size: 5 } }),
+  })) { try { out[k] = await f(); } catch (x) { out[k] = 'LỖI: ' + x.message; } }
+  rout.textContent = JSON.stringify(out, null, 2); rcf.disabled = false;
+};
 rgo.onclick = async () => {   // đọc lịch sử bằng ID nhập tay (LCU đã xoá) → CSV. Chỉ truy vấn.
   const first = document.querySelector('.ctl'), pid = rpid.value.trim() || (first && first.dataset.pid), lcuId = rlid.value.trim(), uid = ruid.value.trim() || lcuId;
   if (!pid || !lcuId) { rout.hidden = false; rout.textContent = 'Cần lcuId (và projectId nếu chưa có LCU nào trong danh sách).'; return; }
