@@ -6,6 +6,9 @@ th,td{text-align:left;padding:8px;border-bottom:1px solid #334155;word-break:bre
 .c button{width:auto;margin:0;padding:5px 10px;font-size:12px}.res{font-size:12px;margin-top:4px;color:#94a3b8}.res.bad{color:#f87171}.res.good{color:#4ade80}.diag{font-size:11px;max-height:200px;margin:6px 0 0}.tg{width:auto;margin:4px 0 0;padding:3px 8px;font-size:11px;background:#334155;color:#e2e8f0}.hrow>td{background:#0f172a}</style></head><body><div class="wrap"><div class="card">
 <div class="row"><h1>Danh sách LCU</h1><span><a href="home.html">← Trang chính</a></span></div>
 <p class="sub" id="s">Đang tải…</p>
+<details open><summary>Phản hồi realtime từ đèn (WebSocket): <span id="ws">chưa kết nối</span></summary>
+<pre id="live" style="max-height:220px">Chờ dữ liệu… (gửi lệnh rồi xem ở đây đèn có đổi mức không)</pre></details>
+<div style="overflow:auto"><table><thead><tr><th>#</th><th>UID (luid)</th><th>Tên</th><th>Mã</th><th>lcuId</th><th>Model</th><th>Dự án</th><th>Điều khiển</th></tr></thead><tbody id="t"></tbody></table></div>
 <details><summary>Cứu lịch sử LCU đã xoá (nhập tay ID, chỉ đọc)</summary>
 <p class="res">Nhập ID của LCU đã xoá (lấy từ request <code>getLcuDataTrend</code> ở DevTools). Nếu server còn trả dữ liệu thì tải CSV về ngay.</p>
 <div class="c" style="display:grid;gap:6px;max-width:520px">
