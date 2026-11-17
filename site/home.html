@@ -5,10 +5,7 @@
   <div class="ok">✅</div><h1>Đăng nhập thành công</h1>
   <p class="sub">Xin chào, <b id="n"></b></p>
   <pre id="j">Đang tải hồ sơ…</pre>
-  <label for="pid">ProjectID để xem LCU (để trống = tự dò như cũ)</label>
-  <input id="pid" placeholder="dán projectId" autocomplete="off" spellcheck="false">
-  <button type="button" id="go">Xem danh sách LCU</button>
-  <a href="scan.html"><button type="button" style="background:#334155;color:#e2e8f0">Quét dự án có LCU đo gần đây</button></a>
+  <a href="lcus.html"><button type="button">Xem danh sách LCU</button></a>
   <button id="o">Đăng xuất</button>
 </div>
 <script src="build-info.js"></script><script src="config.js"></script><script src="api.js"></script>
@@ -19,8 +16,8 @@ SLCP.getUser().then(d => { j.textContent = JSON.stringify(d, null, 2); })
   .catch(() => { SLCP.logout(); location.replace('index.html'); });
 const bi = window.BUILD_INFO || { branch: 'local', commit: 'dev', time: '' };
 b.textContent = `build: ${bi.branch} @ ${bi.commit}${bi.time ? ' · ' + bi.time : ''}`;
-pid.value = SLCP.fixedProjectId();
-go.onclick = () => {
+try { localStorage.removeItem('pid_fixed'); } catch {}   // home = luồng gốc: tự dò dự án (bỏ ProjectID đã chọn từ scan.html)
+o.onclick = () => {
   const v = pid.value.trim();
   try { v ? localStorage.setItem('pid_fixed', v) : localStorage.removeItem('pid_fixed'); } catch {}
   location.href = 'lcus.html';
