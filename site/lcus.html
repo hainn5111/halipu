@@ -5,7 +5,11 @@ th,td{text-align:left;padding:8px;border-bottom:1px solid #334155;word-break:bre
 .row button{width:auto;margin:0;padding:8px 14px}.c{display:flex;gap:6px;align-items:center;flex-wrap:wrap;min-width:260px}.c label{margin:0;font-size:12px}.num{width:56px;padding:4px}.dim{width:90px;padding:0}
 .c button{width:auto;margin:0;padding:5px 10px;font-size:12px}.res{font-size:12px;margin-top:4px;color:#94a3b8}.res.bad{color:#f87171}.res.good{color:#4ade80}.diag{font-size:11px;max-height:200px;margin:6px 0 0}.tg{width:auto;margin:4px 0 0;padding:3px 8px;font-size:11px;background:#334155;color:#e2e8f0}.hrow>td{background:#0f172a}</style></head><body><div class="wrap"><div class="card">
 <div class="row"><h1>Danh sách LCU</h1><span><a href="home.html">← Trang chính</a></span></div>
-<p class="sub" id="s">Đang tải…</p><details open><summary>Phản hồi realtime từ đèn (WebSocket): <span id="ws">chưa kết nối</span></summary>
+<p class="sub" id="s">Đang tải…</p>
+<div class="auto" style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin:0 0 12px;font-size:13px"><b>Tự động đọc</b>
+<label style="margin:0">mỗi <input id="asec" type="number" min="10" value="20" style="width:70px;padding:4px"> giây</label>
+<button type="button" id="aon" style="width:auto;margin:0;padding:6px 12px;font-size:13px">Bật</button><span id="ast" class="res"></span>
+<span class="res">(chỉ chạy khi trang này đang mở; đóng tab/trình duyệt là dừng)</span></div><details open><summary>Phản hồi realtime từ đèn (WebSocket): <span id="ws">chưa kết nối</span></summary>
 <pre id="live" style="max-height:220px">Chờ dữ liệu… (gửi lệnh rồi xem ở đây đèn có đổi mức không)</pre></details>
 <div style="overflow:auto"><table><thead><tr><th>#</th><th>UID (luid)</th><th>Tên</th><th>Mã</th><th>lcuId</th><th>Model</th><th>Dự án</th><th>Điều khiển</th></tr></thead><tbody id="t"></tbody></table></div>
 <details><summary>Nguồn dữ liệu</summary><pre id="rep"></pre></details><details><summary>Dữ liệu thô (bản ghi đầu tiên)</summary><pre id="raw"></pre></details><div class="err" id="e"></div>
@@ -55,7 +59,7 @@ renderLive();
     raw.textContent = JSON.stringify(rows[0] || null, null, 2);
     const tds = [...document.querySelectorAll('.ctl')];
     const loop = () => tds.forEach((td, i) => setTimeout(() => refreshRt(td), i * 400));
-    loop(); if (tds.length <= 10) setInterval(loop, 20000);   // tự làm mới mỗi 20 giây (tối đa 10 LCU)
+    loop(); autoInit(loop);   // chu kỳ tự đọc do người dùng cài (autoInit)
   } catch (x) { s.textContent = ''; e.textContent = x.message; }
 })();
 async function readState(td, num) {   // đọc trạng thái qua HTTP (không cần WebSocket), chỉ đọc
@@ -99,6 +103,23 @@ async function ratedPower(td) {
       td._rated = Number(d && d.deviceConfig && d.deviceConfig.lampPower) || 0; } catch { td._rated = 0; }
   }
   return td._rated;
+}
+// ---- Tự động đọc theo chu kỳ cài sẵn. Cấu hình lưu localStorage (dùng chung origin), mặc định BẬT mỗi 20 giây như cũ. ----
+const AKEY = 'slcp_auto';
+function autoCfg() { try { return Object.assign({ sec: 20, on: true }, JSON.parse(localStorage.getItem(AKEY) || '{}')); } catch { return { sec: 20, on: true }; } }
+function autoSave(c) { try { localStorage.setItem(AKEY, JSON.stringify(c)); } catch {} }
+let autoTimer = null, autoNext = 0;
+function autoInit(loop) {
+  const paint = () => { const c = autoCfg(); asec.value = c.sec; aon.textContent = c.on ? 'Dừng' : 'Bật'; if (!c.on) ast.textContent = 'Đang dừng'; };
+  const arm = () => {
+    clearInterval(autoTimer); autoTimer = null; const c = autoCfg(); paint(); if (!c.on) return;
+    autoNext = Date.now() + c.sec * 1000;
+    autoTimer = setInterval(() => { loop(); autoNext = Date.now() + autoCfg().sec * 1000; }, c.sec * 1000);
+  };
+  setInterval(() => { const c = autoCfg(); if (c.on && autoTimer) ast.textContent = `Lần đọc kế tiếp sau ${Math.max(0, Math.round((autoNext - Date.now()) / 1000))} giây`; }, 1000);
+  aon.onclick = () => { const c = autoCfg(); c.on = !c.on; autoSave(c); arm(); };
+  asec.onchange = () => { const c = autoCfg(); c.sec = Math.max(10, Math.floor(Number(asec.value)) || 20); autoSave(c); arm(); };
+  arm();
 }
 const SRC = { 0: 'không rõ', 1: 'lệnh tay' }; // lastSource=1 quan sát được sau lệnh Dim; các giá trị khác chưa rõ
 async function refreshRt(td) {

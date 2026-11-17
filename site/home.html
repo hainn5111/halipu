@@ -102,7 +102,7 @@ function renderGis(root) {
       <h3>Trạng thái</h3>
       <div class="res" id="drt">Waiting....</div>
       <div class="c" style="margin-top:8px"><button type="button" id="drd">Đọc trạng thái</button></div>
-      <h3>Lịch sử đo</h3>
+      <h3>Lịch sử đo</h3><div class="res" style="margin:-4px 0 8px">Đọc từ lịch sử của trang Danh sách LCU (tự đọc theo chu kỳ cài ở đó).</div>
       <div class="c"><button type="button" class="b" id="dht">▸ Show lịch sử</button><span class="res" id="dhn"></span></div>
       <div id="dhw" hidden><div class="c" style="margin:8px 0"><button type="button" class="b" id="dhc">Tải CSV</button><button type="button" class="b" id="dhx">Xoá lịch sử</button></div>
         <div style="overflow:auto;max-height:320px"><table><thead><tr><th>Giờ đo</th><th>Đèn</th><th>W</th><th>V</th><th>A</th><th>cosφ</th><th>lux</th><th>Lỗi</th><th>kWh</th></tr></thead><tbody id="dhb"></tbody></table></div></div>
@@ -131,7 +131,6 @@ function renderGis(root) {
       const l = await SLCP.call('POST', 'lcuLight/queryLcuLightByLcuIdAndNum', { projectId: r._pid, body: { lcuId: r.lcuId, num: Number(dnum.value), projectId: r._pid } });
       if (r !== cur || dead) return;
       if (!l) { drt.className = 'res'; drt.textContent = 'Chưa có dữ liệu đèn'; return; }
-      if (histAdd(r, l)) renderHist();
       const rated = ratedOf(r), pct = rated && l.power != null ? Math.round(l.power / rated * 100) : null;
       drt.className = 'res good';
       drt.textContent = `Đo lúc ${l.dtime}: công suất ${l.power} W${pct != null ? ` (≈${pct}% định mức ${rated} W)` : ''} · ${l.voltage} V · ${l.current} A · cosφ ${l.powerFactor} · lux ${l.lux} · lỗi ${l.fault} · lastAction ${l.lastAction}, lastSource ${l.lastSource}`;
@@ -149,6 +148,9 @@ function renderGis(root) {
     Object.entries(markers).forEach(([k, m]) => { const on = +k === ci; m.setStyle(on ? SEL : STY); m.setRadius(on ? SEL.radius : STY.radius); if (on) m.bringToFront(); });
     [...ddm.children].forEach((el, k) => el.classList.toggle('sel', k === ci));
   }
+  const onStore = e => { if (!e.key || e.key === HKEY) renderHist(); };
+  window.addEventListener('storage', onStore);
+  const histTimer = setInterval(renderHist, 5000);
   function select(i) {
     const r = rows[i]; if (!r) return;
     cur = r; mark(); clearInterval(timer);
@@ -224,7 +226,7 @@ function renderGis(root) {
       await Promise.all(Array.from({ length: 4 }, async () => { while (next < rows.length && !dead) { const i = next++; await one(rows[i], i); } }));
     } catch (x) { gm.textContent = x.message; }
   })();
-  return () => { dead = true; clearInterval(timer); map.remove(); };
+  return () => { dead = true; clearInterval(timer); clearInterval(histTimer); window.removeEventListener('storage', onStore); map.remove(); };
 }
 open(location.hash.slice(1) || 'gis');
 </script></body></html>
