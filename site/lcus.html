@@ -126,31 +126,28 @@ function autoInit(loop) {
   asec.onchange = () => { const c = autoCfg(); c.sec = Math.max(10, Math.floor(Number(asec.value)) || 20); autoSave(c); arm(); };
   arm();
 }
-hp.onclick = async () => {   // dò API lịch sử: chỉ truy vấn. Thử nhiều khoảng thời gian + biến thể tham số cho 3 API có vẻ dùng được.
+hp.onclick = async () => {   // dò API lịch sử theo payload thật của web gốc (đã bắt từ Network). Chỉ truy vấn.
   const td = [...document.querySelectorAll('.ctl')].find(x => x.dataset.uid === hps.value); if (!td) return;
-  const pid = td.dataset.pid, uid = td.dataset.uid, lcuId = td.dataset.lcuid, num = Number(td.querySelector('.num').value) || 1;
-  const f = d => d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0') + ' ' + d.toTimeString().slice(0, 8);
-  const day = d => f(d).slice(0, 10), end = new Date(), ago = n => new Date(end - n * 24 * 3600e3);
-  const ranges = { '1 ngày': 1, '7 ngày': 7, '30 ngày': 30 };
-  const variants = {
-    'A: lcuId+startTime/endTime': (st, en) => ({ projectId: pid, lcuId, num, startTime: f(st), endTime: f(en) }),
-    'B: lcuId+ngày (yyyy-MM-dd)': (st, en) => ({ projectId: pid, lcuId, num, startTime: day(st), endTime: day(en) }),
-    'C: deviceId+startTime/endTime': (st, en) => ({ projectId: pid, deviceId: lcuId, num, startTime: f(st), endTime: f(en) }),
-    'D: luid+startTime/endTime': (st, en) => ({ projectId: pid, luid: uid, lcuId, num, startTime: f(st), endTime: f(en) }),
-    'E: tất cả tên (begin/start/end, date)': (st, en) => ({ projectId: pid, lcuId, luid: uid, deviceId: lcuId, num, current: 1, size: 20, startTime: f(st), endTime: f(en), beginTime: f(st), startDate: day(st), endDate: day(en), date: day(en), dateType: 1, type: 1 }),
-  };
-  const paths = ['energy/getLcuDataTrend', 'energy/getLcuDataDetails', 'lcuActor/queryLcuDataRecords'];
-  hp.disabled = true; hpo.hidden = false; const out = {}; hpo.textContent = 'Đang dò LCU: ' + (td.dataset.name || uid); let done = 0;
-  for (const path of paths) for (const [vn, mk] of Object.entries(variants)) for (const [rn, n] of Object.entries(ranges)) {
-    hpo.textContent = `Đang dò… ${++done}/${paths.length * 15}\n` + JSON.stringify(out, null, 1);
-    const k = `${path} | ${vn} | ${rn}`;
-    try { const d = await SLCP.call('POST', path, { projectId: pid, body: mk(ago(n), end) });
+  const pid = td.dataset.pid, uid = td.dataset.uid, lcuId = td.dataset.lcuid, lcuName = td.dataset.name || '', num = Number(td.querySelector('.num').value) || 1;
+  const now = Date.now(), DAY = 24 * 3600e3;
+  const tests = [];
+  for (const [rn, n] of Object.entries({ '1 ngày': 1, '7 ngày': 7, '30 ngày': 30 })) {
+    for (const qt of [1, 2, 3]) tests.push([`energy/getLcuDataTrend | queryType ${qt} | ${rn}`, 'energy/getLcuDataTrend',
+      { lcuId, lcuName, luid: uid, uid, projectId: pid, channel: '', maxchannel: 1, ctype: 53, queryType: qt, type: 1, startDate: now - n * DAY, endDate: now }]);
+    for (const ch of [1, '']) for (const path of ['energy/getLCUPeDataTrend', 'energy/getLcuPeDataTrend'])
+      tests.push([`${path} | channel ${JSON.stringify(ch)} | ${rn}`, path, { lcuId, lcuName, projectId: pid, channel: ch, type: 1, startDate: now - n * DAY, endDate: now }]);
+  }
+  hp.disabled = true; hpo.hidden = false; const out = {}; let done = 0;
+  hpo.textContent = 'Đang dò LCU: ' + (lcuName || uid);
+  for (const [k, path, body] of tests) {
+    hpo.textContent = `Đang dò ${lcuName || uid}… ${++done}/${tests.length}`;
+    try { const d = await SLCP.call('POST', path, { projectId: pid, body });
       const len = d && d.date ? d.date.length : d && d.records ? d.records.length : null;
-      out[k] = len ? { soDiem: len, total: d.total, mau: d.date ? { date: d.date.slice(0, 2), p: (d.p || []).slice(0, 2), u: (d.u || []).slice(0, 2), i: (d.i || []).slice(0, 2), e: (d.e || []).slice(0, 2), pf: (d.pf || []).slice(0, 2) } : d.records.slice(0, 2) } : 'rỗng';
+      out[k] = len ? { soDiem: len, khoaTraVe: Object.keys(d), mau: Object.fromEntries(Object.entries(d).filter(([, v]) => Array.isArray(v)).map(([c, v]) => [c, v.slice(0, 3)])) } : 'rỗng ' + JSON.stringify(d).slice(0, 120);
     } catch (x) { out[k] = 'LỖI ' + x.message; }
   }
-  const hit = Object.fromEntries(Object.entries(out).filter(([, v]) => v !== 'rỗng'));
-  hpo.textContent = `Xong. Có dữ liệu / lỗi: ${Object.keys(hit).length}/${done}\n` + JSON.stringify(Object.keys(hit).length ? hit : { ketQua: 'tất cả đều rỗng' }, null, 2);
+  const hit = Object.fromEntries(Object.entries(out).filter(([, v]) => typeof v === 'object'));
+  hpo.textContent = `Xong. Có dữ liệu: ${Object.keys(hit).length}/${tests.length}\n` + JSON.stringify(Object.keys(hit).length ? hit : out, null, 2);
   hp.disabled = false;
 };
 const SRC = { 0: 'không rõ', 1: 'lệnh tay' }; // lastSource=1 quan sát được sau lệnh Dim; các giá trị khác chưa rõ
