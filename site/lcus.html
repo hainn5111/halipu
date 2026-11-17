@@ -12,6 +12,9 @@ th,td{text-align:left;padding:8px;border-bottom:1px solid #334155;word-break:bre
 <span class="res">(chỉ chạy khi trang này đang mở; đóng tab/trình duyệt là dừng)</span></div><details open><summary>Phản hồi realtime từ đèn (WebSocket): <span id="ws">chưa kết nối</span></summary>
 <pre id="live" style="max-height:220px">Chờ dữ liệu… (gửi lệnh rồi xem ở đây đèn có đổi mức không)</pre></details>
 <div style="overflow:auto"><table><thead><tr><th>#</th><th>UID (luid)</th><th>Tên</th><th>Mã</th><th>lcuId</th><th>Model</th><th>Dự án</th><th>Điều khiển</th></tr></thead><tbody id="t"></tbody></table></div>
+<details><summary>Dò API lịch sử đo của server (chỉ đọc)</summary>
+<p class="res">Gọi thử các API lịch sử/biểu đồ của Fonda cho LCU đầu tiên, 24 giờ gần nhất. Chỉ truy vấn, không gửi lệnh xuống đèn. Lỗi 4xx cho biết thiếu tham số gì.</p>
+<button type="button" id="hp" style="width:auto;padding:6px 12px;font-size:13px;margin:0">Dò API lịch sử</button><pre id="hpo" style="max-height:420px" hidden></pre></details>
 <details><summary>Nguồn dữ liệu</summary><pre id="rep"></pre></details><details><summary>Dữ liệu thô (bản ghi đầu tiên)</summary><pre id="raw"></pre></details><div class="err" id="e"></div>
 </div></div>
 <script src="config.js"></script><script src="api.js"></script>
@@ -121,6 +124,22 @@ function autoInit(loop) {
   asec.onchange = () => { const c = autoCfg(); c.sec = Math.max(10, Math.floor(Number(asec.value)) || 20); autoSave(c); arm(); };
   arm();
 }
+hp.onclick = async () => {   // dò API lịch sử: chỉ truy vấn
+  const td = document.querySelector('.ctl'); if (!td) return;
+  const pid = td.dataset.pid, uid = td.dataset.uid, lcuId = td.dataset.lcuid, num = Number(td.querySelector('.num').value) || 1;
+  const f = d => d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0') + ' ' + d.toTimeString().slice(0, 8);
+  const end = new Date(), start = new Date(end - 24 * 3600e3);
+  const base = { projectId: pid, lcuId, luid: uid, uid, num, current: 1, size: 5, startTime: f(start), endTime: f(end), beginTime: f(start), startDate: f(start).slice(0, 10), endDate: f(end).slice(0, 10) };
+  const tests = ['lcuActor/queryLcuDataRecords', 'lcuActor/queryLcuLightingHis', 'energy/getLcuDataDetails', 'energy/getLcuDataTrend', 'energy/getLcuData', 'energy/getLcuDataArchived', 'lcuLight/queryLcuDataReportRateDetailsPage'];
+  hp.disabled = true; hpo.hidden = false; hpo.textContent = 'Đang dò…'; const out = {};
+  for (const path of tests) {
+    try { const d = await SLCP.call('POST', path, { projectId: pid, body: base });
+      out[path] = { ok: true, tong: d && d.total, soBanGhi: d && d.records && d.records.length, mau: d && (d.records ? d.records.slice(0, 2) : d) };
+    } catch (x) { out[path] = { ok: false, loi: x.message }; }
+    hpo.textContent = JSON.stringify(out, null, 2);
+  }
+  hp.disabled = false;
+};
 const SRC = { 0: 'không rõ', 1: 'lệnh tay' }; // lastSource=1 quan sát được sau lệnh Dim; các giá trị khác chưa rõ
 async function refreshRt(td) {
   const rt = td.querySelector('.rt'), num = td.querySelector('.num').value;
