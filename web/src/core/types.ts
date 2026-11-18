@@ -53,4 +53,14 @@ export interface DeviceItem {
   lat?: number;
   lng?: number;
   address: string;
+  /** Bản ghi gốc từ API (để xem toàn bộ thông tin đang có). */
+  raw: Record<string, unknown>;
 }
+
+/** Model thiết bị (template). `config` là deviceConfig đã parse từ chuỗi JSON. */
+export interface DeviceModel { id: string; name: string; typeId: string; config: Record<string, unknown> }
+
+/** Một dòng của bảng cấu hình: giá trị đơn, hoặc danh sách thiết bị đính kèm theo template. */
+export type ConfigEntry =
+  | { key: string; kind: 'value'; text: string }
+  | { key: string; kind: 'attached'; items: Array<{ name: string; checked: boolean; extra: string }> };

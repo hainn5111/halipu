@@ -1,8 +1,8 @@
 // Nguồn dữ liệu Fonda. Giao diện (features/) chỉ gọi các hàm này và nhận kiểu của mình; đổi backend = viết adapter khác cùng chữ ký.
 import { call } from '../../core/api';
 import { config } from '../../core/config';
-import type { DeviceItem, DeviceType, LampCommand, LightStatus, Lcu, Measurement } from '../../core/types';
-import { mapDeviceRow, mapDeviceTypes, mapLight, mapListRow, mapPageRow, mapTrend, mergeLcus, pickGeo, ratedPowerOf, validGeo, type LcuRow } from './mappers';
+import type { DeviceItem, DeviceModel, DeviceType, LampCommand, LightStatus, Lcu, Measurement } from '../../core/types';
+import { mapModels, mapDeviceRow, mapDeviceTypes, mapLight, mapListRow, mapPageRow, mapTrend, mergeLcus, pickGeo, ratedPowerOf, validGeo, type LcuRow } from './mappers';
 
 const PID_KEY = 'pid';
 
@@ -97,9 +97,9 @@ export async function unicast(cmd: LampCommand | 'queryStatus', l: Lcu, num: num
   return call('POST', `lampControl/unicast/${cmd}`, { body });
 }
 
-/** Loại thiết bị có trong dự án (chỉ đọc). */
+/** Mọi loại thiết bị của dự án (chỉ đọc; API 'WithUid' chỉ trả vài loại nên không dùng). */
 export async function listDeviceTypes(projectId: string): Promise<DeviceType[]> {
-  return mapDeviceTypes(await call('GET', `deviceTypeController/queryDeviceTypesWithUidOfProject/${projectId}`, { projectId }));
+  return mapDeviceTypes(await call('GET', `deviceTypeController/queryAllDeviceTypeByProjectId/${projectId}`, { projectId }));
 }
 
 /** Thiết bị của một loại trong một dự án (chỉ đọc, phân trang hết). */
@@ -113,3 +113,14 @@ export async function listDevices(projectId: string, typeValue: number): Promise
   return out;
 }
 
+
+/** Số thiết bị của một loại (đọc 1 bản ghi, lấy total). */
+export async function countDevices(projectId: string, typeValue: number): Promise<number> {
+  const d = await call<{ total?: number }>('POST', 'device/queryDevicePage', { projectId, body: { projectId, current: 1, size: 1, deviceTypeValue: typeValue } });
+  return Number(d?.total) || 0;
+}
+
+/** Model thiết bị + template deviceConfig của dự án (chỉ đọc). */
+export async function listModels(projectId: string): Promise<DeviceModel[]> {
+  return mapModels(await call('GET', `deviceModel/queryAllDeviceModelByProjectId/${projectId}`, { projectId }));
+}

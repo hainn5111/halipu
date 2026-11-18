@@ -1,5 +1,5 @@
 // Hàm THUẦN chuyển DTO Fonda → kiểu của mình. Mọi đặc thù của Fonda (tên trường, epoch ms, danh sách LCU từ 2 API…) nằm ở đây.
-import type { DeviceItem, DeviceType, LightStatus, Measurement } from '../../core/types';
+import type { ConfigEntry, DeviceItem, DeviceModel, DeviceType, LightStatus, Measurement } from '../../core/types';
 
 type Rec = Record<string, unknown>;
 const num = (v: unknown): number | undefined => { const x = typeof v === 'number' ? v : parseFloat(String(v ?? '')); return Number.isFinite(x) ? x : undefined; };
@@ -81,7 +81,7 @@ export function mapDeviceRow(r: Rec): DeviceItem | null {
   const id = str(r.deviceId), uid = str(r.uid);
   if (!id && !uid) return null;
   const g = { lat: num(r.lat) as number, lng: num(r.lng) as number };
-  return { id, uid, name: str(r.deviceName), code: str(r.deviceCode), typeValue: num(r.deviceTypeValue) ?? num(r.superDeviceType) ?? -1, model: str(r.deviceModelName), status: num(r.deviceStatus), ...(validGeo(g) ? g : {}), address: str(r.geographicAddress) };
+  return { id, uid, name: str(r.deviceName), code: str(r.deviceCode), typeValue: num(r.deviceTypeValue) ?? num(r.superDeviceType) ?? -1, model: str(r.deviceModelName), status: num(r.deviceStatus), ...(validGeo(g) ? g : {}), address: str(r.geographicAddress), raw: r };
 }
 
 export type DeviceCat = 'lcu' | 'rtu' | 'gateway' | 'smartbox' | 'sensor' | 'meter' | 'camera' | 'other';
@@ -97,6 +97,37 @@ export function categoryOf(typeName: string): DeviceCat {
   if (/meter/.test(n)) return 'meter';
   if (/camera/.test(n)) return 'camera';
   return 'other';
+}
+
+/** deviceModel/queryAllDeviceModelByProjectId → model; deviceConfig là CHUỖI JSON (parse hỏng → giữ chuỗi gốc ở `_raw`). */
+export function mapModels(d: unknown): DeviceModel[] {
+  if (!Array.isArray(d)) return [];
+  const out: DeviceModel[] = [];
+  for (const r of d as Rec[]) {
+    const id = str(r?.deviceModelId); if (!id) continue;
+    let config: Record<string, unknown> = {};
+    if (r.deviceConfig && typeof r.deviceConfig === 'object') config = r.deviceConfig as Rec;
+    else if (typeof r.deviceConfig === 'string' && r.deviceConfig.trim()) {
+      try { const v = JSON.parse(r.deviceConfig); config = v && typeof v === 'object' && !Array.isArray(v) ? v : { _raw: r.deviceConfig }; } catch { config = { _raw: r.deviceConfig }; }
+    }
+    out.push({ id, name: str(r.deviceModelName), typeId: str(r.deviceTypeId), config });
+  }
+  return out;
+}
+
+const isAttach = (v: unknown): v is Rec => !!v && typeof v === 'object' && !Array.isArray(v) && 'modelName' in (v as Rec);
+const attachItem = (a: Rec) => ({ name: str(a.modelName) || str(a.modelId), checked: a.checked === true, extra: [a.lampIndex != null ? `đèn #${str(a.lampIndex)}` : '', a.pathNum != null ? `${str(a.pathNum)} mạch` : ''].filter(Boolean).join(', ') });
+
+/** deviceConfig → các dòng hiển thị: bỏ giá trị rỗng/null; mảng/đối tượng {modelName,…} là "đính kèm" (template tổ hợp). */
+export function configEntries(config: Record<string, unknown>): ConfigEntry[] {
+  const out: ConfigEntry[] = [];
+  for (const [key, v] of Object.entries(config)) {
+    if (v == null || v === '' || (Array.isArray(v) && v.length === 0)) continue;
+    const list = Array.isArray(v) ? v : [v];
+    if (list.every(isAttach)) { out.push({ key, kind: 'attached', items: (list as Rec[]).map(attachItem) }); continue; }
+    out.push({ key, kind: 'value', text: typeof v === 'object' ? JSON.stringify(v) : String(v) });
+  }
+  return out;
 }
 
 export function toCsv(cols: string[], rows: Array<Array<unknown>>): string {

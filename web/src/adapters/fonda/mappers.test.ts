@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { categoryOf, mapDeviceRow, mapDeviceTypes, mapLight, mapListRow, mapPageRow, mapTrend, mergeLcus, pickGeo, ratedPowerOf, toCsv, validGeo } from './mappers';
+import { categoryOf, configEntries, mapModels, mapDeviceRow, mapDeviceTypes, mapLight, mapListRow, mapPageRow, mapTrend, mergeLcus, pickGeo, ratedPowerOf, toCsv, validGeo } from './mappers';
 
 describe('pickGeo / validGeo', () => {
   it('đọc lat/lng dạng chuỗi', () => expect(pickGeo({ lat: '20.93271', lng: '105.67026' })).toEqual({ lat: 20.93271, lng: 105.67026 }));
@@ -55,4 +55,19 @@ describe('phân loại & lamp/pole', () => {
     expect(categoryOf('Meter')).toBe('meter'); expect(categoryOf('Camera')).toBe('camera'); expect(categoryOf('Power Box')).toBe('other');
   });
   it('Lamps / Lamp Pole rơi vào other', () => { expect(categoryOf('Lamps')).toBe('other'); expect(categoryOf('Lamp Pole')).toBe('other'); });
+});
+
+describe('model / deviceConfig', () => {
+  it('mapModels parse chuỗi JSON, hỏng thì giữ _raw, bỏ hàng thiếu id', () => {
+    const r = mapModels([{ deviceModelId: 'M1', deviceModelName: 'a', deviceTypeId: 'T', deviceConfig: '{"lampPower":100}' }, { deviceModelId: 'M2', deviceConfig: 'xx' }, { deviceModelName: 'z' }]);
+    expect(r).toHaveLength(2); expect(r[0].config).toEqual({ lampPower: 100 }); expect(r[1].config).toEqual({ _raw: 'xx' });
+    expect(mapModels(null)).toEqual([]);
+  });
+  it('configEntries: bỏ rỗng, nhận diện danh sách đính kèm', () => {
+    const e = configEntries({ a: null, b: '', c: [], d: 5, lamp: [{ checked: true, modelId: 'x', modelName: 'Đèn A', lampIndex: 1 }], pole: { checked: false, modelId: 'p', modelName: 'Cột' }, ext: [{ name: 'n', value: true }] });
+    expect(e.map(x => x.key)).toEqual(['d', 'lamp', 'pole', 'ext']);
+    expect(e[1]).toEqual({ key: 'lamp', kind: 'attached', items: [{ name: 'Đèn A', checked: true, extra: 'đèn #1' }] });
+    expect(e[2]).toMatchObject({ kind: 'attached', items: [{ name: 'Cột', checked: false }] });
+    expect(e[3]).toMatchObject({ kind: 'value' });
+  });
 });

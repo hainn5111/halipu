@@ -67,4 +67,5 @@ Cấu trúc `deviceConfig` đổi theo loại (mẫu model đầu tiên của t�
 
 - Tìm tham số đúng của `deviceModel/queryDeviceModelByDeviceTypeAndProject` (bắt request từ web gốc).
 - Chưa dò dữ liệu của loại có thiết bị nhưng không thấy ở dự án mẫu (RTU, SmartBox, cảm biến… đều rỗng ở dự án này).
-- Có thể làm tab "Mẫu thiết bị" (chỉ đọc) dùng `queryAllDeviceModelByProjectId` + `JSON.parse(deviceConfig)` + dictionary.
+- Tab **Mẫu thiết bị** (`features/devices/Models.tsx`) đã có: `queryAllDeviceModelByProjectId` + `JSON.parse(deviceConfig)`; chưa dịch enum bằng dictionary (đối chiếu key↔trường chưa chắc).
+- Lưu ý: các tab thiết bị phải lấy loại từ `queryAllDeviceTypeByProjectId` (60 loại); `queryDeviceTypesWithUidOfProject` chỉ trả 3 loại.
