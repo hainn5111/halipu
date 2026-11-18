@@ -143,7 +143,7 @@ Môi trường cloud của Claude **không kết nối được** tới Fonda (`
 
 - **Nhóm "Công cụ dò (chỉ preview)"** (tab Dò API…): chỉ có khi build với `VITE_ENABLE_PROBE=1` (`preview.yml` đặt; `pages.yml`/main thì không → không có tab lẫn mã trong bundle) hoặc `npm run dev`. Công cụ dò/đọc dữ liệu mới thêm vào nhóm này trong `src/app/tabs.ts`, mã ở `features/probe/`, hàm gọi API ở `adapters/fonda/probe.ts`. Chỉ gọi API đọc.
 - Điều hướng bên trái: nhóm xổ/thu được (nhớ trong localStorage `nav_open`), nhóm chứa tab đang mở luôn xổ.
-- Loại thiết bị, tab thiết bị và template model: xem `15-loai-thiet-bi-va-template.md`. Dò API chỉ đọc bằng workflow `device-probe.yml` (chạy tay, cần secret, mẫu trong artifact).
+- Loại thiết bị, tab thiết bị và template model: xem `15-loai-thiet-bi-va-template.md`.
 - Các tab hiện chỉ có nhãn "sắp có": Tổng quan, Cảnh báo, Nhóm đèn, Lịch điều khiển, Báo cáo.
 - Đổi sang **proxy HTTPS** khi có máy chủ (bỏ nhu cầu bật Insecure content).
 - Dịch vụ thu thập lịch sử chạy 24/7 nếu cần dữ liệu khi không mở web (hiện lịch sử lấy từ server Fonda).

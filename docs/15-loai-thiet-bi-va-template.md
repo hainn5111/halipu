@@ -1,6 +1,6 @@
 # Loại thiết bị, thiết bị khác và template model (`deviceConfig`)
 
-Kết quả dò thật bằng workflow **Device probe** (`.github/workflows/device-probe.yml`, script `e2e/device-probe.js`, **chỉ đọc**) trên dự án `9a59bd49…`. Cấu trúc chắc chắn (quan sát từ JSON thật); nghĩa từng trường là suy luận. Chạy lại probe: Actions → "Device probe (chỉ đọc)" → Run workflow; mẫu dữ liệu (≤ 3 bản ghi/API) nằm trong artifact `device-probe`.
+Kết quả dò thật bằng tab **Dò API (chỉ đọc)** (nhóm "Công cụ dò", chỉ có ở bản preview; mã `features/probe/`, `adapters/fonda/probe.ts`) trên dự án `9a59bd49…`. Cấu trúc chắc chắn (quan sát từ JSON thật); nghĩa từng trường là suy luận. Chạy lại: mở tab → "Chạy dò" → "Tải JSON mẫu" (≤ 3 bản ghi/API).
 
 ## 1. Loại thiết bị của dự án
 
@@ -63,7 +63,39 @@ Cấu trúc `deviceConfig` đổi theo loại (mẫu model đầu tiên của t�
 
 `GET dictionary/queryDictionaryByKey/{key}` → `[{dictValue, dsName, dictName, dictStairId, dictStairRemark, dictId, dictType, dictionarySecond[]}]`. Đã dò: key 3 (Lamp Type, 6 giá trị), 15 (3), 17 (Power Type, 8), 19 (2), 20 (2), 21, 55, 99, 116, 119 — bảng tên nhóm ở `05-dictionaries.md`. Các trường enum trong `deviceConfig` (`lampTypes`, `powerProtocol`, `poleArmType`, `rtuType`, `gatewayTypes`, `dimmingLevel`…) tra bằng các key này (đối chiếu key↔trường **chưa kiểm chứng đủ**).
 
-## 5. Việc còn mở
+## 5. Quan hệ thực tế & template (dữ liệu dự án mẫu, đã dò)
+
+**Thiết bị → template:** mọi bản ghi `device/queryDevicePage` có `deviceModelId` (= template) và `deviceModelName`; model có `deviceTypeId/Value` nên suy ra loại. Model còn mang `protocolValue/protocolName` (53 = RF/F2, 4 = CAT1/F2, 12 = Gateway/SDMP, 1 = RTU/FEMS), `protocolVersion`, `systemConfig` (0 thường; **3 = nội bộ bộ tập trung, 4 = nội bộ power box** — theo ghi chú "集中器内置/电源管理盒内置" của model), `poleTypeId` (chỉ Lamp Pole), `url/fileId` (ảnh).
+
+**Quan hệ giữa thiết bị thật** (trường nằm trên *bản ghi thiết bị*, không nằm trong template):
+| Từ | Trường | Trỏ tới |
+|---|---|---|
+| Lamps (5) | `poleId`, `poleCode`, `higherDevice` (= tên cột) | Lamp Pole (`deviceId`) |
+| Lamps (5) | `luid` (UID LCU), `lcuId` (= `deviceId` của LCU), `bindLcu` | LCU. `bindLcu=1` có LCU; `bindLcu=2` **chưa gắn LCU** (`luid/lcuId = null`) — đèn vẫn gắn được vào cột mà không cần LCU |
+| LCU (2) | `poleId`, `poleCode`, `higherDevice`, `lat/lng` | Lamp Pole; toạ độ LCU = toạ độ cột khi đã gắn |
+| Lamp Pole (6) | `lcuId` (null ở mẫu), `deviceModelId` | LCU (ngược chiều, hiếm dùng); model cột có `poleTypeId` |
+→ cây thực tế: **Cột → (LCU) → Đèn**, LCU và đèn cùng trỏ về cột bằng `poleId`; đèn trỏ về LCU bằng `lcuId/luid`. Đèn mang `lampPower/nominalPower/ratedCurrent/nominalCurrent` copy từ `deviceConfig` của model lúc tạo.
+
+**Hai kiểu template:**
+1. *Thuộc tính* (LCU, Lamps, Lamp Pole, Gateway, Concentrator, Solar Light): chỉ chứa thông số kỹ thuật, không chứa quan hệ. Ví dụ Lamps `Đèn đường phố - LED`: `lampTypes:4, powerTypes:3, powerProtocol:1, lampPower/nominalPower:"40", ratedCurrent:"0.2", ratedPowerFactor:"0.97", ratedVoltage:220, lampLifetime:"50000", dimmingLevel:20, lampHolderNum:1`; (số lưu dạng chuỗi hoặc số tuỳ model). LCU: `lampHolderNum, dimmingLevel, currentsNum, tempsNum, loopType, lcuType, extensions[7 cờ], functionList[1..4]`. Lamp Pole: `poleType, poleTypeId, poleArmType`.
+2. *Tổ hợp* (Electric Meter, Switch and detection): khai **thiết bị đi kèm** khi tạo bộ tập trung / power box. Khoá thêm so với §3b: `lcuAndLamp[] {lcu:{checked,modelId,modelName}, lamp:[{checked,modelId,lampIndex,modelName}]}` (một LCU kèm các đèn theo chỉ số), `built-inKm[] {checked, control, modelId, modelName, lamp:[…]}` (KM nội bộ + đèn), `coreGateway{…}`, `outerMeter[]`, `userMeter[]`, `powerModule[]`, `charging[]`, `broadcast[]`, và thông số `pathNum, taskNum, voltageP, cameraType, hasTaskNum, breakerType, frequencyPoint, poleTypeId`; `km[]/ai[]/di[]` có `pathNum`. Ở mẫu tất cả `checked:false`, `modelId:""` (template trống). Model mẫu "Built-in di" có `deviceConfig` không phải JSON object.
+
+**Enum trong `deviceConfig` ↔ dictionary** (đối chiếu giá trị; ✔ = khớp rõ ràng):
+| Trường | Dictionary | Ghi chú |
+|---|---|---|
+| `lampTypes` | key 3 (Lamp Type) | |
+| `powerTypes` | key 17 (Power Type) | |
+| `poleArmType` | key 55 | |
+| `meterType` | key 21 | |
+| `rtuType` | key 99 | |
+| `gatewayTypes` | key 119 | ✔ `2` ↔ "RTU500LD" khớp tên model RTU500LD-HPL1 |
+| `currentP` (Electric Meter) | key 15 (Current Rate) | ✔ `30` = `dictValue` của "150/5" |
+| `dimmingLevel` | key 20 | giá trị lưu là **số hiển thị** (20, "100"), không phải `dictValue` (1→"20", 2→"100") |
+| `lampHolderNum` | key 19 (số đầu đèn) | suy luận |
+
+**Việc dò còn thiếu:** `lcuActor/page` trả rỗng dù LCU tồn tại (lấy LCU qua `device/queryDevicePage` loại 2, hoặc `lcuActor/getLcuListByProjectId`), nên chi tiết `queryLcuAndRelatedBy…`, `projectLampActor/queryLampOfLcu`, `poleActor/…` **chưa có dữ liệu thật** — tab dò đã sửa để lấy LCU từ nguồn đúng, chạy lại để bổ sung.
+
+## 6. Việc còn mở
 
 - Tìm tham số đúng của `deviceModel/queryDeviceModelByDeviceTypeAndProject` (bắt request từ web gốc).
 - Chưa dò dữ liệu của loại có thiết bị nhưng không thấy ở dự án mẫu (RTU, SmartBox, cảm biến… đều rỗng ở dự án này).

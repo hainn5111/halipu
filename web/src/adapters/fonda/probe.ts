@@ -40,8 +40,10 @@ export async function runProbe(pid: string, log: (line: string) => void, withLcu
   results.push({ name: 'model-config-by-type', ok: true, data: trim(parsed) });
 
   if (withLcu) {
-    const pg = (await get('lcu-page', 'POST', 'lcuActor/page', { projectId: pid, current: 1, size: 20, integratedQuery: '' })) as Rec | null;
-    const lcus: Rec[] = pg?.records || [];
+    // lcuActor/page có thể trả rỗng dù LCU tồn tại (đã gặp) → lấy LCU từ device/queryDevicePage loại 2 (LCU): deviceId = lcuId, có uid
+    const pg = (await get('lcu-list', 'POST', 'device/queryDevicePage', { projectId: pid, current: 1, size: 5, deviceTypeValue: 2 })) as Rec | null;
+    const lcus: Rec[] = (pg?.records || []).map((r: Rec) => ({ uid: r.uid, lcuId: r.deviceId, deviceModelId: r.deviceModelId, poleId: r.poleId }));
+    await get('lcu-list-getLcuListByProjectId', 'POST', 'lcuActor/getLcuListByProjectId', { projectId: pid });
     for (const [i, l] of lcus.slice(0, 3).entries()) {
       const tag = `lcu${i}`;
       const d = ((await get(`${tag}-detail-byUid`, 'GET', `lcuActor/queryLcuAndRelatedByUid/${l.uid || l.lcuId}`)) || {}) as Rec;
