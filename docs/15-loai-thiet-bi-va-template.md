@@ -95,7 +95,35 @@ Cấu trúc `deviceConfig` đổi theo loại (mẫu model đầu tiên của t�
 
 **Việc dò còn thiếu:** `lcuActor/page` trả rỗng dù LCU tồn tại (lấy LCU qua `device/queryDevicePage` loại 2, hoặc `lcuActor/getLcuListByProjectId`), nên chi tiết `queryLcuAndRelatedBy…`, `projectLampActor/queryLampOfLcu`, `poleActor/…` **chưa có dữ liệu thật** — tab dò đã sửa để lấy LCU từ nguồn đúng, chạy lại để bổ sung.
 
-## 6. Việc còn mở
+## 6. Cây Cột – LCU – Đèn: các API đọc quan hệ (đã dò thật, dự án mẫu)
+
+| API | Trả về |
+|---|---|
+| `GET lcuActor/queryLcuAndRelatedByUid/{uid}` | LCU: thông số, `deviceConfig` (object, đã parse), `poleId`, `poleName`, toạ độ, địa chỉ. **Không có `lamp[]`** |
+| `GET lcuActor/queryLcuAndRelatedByLcuId/{lcuId}` | như trên + `lamp[]` (đèn của LCU) + trạng thái mạng (`networkStatus`, `heartbeatDelay`, `version`, `runTime`, `freq`, `lightDecline`, `dimDirection`…) |
+| `GET projectLampActor/queryLampOfLcu/{lcuId}` | `[]` đèn của LCU, có `poleId`, `lcuModelId`, `rtuId`, `rssi/snr/signals/losted` |
+| `GET poleActor/queryLcusOfPoleByLcuId/{lcuId}` | `{lamp[], pole[], lcu[]}` — bộ ba (đèn, cột, LCU) của một LCU; `lcu[]` đủ trường (`defaultUid`, `poleTypeName`, `onlineTime`…) |
+| `GET poleActor/queryPoleAndRelatedById/{poleId}` | cột + `deviceConfig` + **`attributeDevice[]`** (xem dưới) |
+| `GET poleActor/queryAttributeDeviceOfPole/{poleId}` | **mọi loại thiết bị có thể gắn trên cột**, mỗi loại một mảng (xem dưới) |
+| `GET deviceModel/queryDeviceModelByDeviceModelId/{id}` và `…AndTypeAndSystemAndFactoryById/{id}` | model + `deviceConfig` đã parse + `url/fileId`, `protocolValue/Id/Version`, `deviceModelRemark` (bản "Full" không có `url/fileId`) |
+
+**Đèn của LCU** (`lamp[]`): `lampId, channel` (đầu đèn/kênh 1..`lampHolderNum`), `maxchannel, lgnum, kgnum, ls, dims, dim, angle, luid, cuid, lcuId, deviceModelId, lampType, powerType, powerProtocol, lampPower` (copy từ model) cùng số đo mạng (`signals, snr, rssi, losted, alarms`).
+
+**`attributeDevice[]` của cột** — mỗi phần tử là một "bộ gắn trên cột": `{checked, lcu:{deviceId, uid, lampHolderNum, deviceModelId}, lamp:[{deviceId, deviceName, deviceModelId, lampNum (= kênh), luid, lcuId, checked, solarId, solarLcuId}], solar:{}, solarLcu:{}}` → một LCU kèm các đèn theo số kênh, hoặc nhánh năng lượng mặt trời. Đây chính là cấu trúc mà template tổ hợp `lcuAndLamp[]` khai báo trước.
+
+**Các loại gắn được trên cột** (`queryAttributeDeviceOfPole`): `lamp, lcu, pole, solar, solarLcu, wifi, electronicLock, dtu, charging, wcu, screen, signage, powerBox, appeal, waterImmerDetect, aibox, loudspeaker, tiltSensor, sensor, thermometer, camera, gateway, trafficLight`.
+
+**Các quan hệ khác thấy được:**
+- `LCU.defaultUid` = UID của Gateway (`00000E2025510038` ở dự án mẫu) → LCU đăng ký qua gateway/bộ tập trung nào (suy luận); LCU còn `rtuId`, `zoneId`, `groupNodeId`, `lcuInfoId`, `inWhiteSpace`, `gisDisplay`.
+- `poleTypeName` (vd "Single arm lamp") suy ra từ `poleTypeId` của model cột; `poleArmType` (dict 55) là kiểu tay đèn.
+- `deviceConfig.extensions[]` của model LCU là danh sách cờ chức năng `{name,label,value}` (`lcuTask, lightOperated, poleSlant, temDetection, DIDetection, GPS, remoteUpgrade`) — tên hiển thị theo ngôn ngữ người dùng, model mẫu chỉ bật 3 cờ; `functionList` là mã chức năng (1–4).
+- Vị trí: LCU và đèn **dùng chung toạ độ của cột** khi đã gắn.
+
+**Chưa dò:** cột chưa gắn LCU (Cột 2, có 2 đèn `bindLcu=2`) — tab dò đã bổ sung `pole{i}-related/attr-devices` cho tối đa 3 cột bất kỳ; `projectLampActor/queryLampAndRelatedById` (lần trước không chạy do lấy sai nguồn `lamp[]`, đã sửa).
+
+**API ghi liên quan (CHƯA gọi, chưa biết body):** `deviceModel/saveNew|updateNew|delete|copyDeviceModel|useOrNo`, `device/save`, `device/placeDevice`, `lcuActor/save|update|bindPole|delete`, `projectLampActor/update`, `poleActor/save|sensorAssociatedWithPole|fogPileAssociatedWithPole|delete`, `device/connectAncillaryDevice|disconnectAncillaryDevice`. Body phải bắt từ thao tác trên web gốc rồi mới thử (trên dữ liệu thử, có xác nhận).
+
+## 7. Việc còn mở
 
 - Tìm tham số đúng của `deviceModel/queryDeviceModelByDeviceTypeAndProject` (bắt request từ web gốc).
 - Chưa dò dữ liệu của loại có thiết bị nhưng không thấy ở dự án mẫu (RTU, SmartBox, cảm biến… đều rỗng ở dự án này).

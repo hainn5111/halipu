@@ -61,14 +61,21 @@ export async function runProbe(pid: string, log: (line: string) => void, withLcu
       const d = ((await get(`${tag}-detail-byUid`, 'GET', `lcuActor/queryLcuAndRelatedByUid/${l.uid || l.lcuId}`)) || {}) as Rec;
       const lk = linkPaths(d, modelMap); say(`links ${tag}: ${lk.length ? '' : 'không có trường nào trỏ tới model'}`); lk.forEach(x => say(`    ${x}`));
       const lcuId = d.lcuId || l.lcuId, modelId = d.deviceModelId || l.deviceModelId;
-      await get(`${tag}-detail-byLcuId`, 'GET', `lcuActor/queryLcuAndRelatedByLcuId/${lcuId}`);
+      const dl = ((await get(`${tag}-detail-byLcuId`, 'GET', `lcuActor/queryLcuAndRelatedByLcuId/${lcuId}`)) || {}) as Rec;
       if (modelId) { await get(`${tag}-model-byId`, 'GET', `deviceModel/queryDeviceModelByDeviceModelId/${modelId}`); await get(`${tag}-model-full`, 'GET', `deviceModel/queryDeviceModelAndTypeAndSystemAndFactoryById/${modelId}`); }
       await get(`${tag}-lamps-of-lcu`, 'GET', `projectLampActor/queryLampOfLcu/${lcuId}`);
-      const lamp0 = Array.isArray(d.lamp) ? d.lamp[0] : null; if (lamp0?.lampId) await get(`${tag}-lamp-related`, 'GET', `projectLampActor/queryLampAndRelatedById/${lamp0.lampId}`);
+      const lamp0 = Array.isArray(dl.lamp) ? dl.lamp[0] : Array.isArray(d.lamp) ? d.lamp[0] : null; if (lamp0?.lampId) await get(`${tag}-lamp-related`, 'GET', `projectLampActor/queryLampAndRelatedById/${lamp0.lampId}`);
       await get(`${tag}-poles-of-lcu`, 'GET', `poleActor/queryLcusOfPoleByLcuId/${lcuId}`);
       const poleId = d.poleId || (Array.isArray(d.pole) && (d.pole[0]?.deviceId || d.pole[0]?.poleId));
       if (poleId) { await get(`${tag}-pole-related`, 'GET', `poleActor/queryPoleAndRelatedById/${poleId}`); await get(`${tag}-pole-attr-devices`, 'GET', `poleActor/queryAttributeDeviceOfPole/${poleId}`); }
       else say(`${tag}: LCU không gắn cột (không có poleId)`);
+    }
+  }
+  if (withLcu) {
+    // Cột bất kỳ (kể cả cột chưa gắn LCU): cấu trúc thiết bị gắn trên cột
+    for (const [i, p] of (byType['Lamp Pole'] || []).slice(0, 3).entries()) {
+      await get(`pole${i}-related`, 'GET', `poleActor/queryPoleAndRelatedById/${p.deviceId}`);
+      await get(`pole${i}-attr-devices`, 'GET', `poleActor/queryAttributeDeviceOfPole/${p.deviceId}`);
     }
   }
   return { results, lines };
