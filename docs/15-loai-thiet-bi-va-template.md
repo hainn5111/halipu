@@ -119,7 +119,14 @@ Cấu trúc `deviceConfig` đổi theo loại (mẫu model đầu tiên của t�
 - `deviceConfig.extensions[]` của model LCU là danh sách cờ chức năng `{name,label,value}` (`lcuTask, lightOperated, poleSlant, temDetection, DIDetection, GPS, remoteUpgrade`) — tên hiển thị theo ngôn ngữ người dùng, model mẫu chỉ bật 3 cờ; `functionList` là mã chức năng (1–4).
 - Vị trí: LCU và đèn **dùng chung toạ độ của cột** khi đã gắn.
 
-**Chưa dò:** cột chưa gắn LCU (Cột 2, có 2 đèn `bindLcu=2`) — tab dò đã bổ sung `pole{i}-related/attr-devices` cho tối đa 3 cột bất kỳ; `projectLampActor/queryLampAndRelatedById` (lần trước không chạy do lấy sai nguồn `lamp[]`, đã sửa).
+**Đã dò thêm — cột CÓ LCU và cột KHÔNG có LCU** (Cột 1 và Cột 2 của dự án mẫu):
+| | Cột 1 (có LCU) | Cột 2 (không LCU) |
+|---|---|---|
+| `attributeDevice[]` | 1 phần tử: `lcu:{uid, lampHolderNum, deviceModelId, deviceId}` + `lamp:[{lampNum:1, luid, lcuId, deviceId…}]` | **2 phần tử, mỗi đèn một phần tử**: `lcu:{}`, `solar:{}`, `solarLcu:{}`, `lamp:[{lampNum:1, luid:null, lcuId:null, deviceId…}]` |
+| `queryAttributeDeviceOfPole` → `lamp[]` | có số đo (`ls, dim, signals, snr, ctype, losted`, `cuid`, `protocolName: RF/F2`) | `luid/lcuId/cuid = null`, **không có số đo** (`ls, dim, signals, snr, ctype, losted = null`), `dims` 100 hoặc null |
+| `lcu[]` | 1 LCU đầy đủ | `[]` |
+→ **Đèn không LCU** là một phần tử `attributeDevice` có `lcu = {}`; đèn **chỉ thuộc cột** (qua `poleId`), mang toạ độ của cột, kênh mặc định `lampNum/channel = 1`. Khi gắn LCU thì đèn nhận `luid`, `lcuId`, `cuid` và bắt đầu có số đo; `bindLcu` đổi 2 → 1.
+- `projectLampActor/queryLampAndRelatedById/{lampId}` → thông tin đèn + `deviceConfig` của **model đèn** (`lampTypes, powerTypes, powerProtocol, lampPower, nominalPower, ratedCurrent, ratedPowerFactor, ratedApparentPower, lampLifetime…`; số lưu dạng chuỗi) + `url/fileId`; **không có `poleId`/`lcuId`** — quan hệ phải lấy từ `device/queryDevicePage`, `queryLampOfLcu` hoặc `queryPoleAndRelatedById`.
 
 **API ghi liên quan (CHƯA gọi, chưa biết body):** `deviceModel/saveNew|updateNew|delete|copyDeviceModel|useOrNo`, `device/save`, `device/placeDevice`, `lcuActor/save|update|bindPole|delete`, `projectLampActor/update`, `poleActor/save|sensorAssociatedWithPole|fogPileAssociatedWithPole|delete`, `device/connectAncillaryDevice|disconnectAncillaryDevice`. Body phải bắt từ thao tác trên web gốc rồi mới thử (trên dữ liệu thử, có xác nhận).
 
