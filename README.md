@@ -1,3 +1,5 @@
+> Làm việc trên repo này (người hoặc session Claude): đọc [`docs/14-quy-trinh-phat-trien.md`](docs/14-quy-trinh-phat-trien.md) và [`CLAUDE.md`](CLAUDE.md) trước.
+
 ## Cấu trúc
 - `web/` — **bản chính đang phát triển**: React + TypeScript + Vite, build tĩnh, không phụ thuộc host (xem `web/README.md`).
 - `docs/` — tài liệu API Fonda, thực thể, kiến trúc.
