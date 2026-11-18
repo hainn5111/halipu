@@ -2,8 +2,8 @@ name: Deploy to GitHub Pages
 
 on:
   push:
-    branches: [main, claude/alt-project-id, feature/home-tabs-gis]
-    paths: ['site/**', '.github/workflows/pages.yml']
+    branches: [main, claude/alt-project-id, feature/home-tabs-gis, feature/react-app]
+    paths: ['site/**', 'web/**', '.github/workflows/pages.yml']
   workflow_dispatch:
 
 permissions:
@@ -27,8 +27,20 @@ jobs:
       - name: Stamp build info
         run: |
           echo "window.BUILD_INFO = { branch: '${GITHUB_REF_NAME}', commit: '${GITHUB_SHA::7}', time: '$(date -u '+%Y-%m-%d %H:%M')Z' };" > site/build-info.js
+      - uses: actions/setup-node@v4
+        with: { node-version: 20, cache: npm, cache-dependency-path: web/package-lock.json }
+      - name: Build React app (web/)
+        working-directory: web
+        run: |
+          npm ci
+          VITE_BUILD_INFO="${GITHUB_REF_NAME}@${GITHUB_SHA::7}" npm run build
+      - name: Assemble site (old site at root, React app at /next/)
+        run: |
+          mkdir -p _site/next
+          cp -r site/. _site/
+          cp -r web/dist/. _site/next/
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3
-        with: { path: site }
+        with: { path: _site }
       - id: deployment
         uses: actions/deploy-pages@v4
