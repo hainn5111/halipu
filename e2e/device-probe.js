@@ -48,6 +48,14 @@ function shape(v, path = '', acc = new Set()) {
     save('types-with-uid', await api('GET', `deviceTypeController/queryDeviceTypesWithUidOfProject/${pid}`));
     save('types-queryAllDeviceType', await api('POST', 'deviceTypeController/queryAllDeviceType', {}));
     save('models-by-project', await api('GET', `deviceModel/queryAllDeviceModelByProjectId/${pid}`));
+    // models-by-project[].deviceConfig là chuỗi: thử parse JSON và in cấu trúc theo loại thiết bị (template)
+    const models = (await api('GET', `deviceModel/queryAllDeviceModelByProjectId/${pid}`)).data;
+    if (Array.isArray(models)) {
+      const byType = {};
+      for (const m of models) { let c = m.deviceConfig; try { c = JSON.parse(c); } catch { /* giữ nguyên chuỗi */ } (byType[m.deviceTypeId] ||= []).push({ name: m.deviceModelName, config: c }); }
+      fs.writeFileSync('probe-out/model-config-by-type.json', JSON.stringify(byType, null, 2));
+      for (const t of Array.isArray(types.data) ? types.data : []) { const ms = byType[t.deviceTypeId]; if (ms) { out(`deviceConfig ${t.deviceTypeValue}=${t.deviceTypeName}`, `${ms.length} model`); for (const line of shape(ms[0].config)) console.log(`    ${line}`); } }
+    }
     for (const k of DICTS) save(`dict-${k}`, await api('GET', `dictionary/queryDictionaryByKey/${k}`));
 
     const list = Array.isArray(types.data) ? types.data : [];
@@ -55,7 +63,7 @@ function shape(v, path = '', acc = new Set()) {
     for (const t of list) {
       const tag = `${t.deviceTypeValue}`;
       save(`model-page-${tag}`, await api('POST', 'deviceModel/getDeviceModelPage', { projectId: pid, current: 1, size: 3, deviceTypeId: t.deviceTypeId }));
-      save(`model-by-type-${tag}`, await api('POST', 'deviceModel/queryDeviceModelByDeviceTypeAndProject', { projectId: pid, deviceTypeId: t.deviceTypeId }));
+      save(`model-by-type-${tag}`, await api('POST', 'deviceModel/queryDeviceModelByDeviceTypeAndProject', { projectId: pid, deviceTypeId: t.deviceTypeId, deviceType: t.deviceTypeValue }));
       save(`devices-${tag}`, await api('POST', 'device/queryDevicePage', { projectId: pid, current: 1, size: 3, deviceTypeValue: t.deviceTypeValue }));
     }
   } catch (x) { out('FAILED', x.message.split('\n')[0]); process.exitCode = 1; }
