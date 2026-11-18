@@ -72,7 +72,7 @@ jobs:
         with:
           script: |
             const marker = '<!-- preview-link -->';
-            const body = `${marker}\n🔗 **Preview:** ${process.env.URL}\n\nCommit \`${context.sha.slice(0, 7)}\`. Link tự cập nhật mỗi lần push vào PR và bị xoá khi đóng PR.`;
+            const body = `${marker}\n🔗 **Preview:** ${process.env.URL}\n\nCommit \`${(context.payload.pull_request?.head.sha || context.sha).slice(0, 7)}\`. Link tự cập nhật mỗi lần push vào PR và bị xoá khi đóng PR.`;
             const { owner, repo } = context.repo, issue_number = context.issue.number;
             const comments = await github.paginate(github.rest.issues.listComments, { owner, repo, issue_number });
             const old = comments.find(c => c.body && c.body.startsWith(marker));
