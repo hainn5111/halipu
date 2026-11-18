@@ -36,7 +36,7 @@ html,body{width:100%;height:100%}body{display:block;place-items:initial;padding:
 <div class="app">
   <header class="top"><b>SLCP</b><small id="b"></small><span>Xin chào, <b id="n" style="flex:none"></b></span><button id="o">Đăng xuất</button></header>
   <nav class="nav" id="nav"></nav>
-  <section class="main"><div class="crumb" id="crumb"></div><div class="pane" id="pane"></div><div class="frames" id="fwrap" hidden></div></section>
+  <section class="main"><div class="crumb" id="crumb"></div><div class="crumb" id="fst" hidden style="font-size:12px;border-top:0;padding-top:0"></div><div class="pane" id="pane"></div><div class="frames" id="fwrap" hidden></div></section>
 </div>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
 <script src="build-info.js"></script><script src="config.js"></script><script src="api.js"></script>
@@ -64,6 +64,11 @@ const TREE = [
 ];
 const find = id => TREE.flatMap(g => g.tabs.map(t => ({ ...t, group: g.group }))).find(t => t.id === id);
 let cleanup = null;
+addEventListener('message', ev => {   // trạng thái từ iframe LCU, hiện dưới breadcrumb để dễ chẩn đoán
+  if (ev.origin !== location.origin || !ev.data || ev.data.slcp !== 'lcus-status') return;
+  fst.hidden = false; fst.style.color = ev.data.kind === 'err' ? '#f87171' : ev.data.kind === 'ok' ? '#4ade80' : '#94a3b8';
+  fst.textContent = 'LCU: ' + ev.data.text;
+});
 nav.innerHTML = TREE.map(g => `<div class="grp">${esc(g.group)}</div>` + g.tabs.map(t =>
   `<button type="button" class="tab${t.render || t.frame ? '' : ' soon'}" data-id="${t.id}">${esc(t.label)}${t.render || t.frame ? '' : ' · sắp có'}</button>`).join('')).join('');
 nav.onclick = e => { const bt = e.target.closest('.tab'); if (bt) open(bt.dataset.id); };
@@ -73,7 +78,7 @@ function open(id) {
   nav.querySelectorAll('.tab').forEach(x => x.classList.toggle('on', x.dataset.id === t.id));
   crumb.innerHTML = `${esc(t.group)} › <b>${esc(t.label)}</b>`;
   pane.innerHTML = '';
-  fwrap.hidden = !t.frame; pane.hidden = !!t.frame;   // tab dạng iframe: giữ iframe sống khi chuyển tab, không tải lại
+  fst.hidden = !t.frame || !fst.textContent; fwrap.hidden = !t.frame; pane.hidden = !!t.frame;   // tab dạng iframe: giữ iframe sống khi chuyển tab, không tải lại
   fwrap.querySelectorAll('iframe').forEach(f => { f.hidden = f.dataset.id !== t.id; });
   if (t.frame) {
     const ex = fwrap.querySelector(`iframe[data-id="${t.id}"]`);

@@ -54,12 +54,16 @@ SLCP.openWs((m, raw) => {
   renderLive();
 }, st => { ws.textContent = st; wsState = st; renderLive(); });
 renderLive();
+const embedded = parent !== window;
+const report2 = (kind, text) => { if (embedded) parent.postMessage({ slcp: 'lcus-status', kind, text: String(text).slice(0, 300) }, location.origin); };
+addEventListener('error', ev => report2('err', 'JS lỗi: ' + ev.message));
+addEventListener('unhandledrejection', ev => report2('err', 'Promise lỗi: ' + (ev.reason && ev.reason.message || ev.reason)));
 let loading = false;
 async function loadAll() {   // tải danh sách LCU + đọc trạng thái; gọi lại được khi tab được bấm lại trong home.html
-  if (loading) return; loading = true; s.textContent = 'Đang tải…'; e.textContent = '';
+  if (loading) return; loading = true; s.textContent = 'Đang tải…'; e.textContent = ''; report2('info', 'Đang tải danh sách LCU…');
   try {
     const { rows, report } = await SLCP.listAllLcus(m => { s.textContent = m; });
-    s.textContent = `${rows.length} LCU`;
+    s.textContent = `${rows.length} LCU`; report2('ok', `${rows.length} LCU (${report.join(' | ')})`);
     rep.textContent = report.join('\n');
     t.innerHTML = rows.map((r, i) => `<tr class="lrow"><td>${i+1}<br><button type="button" class="tg" data-toggle="${esc(r.uid)}" title="Lịch sử đo">▸ Lịch sử</button></td><td><b>${esc(r.uid)}</b></td><td>${esc(r.deviceName)}</td><td>${esc(r.deviceCode)}</td><td>${esc(r.lcuId)}</td><td>${esc(r.modelName)}</td><td>${esc((r._pid||'').slice(0,8))}</td>
 <td class="ctl" data-uid="${esc(r.uid)}" data-pid="${esc(r._pid)}" data-lcuid="${esc(r.lcuId)}" data-name="${esc(r.deviceName)}"><div class="c"><label>Đèn/kênh <input class="num" type="number" min="1" value="1"></label>
@@ -72,7 +76,7 @@ async function loadAll() {   // tải danh sách LCU + đọc trạng thái; g�
     hps.innerHTML = tds.map(td => `<option value="${esc(td.dataset.uid)}">${esc(td.dataset.name || '(không tên)')} · ${esc(td.dataset.uid)} · lcuId ${esc(td.dataset.lcuid)}</option>`).join('');
     const loop = () => tds.forEach((td, i) => setTimeout(() => refreshRt(td), i * 400));
     loop();   // đọc trạng thái 1 lần khi mở trang
-  } catch (x) { s.textContent = ''; e.textContent = x.message; }
+  } catch (x) { s.textContent = ''; e.textContent = x.message; report2('err', x.message); }
   loading = false;
 }
 loadAll();
