@@ -1,4 +1,154 @@
-ã qua giờ hôm nay ❓
+# SLCP — Hành vi điều khiển đèn & Task: bộ kịch bản QA
+ 
+Ghi lại các hành vi đã quan sát khi test hệ thống thật (27–30/10/2026) dưới dạng **test case tái hiện được**, để:
+- chạy lại nhiều lần, loại trừ kết quả ngẫu nhiên (flaky);
+- giữ kịch bản tái hiện cho từng hành vi đã phát hiện;
+- sau này dùng làm bộ test chấp nhận (acceptance) cho hệ thống mới.
+> Nguồn: ghi chú test thủ công của người dùng trên Google Doc (27–30/10, phần bị gạch bỏ trong Doc đã loại trừ), đối chiếu với `04-api-catalog.md`, `03-entities.md`, `05-dictionaries.md`, `07-project-config.md`, `08-auth-and-reuse.md`.
+> Kết quả hiện có chỉ là **quan sát trên frontend + đèn thực tế**, chưa có bắt payload/WebSocket. Mỗi test case ghi rõ mức tin cậy.
+ 
+## 0. Quy ước
+ 
+### Mức tin cậy kết quả
+ 
+| Ký hiệu | Nghĩa |
+|---|---|
+| ✅ Lặp lại | Đã quan sát ≥2 lần cùng kết quả |
+| 🟡 Một lần | Quan sát 1 lần, cần chạy lại |
+| 🔶 Giả thuyết | Giải thích/nguyên nhân là suy luận, chưa có test xác nhận |
+| ❓ Chưa test | Kịch bản mới đề xuất |
+ 
+### Phân loại thao tác (theo quy tắc dự án)
+ 
+| Mức | Nghĩa | Cần đồng ý? |
+|---|---|---|
+| R0 | Chỉ đọc DB server (API list/query, mở màn hình) | Không |
+| R1 | Hỏi thiết bị (status/data query, query task) — gửi gói tin, không đổi trạng thái đèn | Có, mỗi phiên |
+| W1 | Điều khiển đèn trực tiếp (bật/tắt/dim) | Có, mỗi lần |
+| W2 | Lưu/sửa/distribute task, đổi cấu hình | Có, mỗi lần |
+| HW | Thao tác phần cứng (rút gateway, rút LCU) | Người dùng tự làm |
+ 
+### Môi trường chuẩn (điền mỗi lần chạy, không ghi UID/ID thật)
+ 
+| Mục | Giá trị |
+|---|---|
+| Dự án | (tên dự án) |
+| LCU | `LCU-A` (đèn HTest), `LCU-B` (SLM / DEN 5) — ghi model, `protocolValue`, phiên bản firmware nếu xem được |
+| Đường kết nối | LCU → Gateway (không qua Concentrator) |
+| `project.lightCtrlMode` / `taskMode` | (đọc nếu có quyền) |
+| Giờ máy chủ / giờ gateway | Ghi lệch giờ trước khi test (gateway có nút query/calib time) |
+ 
+### Mẫu ghi kết quả mỗi lần chạy
+ 
+```
+TC-ID | Ngày giờ | Người chạy | LCU | Kết quả (Pass/Fail/Khác) | Quan sát | Ảnh/log
+```
+ 
+Bảng lịch sử chạy nằm ở **mục 9**.
+ 
+---
+ 
+## 1. Điều khiển trực tiếp & đồng bộ trạng thái (GIS)
+ 
+### TC-GIS-01 — Kéo dim: UI hiển thị ngay, không phản ánh thực tế
+- **Mức:** W1 · **Tin cậy:** ✅ Lặp lại
+- **Tiền điều kiện:** đèn online, đang bật.
+- **Bước:**
+  1. Trên GIS, kéo dim từ mức hiện tại sang mức X.
+  2. Ghi giá trị dim UI hiển thị ngay sau khi kéo.
+  3. Quan sát đèn thực tế.
+  4. Không bấm gì, chờ 1, 3, 5 phút, ghi giá trị UI.
+  5. Bấm **Status query**, ghi giá trị UI.
+- **Kỳ vọng hiện tại (Fonda):** bước 2 UI = X ngay; bước 4 không tự cập nhật; bước 5 mới phản ánh giá trị thiết bị trả về.
+- **API liên quan:** `lampControl/unicast/dimming` (trả "accepted"), xác nhận qua WS `unicastStatus` (doc 08).
+- **Giả thuyết 🔶:** UI cập nhật lạc quan theo HTTP, không chờ WS.
+### TC-GIS-02 — Task tắt đèn không đưa dim UI về 0
+- **Mức:** W2 · **Tin cậy:** ✅
+- **Bước:** tạo LCU task OFF tại T; distribute; chờ qua T; quan sát đèn và UI (không bấm query); sau đó bấm Status query.
+- **Kỳ vọng hiện tại:** đèn tắt đúng T; UI vẫn giữ mức dim cũ đến khi query.
+- **Cần kiểm thêm (R0):** `config/getLcuTaskStatusConfig` — có cấu hình báo trạng thái sau khi task chạy không.
+### TC-GIS-03 — Status query khác Data query
+- **Mức:** R1 · **Tin cậy:** ✅
+- **Bước:** bấm Status query → ghi trường trả về; bấm Data query → ghi trường trả về.
+- **Kỳ vọng:** Status query = trạng thái bật/tắt + dim; Data query = dữ liệu cảm biến LCU (dòng, áp, tilt…).
+- **API:** `lampControl/unicast/queryStatus` vs `unicast/queryData`; WS có hai sự kiện `status` và `data` (✅ có trong bundle).
+### TC-GIS-04 — Tilt chỉ có dữ liệu khi Data query
+- **Mức:** R1 · **Tin cậy:** ✅ (ngày 28/10 đính chính: tilt có tín hiệu)
+- **Bước:** nghiêng/đổi hướng thiết bị (nếu có thể); không query, chờ 10 phút, xem UI; bấm Data query, xem lại.
+- **Kỳ vọng hiện tại:** không tự cập nhật; Data query mới có giá trị.
+- **Giả thuyết 🔶:** auto-report có thể cấu hình qua `tiltSensorCtrl/tiltRepSet`; `project.reportMinute` = `null` trên dự án mẫu.
+### TC-GIS-05 — Lệnh dim không query lại, log "copy last"
+- **Mức:** W1 + R0 · **Tin cậy:** ✅ (có ảnh ngày 29/10: data query 14:13 → set dim 14:14 → query 14:15)
+- **Bước:**
+  1. Data query, ghi giờ T1.
+  2. Đổi dim, ghi giờ T2.
+  3. Data query, ghi giờ T3.
+  4. Mở log qua nút **Energy** (góc trên phải, nút giữa).
+- **Kỳ vọng hiện tại:** bản ghi tại T2 mang số liệu giống T1 (copy giá trị cũ) thay vì đo mới.
+- **Biến thể TC-GIS-05b:** thay bước 2 bằng bật/tắt → kỳ vọng có data query đi kèm nhưng **không** kèm status query (dim).
+- **Cần kiểm (R0, hook XHR):** nút Energy gọi endpoint nào (`lcuActor/queryLcuDataRecords` / `queryLcuDataHisPage` / `energy/getLcuDataDetails`?); sau bật/tắt frontend có gọi tiếp `unicast/queryData` không.
+### TC-GIS-06 — Thứ tự hiển thị lịch sử (UX)
+- **Mức:** R0 · **Tin cậy:** ✅
+- **Bước:** mở chi tiết lịch sử qua nút 3 chấm.
+- **Kỳ vọng hiện tại:** bản ghi mới nằm dưới (thứ tự tăng dần) — ngược thói quen đọc.
+---
+ 
+## 2. Task template & Task config
+ 
+### TC-TPL-01 — Template là bản copy, không phải tham chiếu
+- **Mức:** W2 · **Tin cậy:** 🟡
+- **Bước:** tạo template T (dim 50); import T vào task config của group G; sửa T thành dim 80; mở lại config G.
+- **Kỳ vọng hiện tại:** config G vẫn dim 50.
+- **Kiểm bằng API (R0):** so `taskId` trong `task/getTaskByGroup` (group G) với `taskId` của T trong `task/page`. Khác nhau → copy.
+### TC-TPL-02 — Thêm strategy = thay toàn bộ list
+- **Mức:** W2 · **Tin cậy:** 🟡
+- **Bước:** group G có list L1 (2 task); thêm strategy S (3 task); xem list của G.
+- **Kỳ vọng hiện tại:** list của G = 3 task của S, L1 bị xóa.
+- **API:** `deviceGroup/saveGroupTask`, `deleteGroupTask`, `deleteLcuGroupTask`. Cần bắt payload `saveGroupTask` để xác nhận gửi cả danh sách.
+### TC-TPL-03 — Offset sunrise/sunset trong popup chỉ nhận khi bấm OK
+- **Mức:** W2 · **Tin cậy:** 🟡
+- **Bước:** mở popup Offset settings; nhập offset; đóng bằng cách khác OK (click ra ngoài/Cancel); mở lại; lặp lại và bấm OK.
+- **Kỳ vọng hiện tại:** chỉ lần bấm OK được lưu.
+- **Cần làm rõ:** popup ghi tầng nào — project (`onDeLay`, `offDeLay`, `sunriseAndSunset/updateSunriseSunsetOffsetTime`) hay task (`sunriseFrontOffset`, `sunsetBackOffset`…).
+### TC-TPL-04 — Import/Export Excel list task
+- **Mức:** W2 · **Tin cậy:** ✅ (export) / 🟡 (import)
+- **Bước:** export list task của G; sửa 1 dòng trong file; import lại; xem list G; gọi `lcuTaskImport/getImportStatus` ngay sau import và sau 1 phút.
+- **Kỳ vọng hiện tại:** export có file; import không thay đổi gì.
+- **Giả thuyết 🔶:** import chạy bất đồng bộ (`isImportRun`), có thể lỗi im lặng.
+---
+ 
+## 3. Distribute & trạng thái group
+ 
+### TC-DIS-01 — Không distribute thì task không chạy
+- **Mức:** W2 · **Tin cậy:** ✅ (xác nhận lại 29/10)
+- **Bước:** lưu task config cho G (ON dim 50 tại T) nhưng không distribute; chờ qua T.
+- **Kỳ vọng hiện tại:** đèn không đổi.
+### TC-DIS-02 — Distribute chỉ cần chọn group
+- **Mức:** W2 · **Tin cậy:** ✅
+- **Bước:** chọn đúng group, bấm Distribute (không chọn đèn/task con). Kiểm Task Distribution.
+- **Kỳ vọng:** toàn bộ task của group được ghi xuống toàn bộ thiết bị trong group.
+- **Cần bắt payload:** nút gọi `deviceGroup/taskPublish`, `task/taskGroupSyncToDeviceGroup` hay `lcuTaskCtrl/groupBatchOperationTask`.
+### TC-DIS-03 — Sửa group mất trạng thái "đã distribute", không khôi phục được
+- **Mức:** W2 · **Tin cậy:** ✅
+- **Bước:** distribute G (trạng thái dưới tên group = distributed); sửa 1 task, lưu, không distribute; xem trạng thái; thử hoàn tác về bản cũ.
+- **Kỳ vọng hiện tại:** trạng thái chuyển undistributed; không có cách xem/khôi phục bản đang chạy trên LCU.
+- **API:** `deviceGroup/deviceGroupPage` chỉ có một bộ cờ (`publishTaskStatus`, `publishTaskTime`, `taskStatus`, `groupIdStatus`).
+- **Cần kiểm (R0):** `task/queryTaskGroupSyncHisPage` — có lưu lịch sử bản đã đẩy không.
+### TC-DIS-04 — Xem task đang nạp trên đèn
+- **Mức:** R1 · **Tin cậy:** ✅ (thao tác dùng được)
+- **Bước:** Task Distribution → tìm đèn → Action → Local Task → Task Query.
+- **Ghi chú:** cần xác định nút này đọc **DB server** (`task/queryLcuTaskByDeviceId_v3`…) hay **hỏi LCU** (`lcuTaskCtrl/queryTask`, `queryTimeTask`). Đây là công cụ kiểm chứng chính cho mọi TC ở mục 4–5.
+---
+ 
+## 4. Thời điểm thực thi khi distribute list (LCU task)
+ 
+### TC-EXE-01 — Distribute list → chạy ngay task "cuối cùng theo giờ"
+- **Mức:** W2 · **Tin cậy:** ✅ (≥2 lần, 29/10)
+- **Tiền điều kiện:** đèn tắt.
+- **Bước:** lúc T0 tạo list 2 task, cả hai **sau** T0 trong ngày: A tại T0+5' dim 36; B tại T0+10' dim 72; distribute; quan sát đến T0+15'.
+- **Kỳ vọng hiện tại:** ngay khi distribute đèn lên dim 72 (có thông báo "dimming failed"); T0+5' → 36; T0+10' → 72.
+- **Giả thuyết 🔶 (catch-up theo chu kỳ ngày):** LCU áp ngay trạng thái hiệu lực hiện tại = lệnh gần nhất đã qua trong chu kỳ 24h, tức B của hôm qua.
+### TC-EXE-02 — Kiểm giả thuyết catch-up: cả hai task đã qua giờ hôm nay ❓
 - **Mức:** W2 · **Tin cậy:** ❓ Chưa test
 - **Bước:** lúc T0 tạo A tại T0−60' dim 30, B tại T0−30' dim 60; distribute.
 - **Kết quả phân biệt:**
