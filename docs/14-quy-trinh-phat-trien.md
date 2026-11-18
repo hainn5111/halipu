@@ -141,7 +141,7 @@ Môi trường cloud của Claude **không kết nối được** tới Fonda (`
 
 ## 8. Việc còn lại / ý tưởng
 
-- **Nhóm "Công cụ dò (chỉ preview)"** (tab Dò API…): chỉ có khi build với `VITE_ENABLE_PROBE=1` (`preview.yml` đặt; `pages.yml`/main thì không → không có tab lẫn mã trong bundle) hoặc `npm run dev`. Công cụ dò/đọc dữ liệu mới thêm vào nhóm này trong `src/app/tabs.ts`, mã ở `features/probe/`, hàm gọi API ở `adapters/fonda/probe.ts`. Chỉ gọi API đọc.
+- **Nhóm "Công cụ dò (chỉ preview)"** (tab Dò API…): chỉ có khi build với `VITE_ENABLE_PROBE=1` (`preview.yml` đặt; `pages.yml`/main thì không → không có tab lẫn mã trong bundle) hoặc `npm run dev`. Tab **Bắt request (API ghi)** cho đoạn script dán vào Console của web Fonda gốc để bắt body thao tác thêm/sửa/xoá/gắn (không đọc header, che khoá bí mật). Công cụ dò/đọc dữ liệu mới thêm vào nhóm này trong `src/app/tabs.ts`, mã ở `features/probe/`, hàm gọi API ở `adapters/fonda/probe.ts`. Chỉ gọi API đọc.
 - Điều hướng bên trái: nhóm xổ/thu được (nhớ trong localStorage `nav_open`), nhóm chứa tab đang mở luôn xổ.
 - Loại thiết bị, tab thiết bị và template model: xem `15-loai-thiet-bi-va-template.md`.
 - Các tab hiện chỉ có nhãn "sắp có": Tổng quan, Cảnh báo, Nhóm đèn, Lịch điều khiển, Báo cáo.

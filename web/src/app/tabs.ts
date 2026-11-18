@@ -39,6 +39,7 @@ export const TABS: GroupDef[] = [
   ] },
   ...(PROBE_TOOLS ? [{ group: 'Công cụ dò (chỉ preview)', tabs: [
     { id: 'probe', label: 'Dò API (chỉ đọc)', view: lazy(() => import('../features/probe/Probe')) },
+    { id: 'capture', label: 'Bắt request (API ghi)', view: lazy(() => import('../features/probe/Capture')) },
   ] }] : []),
 ];
 
