@@ -1,8 +1,8 @@
 // Nguồn dữ liệu Fonda. Giao diện (features/) chỉ gọi các hàm này và nhận kiểu của mình; đổi backend = viết adapter khác cùng chữ ký.
 import { call } from '../../core/api';
 import { config } from '../../core/config';
-import type { DeviceItem, DeviceModel, DeviceType, LampCommand, LightStatus, Lcu, Measurement } from '../../core/types';
-import { mapModels, mapDeviceRow, mapDeviceTypes, mapLight, mapListRow, mapPageRow, mapTrend, mergeLcus, pickGeo, ratedPowerOf, validGeo, type LcuRow } from './mappers';
+import type { PoleLinks, DeviceItem, DeviceModel, DeviceType, LampCommand, LightStatus, Lcu, Measurement } from '../../core/types';
+import { mapPoleLinks, mapModels, mapDeviceRow, mapDeviceTypes, mapLight, mapListRow, mapPageRow, mapTrend, mergeLcus, pickGeo, ratedPowerOf, validGeo, type LcuRow } from './mappers';
 
 const PID_KEY = 'pid';
 
@@ -123,4 +123,13 @@ export async function countDevices(projectId: string, typeValue: number): Promis
 /** Model thiết bị + template deviceConfig của dự án (chỉ đọc). */
 export async function listModels(projectId: string): Promise<DeviceModel[]> {
   return mapModels(await call('GET', `deviceModel/queryAllDeviceModelByProjectId/${projectId}`, { projectId }));
+}
+
+/** Liên kết của một cột: thiết bị đang gắn trên cột (chỉ đọc). `modelName` tra tên model từ id. */
+export async function poleLinks(projectId: string, poleId: string, modelName: (id: string) => string): Promise<PoleLinks> {
+  const [related, attr] = await Promise.all([
+    call('GET', `poleActor/queryPoleAndRelatedById/${poleId}`, { projectId }),
+    call('GET', `poleActor/queryAttributeDeviceOfPole/${poleId}`, { projectId }).catch(() => null),   // lỗi phần phụ vẫn hiện được phần chính
+  ]);
+  return mapPoleLinks(related, attr, modelName);
 }

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { categoryOf, configEntries, mapModels, mapDeviceRow, mapDeviceTypes, mapLight, mapListRow, mapPageRow, mapTrend, mergeLcus, pickGeo, ratedPowerOf, toCsv, validGeo } from './mappers';
+import { mapPoleLinks, categoryOf, configEntries, mapModels, mapDeviceRow, mapDeviceTypes, mapLight, mapListRow, mapPageRow, mapTrend, mergeLcus, pickGeo, ratedPowerOf, toCsv, validGeo } from './mappers';
 
 describe('pickGeo / validGeo', () => {
   it('đọc lat/lng dạng chuỗi', () => expect(pickGeo({ lat: '20.93271', lng: '105.67026' })).toEqual({ lat: 20.93271, lng: 105.67026 }));
@@ -72,3 +72,22 @@ describe('model / deviceConfig', () => {
   });
 });
 
+
+describe('mapPoleLinks', () => {
+  const names: Record<string, string> = { MLCU: 'LCU-RF', MLAMP: 'Đèn LED' };
+  const nm = (id: string) => names[id] ?? '';
+  it('cột có LCU: nhóm LCU + đèn theo kênh', () => {
+    const rel = { deviceId: 'P1', deviceName: 'Cột 1', deviceModelName: 'Cột thép', lat: '20.9', lng: '105.6', attributeDevice: [{ checked: true, lcu: { deviceId: 'L1', uid: 'U1', lampHolderNum: 1, deviceModelId: 'MLCU' }, lamp: [{ lampNum: 1, deviceId: 'D1', deviceName: 'Đèn 1', deviceModelId: 'MLAMP' }] }] };
+    const r = mapPoleLinks(rel, { lamp: [{ lampId: 'D1', deviceModelName: 'Đèn đường phố' }], camera: [] }, nm);
+    expect(r.pole).toMatchObject({ id: 'P1', name: 'Cột 1', lat: 20.9 });
+    expect(r.groups).toEqual([{ lcu: { id: 'L1', uid: 'U1', slots: 1, model: 'LCU-RF' }, lamps: [{ id: 'D1', name: 'Đèn 1', channel: 1, model: 'Đèn đường phố' }] }]);
+    expect(r.others).toEqual([]);
+  });
+  it('cột không LCU: mỗi đèn một nhóm, không có lcu; thiết bị khác gom theo loại', () => {
+    const rel = { attributeDevice: [{ lcu: {}, lamp: [{ lampNum: 1, deviceId: 'D2', deviceName: 'Đèn 2', deviceModelId: 'MLAMP' }] }, { lcu: {}, lamp: [{ lampNum: 1, deviceId: 'D3', deviceName: 'Đèn 3', deviceModelId: 'MLAMP' }] }] };
+    const r = mapPoleLinks(rel, { camera: [{ deviceName: 'Cam 1' }], wifi: [], lcu: [{ x: 1 }] }, nm);
+    expect(r.groups).toHaveLength(2); expect(r.groups[0].lcu).toBeUndefined(); expect(r.groups[0].lamps[0].model).toBe('Đèn LED');
+    expect(r.others).toEqual([{ kind: 'camera', items: [{ name: 'Cam 1' }] }]);
+  });
+  it('dữ liệu rỗng không lỗi', () => expect(mapPoleLinks(null, null, nm).groups).toEqual([]));
+});

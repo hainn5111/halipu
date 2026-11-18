@@ -64,3 +64,17 @@ export interface DeviceModel { id: string; name: string; typeId: string; config:
 export type ConfigEntry =
   | { key: string; kind: 'value'; text: string }
   | { key: string; kind: 'attached'; items: Array<{ name: string; checked: boolean; extra: string }> };
+
+/** Liên kết của một cột đèn: những gì đang gắn trên cột (LCU kèm đèn theo kênh, đèn rời không LCU, thiết bị khác). */
+export interface PoleLamp { id: string; name: string; channel: number; model: string }
+export interface PoleGroup {
+  /** Có = nhóm "LCU + đèn"; không có = đèn gắn thẳng vào cột (chưa có LCU). */
+  lcu?: { id: string; uid: string; slots?: number; model: string };
+  lamps: PoleLamp[];
+}
+export interface PoleLinks {
+  pole: { id: string; name: string; code: string; model: string; address: string; lat?: number; lng?: number };
+  groups: PoleGroup[];
+  /** Thiết bị khác gắn trên cột, theo loại (camera, sensor, wifi…). */
+  others: Array<{ kind: string; items: Array<{ name: string }> }>;
+}
