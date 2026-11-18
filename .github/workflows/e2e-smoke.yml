@@ -1,6 +1,6 @@
 name: E2E smoke (read-only)
 
-# Chạy test đọc-only trên build web bằng tài khoản trong secret FONDA_USER / FONDA_PASS (dùng tài khoản chỉ đọc/thử).
+# Test đọc-only cho bản vanilla CŨ (site/), nay chỉ giữ để tra cứu → chỉ chạy tay. Test cho bản chính nằm ở web-ci.yml (e2e/web-smoke.js).
 on:
   workflow_dispatch:
     inputs:
@@ -8,9 +8,6 @@ on:
         description: 'URL bản deploy để test (vd https://<user>.github.io/<repo>); bỏ trống = build trong repo (localhost)'
         required: false
         default: ''
-  push:
-    branches: [main, feature/home-tabs-gis]
-    paths: ['e2e/**', '.github/workflows/e2e-smoke.yml']
 
 permissions:
   contents: read

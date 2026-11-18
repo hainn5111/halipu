@@ -1,6 +1,6 @@
 # SLCP web (React + TypeScript + Vite)
 
-Bản dựng lại theo hướng kiến trúc: **bản build thuần tĩnh, không phụ thuộc host**. Bản vanilla cũ vẫn ở `../site/` cho tới khi chuyển xong.
+Bản chính của hệ thống: **bản build thuần tĩnh, không phụ thuộc host**. Bản vanilla cũ ở `../site/` không còn deploy, chỉ giữ để tra cứu tới khi chuyển đổi xong.
 
 ## Chạy
 ```bash
@@ -26,7 +26,7 @@ Thêm màn hình mới: tạo `features/<tên>/`, thêm 1 mục vào `app/tabs.t
 ## Không phụ thuộc host
 - `base: './'` + **HashRouter** (`#/gis`): chạy ở thư mục con hay tên miền riêng đều được, không cần rewrite.
 - Mọi cấu hình đọc từ `config.json` cạnh `index.html`: `apiBase`, `wsUrl`, `projectId`, `rsaPublicKey`.
-- **GitHub Pages (hiện tại):** `apiBase` là `http://…` nên trình duyệt chặn (mixed content) → phải bật Site settings → Insecure content → Allow.
+- **GitHub Pages (hiện tại, bản React ở gốc trang):** `apiBase` là `http://…` nên trình duyệt chặn (mixed content) → phải bật Site settings → Insecure content → Allow.
 - **Khi có máy chủ:** đặt reverse proxy HTTPS (xem `deploy/nginx.conf.example`), đổi `apiBase` thành `/fonda` → hết cần bật Insecure content.
 
 ## Đổi backend
