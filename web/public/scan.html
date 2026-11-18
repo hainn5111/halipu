@@ -6,7 +6,7 @@
 th,td{text-align:left;padding:8px;border-bottom:1px solid #334155;word-break:break-all}th{color:#94a3b8}a{color:#f59e0b}
 .row{display:flex;gap:12px;align-items:center;flex-wrap:wrap}.row input{width:auto}.row button,td button{width:auto;margin:0;padding:6px 12px;font-size:13px}td button+button{margin-left:6px}
 .ghost{background:#334155!important;color:#e2e8f0!important}</style></head><body><div class="wrap"><div class="card">
-<div class="row"><h1 style="flex:1">Dự án của tài khoản</h1><a href="home.html">← Trang chính</a></div>
+<div class="row"><h1 style="flex:1">Dự án của tài khoản</h1><a href="./">← Trang chính</a></div>
 <p class="sub">Danh sách lấy từ hồ sơ (projectInfos). Không tự quét: bấm "Quét" ở từng dòng hoặc "Quét tất cả". Quét chỉ đọc (lcuActor/page + lcuLight/queryLcuLightByLcuIdAndNum, đèn số 1), không gửi lệnh điều khiển.</p>
 <div class="row" style="margin-bottom:12px"><input id="nid" placeholder="Nhập projectId" size="34" autocomplete="off" spellcheck="false"><input id="nname" placeholder="Tên (tuỳ chọn)" size="16"><button id="add" type="button">Thêm &amp; quét</button></div>
 <div class="row"><label>Lấy lần đo từ năm <input id="yr" type="number" value="2026" style="width:90px"></label><button id="go" type="button">Quét tất cả</button><button id="csv" type="button" class="ghost" hidden>Tải CSV</button></div>
@@ -65,7 +65,7 @@ function render() {
 }
 t.onclick = e => {
   const b = e.target.closest('button'); if (!b) return;
-  if (b.dataset.pid) { try { localStorage.setItem('pid_fixed', b.dataset.pid); } catch {} location.href = 'lcus.html'; }
+  if (b.dataset.pid) { try { localStorage.setItem('pid_fixed', b.dataset.pid); } catch {} location.href = './#/lcus'; }
   else if (b.dataset.scan) scanOne(P.find(x => x.id === b.dataset.scan));
   else if (b.dataset.del) { P.splice(P.findIndex(x => x.id === b.dataset.del), 1); extraSave(extraLoad().filter(x => x.id !== b.dataset.del)); render(); }
 };

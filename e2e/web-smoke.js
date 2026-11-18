@@ -16,6 +16,7 @@ const out = (k, v) => console.log(`[web-e2e] ${k}: ${typeof v === 'string' ? v :
     await p.waitForFunction(() => /\(\d+\)/.test(document.querySelector('#ddb').textContent) && !/\(0\)/.test(document.querySelector('#ddb').textContent), null, { timeout: 60000 }).catch(() => out('GIS', 'danh sách rỗng hoặc quá hạn'));
     await p.waitForTimeout(6000);
     out('GIS dropdown', await p.textContent('#ddb'));
+    out('realtime badge', (await p.textContent('.rt')) + ' | ' + (await p.getAttribute('.rt', 'title')));
     await p.click('#ddb'); out('GIS items', await p.$$eval('.menu .it', els => els.map(e => e.innerText.replace(/\s+/g, ' ').trim())));
     step = 'drawer'; await p.click('.menu .it >> nth=0'); await p.waitForSelector('.drawer h2', { timeout: 10000 });
     await p.waitForTimeout(4000);

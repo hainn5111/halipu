@@ -46,3 +46,6 @@ th { color: var(--muted); font-weight: 600; }
 .listwrap { position: absolute; inset: 0; overflow: auto; padding: 16px; } .lrow { cursor: pointer; } .lrow:hover { background: #172033; } .lrow.sel { background: var(--bg); box-shadow: inset 3px 0 var(--accent); }
 
 .fixed { font-size: 12px; color: var(--accent); display: inline-flex; align-items: center; gap: 6px; } .fixed button { padding: 2px 8px; font-size: 11px; }
+
+.rt { font-size: 12px; color: var(--muted); } .rt-authed { color: var(--good); } .rt-error { color: var(--bad); } .rt-connecting, .rt-open, .rt-closed { color: var(--accent); }
+.live div { font-size: 12px; margin-top: 3px; color: var(--text); word-break: break-all; } .live .t { color: var(--muted); }

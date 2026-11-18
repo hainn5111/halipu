@@ -1,10 +1,12 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { lightStatus, trend, unicast } from '../../adapters/fonda';
 import { toCsv } from '../../adapters/fonda/mappers';
+import { useRealtime } from '../../core/realtime';
 import type { LampCommand, Lcu, LightStatus, Measurement } from '../../core/types';
 
 const NAMES: Record<LampCommand, string> = { turnOn: 'BẬT', turnOff: 'TẮT', dimming: 'ĐẶT ĐỘ SÁNG' };
 const fmt = (v: number | undefined) => (v === undefined ? '–' : String(v));
+const clock = (at: number) => new Date(at).toLocaleTimeString();
 
 function statusLine(s: LightStatus, rated?: number): string {
   const pct = rated && s.power !== undefined ? Math.round((s.power / rated) * 100) : null;
@@ -19,6 +21,7 @@ export default function LcuPanel({ lcu, onClose }: { lcu: Lcu; onClose: () => vo
   const [histOpen, setHistOpen] = useState(false), [days, setDays] = useState(1);
   const [hist, setHist] = useState<{ state: 'idle' | 'loading' | 'ok' | 'err'; rows: Measurement[]; err: string }>({ state: 'idle', rows: [], err: '' });
   const [busy, setBusy] = useState(false);
+  const live = useRealtime(s => s.byLcu[lcu.lcuId]), rtStatus = useRealtime(s => s.status);
   const alive = useRef(true), timers = useRef<number[]>([]), cur = useRef(lcu);
   cur.current = lcu;
 
@@ -84,6 +87,13 @@ export default function LcuPanel({ lcu, onClose }: { lcu: Lcu; onClose: () => vo
       <h3>Trạng thái</h3>
       <div className={`res ${status.kind}`}>{status.text}</div>
       <div className="c" style={{ marginTop: 8 }}><button disabled={busy} onClick={() => void readStatus()}>Đọc trạng thái</button></div>
+      <h3>Realtime</h3>
+      <div className="live">
+        {!live && <div className="t">{rtStatus === 'authed' ? 'Chưa nhận tin realtime cho LCU này (server đẩy theo đợt, chờ vài chục giây hoặc gửi lệnh rồi xem lại).' : 'Realtime chưa sẵn sàng — xem chỉ báo trên thanh trên cùng.'}</div>}
+        {live && Object.entries(live.lamps).map(([n, l]) => <div key={`s${n}`}>[{clock(l.at)}] đèn {n}: dim {fmt(l.dim)}%, {l.on === undefined ? '–' : l.on ? 'bật' : 'tắt'}</div>)}
+        {live && Object.entries(live.data).map(([n, d]) => <div key={`d${n}`}>[{clock(d.at)}] đo đèn {n}: {fmt(d.power)} W · {fmt(d.voltage)} V · {fmt(d.current)} A · cosφ {fmt(d.pf)} · lux {fmt(d.lux)} · lỗi {fmt(d.fault)}</div>)}
+        {live?.unicast && <div>[{clock(live.unicast.at)}] phản hồi lệnh: {live.unicast.text}</div>}
+      </div>
       <h3>Lịch sử đo</h3>
       <div className="c"><button className="b" onClick={() => setHistOpen(o => !o)}>{histOpen ? '▾' : '▸'} Show lịch sử</button>
         <select value={days} onChange={e => setDays(Number(e.target.value))}><option value={1}>1 ngày</option><option value={7}>7 ngày</option><option value={30}>30 ngày</option></select>

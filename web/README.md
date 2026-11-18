@@ -1,6 +1,6 @@
 # SLCP web (React + TypeScript + Vite)
 
-Bản chính của hệ thống: **bản build thuần tĩnh, không phụ thuộc host**. Bản vanilla cũ ở `../site/` không còn deploy, chỉ giữ để tra cứu tới khi chuyển đổi xong.
+Bản chính của hệ thống: **bản build thuần tĩnh, không phụ thuộc host**. Bản vanilla cũ (`site/`) đã được chuyển hết sang đây và đã xoá; mã cũ vẫn xem được trong lịch sử git.
 
 ## Chạy
 ```bash
@@ -14,9 +14,9 @@ npm run build      # typecheck + build → dist/
 ## Cấu trúc
 ```
 src/
-  core/        api (truyền tải, token), auth, config (nạp config.json lúc chạy), store (kho LCU dùng chung), types (kiểu của mình)
+  core/        api (truyền tải, token), auth, config (nạp config.json lúc chạy), store (kho LCU dùng chung), realtime (1 kết nối WebSocket dùng chung, tự nối lại), liveState (gom tin realtime theo LCU), types (kiểu của mình)
   adapters/    fonda/ — mọi đặc thù của Fonda (tên trường, epoch ms, 2 API danh sách LCU…) nằm ở đây; mappers.ts là hàm thuần có test
-  features/    mỗi màn hình một thư mục: login, gis, lcus, lcu-panel (drawer dùng chung)
+  features/    mỗi màn hình một thư mục: login, gis, lcus, lcu-panel (drawer dùng chung: điều khiển, trạng thái, realtime, lịch sử)
   app/         tabs.ts (manifest nhóm → tab, tải lười), App.tsx (HashRouter + khung)
 public/config.json   cấu hình LÚC CHẠY (đổi host không cần build lại)
 deploy/nginx.conf.example   reverse proxy HTTPS mẫu

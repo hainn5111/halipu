@@ -1,6 +1,6 @@
 name: Deploy to GitHub Pages
 
-# Phục vụ bản React (web/) ở GỐC trang. Thư mục site/ (bản vanilla cũ) chỉ giữ trong repo để tra cứu, KHÔNG còn được deploy.
+# Phục vụ bản React (web/) ở GỐC trang. Chỉ deploy khi typecheck + test + build đều đạt.
 on:
   push:
     branches: [main]

@@ -1,19 +1,29 @@
-import { Suspense } from 'react';
+import { Suspense, useEffect } from 'react';
 import { HashRouter, Navigate, NavLink, Route, Routes, useLocation } from 'react-router-dom';
 import { useAuth } from '../core/auth';
 import { config, FIXED_KEY, fixedSource } from '../core/config';
+import { useRealtime, type RtStatus } from '../core/realtime';
 import Login from '../features/login/Login';
 import { ALL_TABS, TABS } from './tabs';
 
 const BUILD = (import.meta.env.VITE_BUILD_INFO as string | undefined) || 'dev';
 
+const RT_LABEL: Record<RtStatus, string> = { off: 'Realtime: tắt', connecting: 'Realtime: đang kết nối', open: 'Realtime: đang đăng nhập', authed: 'Realtime: đã kết nối', closed: 'Realtime: đã ngắt', error: 'Realtime: lỗi' };
+
+function RealtimeBadge() {
+  const { status, message, frames } = useRealtime();
+  return <span className={`rt rt-${status}`} title={`${message}${frames ? ` · ${frames} khung` : ''}`}>● {RT_LABEL[status]}</span>;
+}
+
 function Shell() {
+  const startRt = useRealtime(s => s.start), stopRt = useRealtime(s => s.stop);
+  useEffect(() => { startRt(); return stopRt; }, [startRt, stopRt]);   // một kết nối WebSocket dùng chung, sống cùng phiên đăng nhập
   const { user, signOut } = useAuth();
   const loc = useLocation();
   const cur = ALL_TABS.find(t => loc.pathname === `/${t.id}`);
   return (
     <div className="app">
-      <header className="top"><b>SLCP</b><small>{BUILD}</small>{fixedSource === 'scan' && (
+      <header className="top"><b>SLCP</b><small>{BUILD}</small><RealtimeBadge />{fixedSource === 'scan' && (
           <span className="fixed" title="Đang khoá theo dự án chọn ở trang scan">Dự án cố định {config().projectId.slice(0, 8)}
             <button className="b" onClick={() => { try { localStorage.removeItem(FIXED_KEY); } catch { /* bị chặn */ } location.reload(); }}>Bỏ</button></span>
         )}
