@@ -1,7 +1,7 @@
 // Dò API CHỈ ĐỌC từ trình duyệt: kéo cấu trúc payload (loại thiết bị, model/template, dictionary, thiết bị, quan hệ LCU↔model↔đèn↔cột).
 // Chỉ gọi GET hoặc POST truy vấn (query*/page/get*). KHÔNG có lampControl/save/update/delete.
 import { call } from '../../core/api';
-import { linkPaths, shape, trim } from './probeUtil';
+import { linkPaths, relationScan, shape, trim } from './probeUtil';
 
 type Rec = Record<string, any>;   // eslint-disable-line @typescript-eslint/no-explicit-any
 export interface ProbeResult { name: string; ok: boolean; message?: string; data?: unknown }
@@ -27,6 +27,18 @@ export async function runProbe(pid: string, log: (line: string) => void, withLcu
     await get(`model-page-${t.deviceTypeValue}`, 'POST', 'deviceModel/getDeviceModelPage', { projectId: pid, current: 1, size: 3, deviceTypeId: t.deviceTypeId });
     await get(`devices-${t.deviceTypeValue}`, 'POST', 'device/queryDevicePage', { projectId: pid, current: 1, size: 3, deviceTypeValue: t.deviceTypeValue });
   }
+  // Quan hệ giữa thiết bị thật: kéo toàn bộ thiết bị của các loại có dữ liệu rồi đối chiếu id/uid giữa các loại
+  const byType: Record<string, Rec[]> = {};
+  for (const r of results) {
+    const m = /^devices-(\d+)$/.exec(r.name); const total = Number((r.data as Rec | undefined)?.total);
+    if (!m || !(total > 0)) continue;
+    const t = list.find(x => String(x.deviceTypeValue) === m[1]); const rows: Rec[] = [];
+    try { for (let cur = 1; cur <= 20; cur++) { const d = await call<Rec>('POST', 'device/queryDevicePage', { body: { projectId: pid, current: cur, size: 100, deviceTypeValue: Number(m[1]) }, projectId: pid }); rows.push(...(d.records || [])); if (cur >= (d.pages || 1)) break; } } catch { /* bỏ loại này */ }
+    byType[t?.deviceTypeName || m[1]] = rows;
+  }
+  const rel = relationScan(byType);
+  say('=== Quét quan hệ giữa thiết bị ==='); rel.forEach(l => say(l));
+  results.push({ name: 'relation-scan', ok: true, data: rel });
   // deviceConfig là chuỗi JSON → cấu trúc theo loại
   const typeName = new Map(list.map(t => [t.deviceTypeId, String(t.deviceTypeName)]));
   const modelMap = new Map<string, { name: string; type: string }>();
