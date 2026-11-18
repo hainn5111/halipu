@@ -143,7 +143,9 @@ const SLCP = {
   openWs(onFrame, onState) {
     const base = window.SLCP_CONFIG.API_BASE.replace(/^http/, 'ws').replace(/:\d+$/, '');
     const url = `${base}:81/clesws`; let hb;
-    const ws = new WebSocket(url);
+    let ws;
+    try { ws = new WebSocket(url); }   // từ trang https, ws:// có thể bị chặn và ném lỗi ngay → không được làm hỏng phần còn lại của trang
+    catch (x) { onState(`Không mở được WebSocket tới ${url}: ${x.message} (Insecure content chưa bật?)`); return null; }
     const T = this.token;
     // Thử lần lượt các dạng frame đăng nhập (docs 08 §4 và 11 §2 khác nhau) cho tới khi hết 401.
     const variants = [

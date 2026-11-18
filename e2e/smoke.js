@@ -7,7 +7,7 @@ const out = (k, v) => console.log(`[e2e] ${k}: ${typeof v === 'string' ? v : JSO
 (async () => {
   if (!FONDA_USER || !FONDA_PASS) { out('SKIP', 'chưa có secret FONDA_USER / FONDA_PASS'); return; }
   // Trang https gọi API http: tương đương người dùng bật Site settings → Insecure content → Allow
-  const b = await chromium.launch({ args: BASE.startsWith('https') ? ['--allow-running-insecure-content'] : [] });
+  const b = await chromium.launch({ args: BASE.startsWith('https') ? ['--allow-running-insecure-content', '--unsafely-treat-insecure-origin-as-secure=http://159.138.45.45:18080,http://159.138.45.45:81,ws://159.138.45.45:81'] : [] });
   const p = await b.newPage({ viewport: { width: 1400, height: 850 } });
   p.on('pageerror', e => out('PAGE_ERROR', e.message));
   p.on('requestfailed', r => out('REQ_FAILED', `${r.method()} ${r.url().replace(/\?.*/, '')} ${r.failure() && r.failure().errorText}`));
