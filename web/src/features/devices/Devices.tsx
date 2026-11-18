@@ -1,60 +1,63 @@
 import { useEffect, useState } from 'react';
-import { listDeviceTypes, listDevices, projectIds } from '../../adapters/fonda';
-import type { DeviceItem, DeviceType } from '../../core/types';
+import { listDeviceTypes, listDevices, listLamps, listPoles, projectIds } from '../../adapters/fonda';
+import { categoryOf, type DeviceCat } from '../../adapters/fonda/mappers';
+import type { DeviceItem } from '../../core/types';
 
-// Thiết bị khác (RTU, gateway, cảm biến…): chỉ ĐỌC qua device/queryDevicePage, phân theo loại thiết bị của dự án.
-// LCU có tab riêng nên bị loại khỏi danh sách loại.
-const isLcu = (t: DeviceType) => /lcu/i.test(t.name);
+// Chỉ ĐỌC. Mỗi tab = một nhóm loại thiết bị (theo tên loại). Tab "Thiết bị khác" (extras) thêm Đèn (lamp) và Cột đèn (pole).
+interface Src { key: string; pid: string; label: string; load: () => Promise<DeviceItem[]> }
 
-interface Group { pid: string; types: DeviceType[] }
-
-export default function Devices() {
-  const [groups, setGroups] = useState<Group[]>([]);
-  const [sel, setSel] = useState<{ pid: string; type: DeviceType } | null>(null);
+export default function DeviceTab({ cat, extras = false }: { cat: DeviceCat; extras?: boolean }) {
+  const [srcs, setSrcs] = useState<Src[]>([]);
+  const [sel, setSel] = useState<string | null>(null);
   const [items, setItems] = useState<DeviceItem[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [busy, setBusy] = useState(true);
   const [err, setErr] = useState('');
 
   useEffect(() => {
     let live = true;
     (async () => {
       try {
-        const out: Group[] = [];
-        for (const pid of await projectIds()) out.push({ pid, types: (await listDeviceTypes(pid)).filter(t => !isLcu(t)) });
-        if (live) setGroups(out);
-      } catch (e) { if (live) setErr((e as Error).message); } finally { if (live) setLoading(false); }
+        const out: Src[] = [];
+        for (const pid of await projectIds()) {
+          for (const t of await listDeviceTypes(pid)) if (categoryOf(t.name) === cat) out.push({ key: `${pid}:${t.value}`, pid, label: t.name, load: () => listDevices(pid, t.value) });
+          if (extras) {
+            out.push({ key: `${pid}:lamp`, pid, label: 'Đèn (Lamp)', load: () => listLamps(pid) });
+            out.push({ key: `${pid}:pole`, pid, label: 'Cột đèn (Pole)', load: () => listPoles(pid) });
+          }
+        }
+        if (!live) return;
+        setSrcs(out); setSel(out[0]?.key ?? null); if (!out.length) setBusy(false);
+      } catch (e) { if (live) { setErr((e as Error).message); setBusy(false); } }
     })();
     return () => { live = false; };
-  }, []);
+  }, [cat, extras]);
 
   useEffect(() => {
-    if (!sel) return;
+    const s = srcs.find(x => x.key === sel); if (!s) return;
     let live = true;
-    setLoading(true); setErr(''); setItems([]);
-    listDevices(sel.pid, sel.type.value).then(r => { if (live) setItems(r); }).catch(e => { if (live) setErr((e as Error).message); }).finally(() => { if (live) setLoading(false); });
+    setBusy(true); setErr(''); setItems([]);
+    s.load().then(r => { if (live) setItems(r); }).catch(e => { if (live) setErr((e as Error).message); }).finally(() => { if (live) setBusy(false); });
     return () => { live = false; };
-  }, [sel]);
+  }, [sel, srcs]);
 
-  const none = !loading && !err && groups.every(g => g.types.length === 0);
+  const cur = srcs.find(s => s.key === sel);
+  const multi = new Set(srcs.map(s => s.pid)).size > 1;
   return (
-    <div className="listwrap">
-      <p className="sub">{loading ? 'Đang tải…' : sel ? `${sel.type.name}: ${items.length} thiết bị` : 'Chọn loại thiết bị'}</p>
-      {err && <div className="err">{err}</div>}
-      {none && <p className="sub">Dự án chưa có loại thiết bị nào khác LCU.</p>}
-      {groups.map(g => (
-        <div key={g.pid} style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginBottom: 12 }}>
-          {g.types.map(t => {
-            const on = sel?.pid === g.pid && sel.type.value === t.value;
-            return <button key={t.value} className={on ? 'sel' : ''} onClick={() => setSel({ pid: g.pid, type: t })}>{t.name} <small>({t.value})</small></button>;
-          })}
-        </div>
-      ))}
-      {sel && !loading && (
-        <table><thead><tr><th>#</th><th>UID</th><th>Tên</th><th>Mã</th><th>Model</th><th>Trạng thái</th><th>Toạ độ</th><th>Địa chỉ</th></tr></thead>
-          <tbody>{items.map((d, i) => (
-            <tr key={d.id || d.uid}><td>{i + 1}</td><td><b>{d.uid}</b></td><td>{d.name}</td><td>{d.code}</td><td>{d.model}</td><td>{d.status ?? '–'}</td>
-              <td>{d.lat !== undefined ? `${d.lat.toFixed(5)}, ${d.lng!.toFixed(5)}` : '–'}</td><td>{d.address}</td></tr>))}</tbody></table>
-      )}
+    <div className="lcus">
+      <div className="listwrap">
+        <p className="sub">{busy ? 'Đang tải…' : cur ? `${items.length} ${cur.label}` : ''}</p>
+        {err && <div className="err">{err}</div>}
+        {!busy && !err && !srcs.length && <p className="sub">Dự án không có thiết bị loại này.</p>}
+        {srcs.length > 1 && <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginBottom: 12 }}>
+          {srcs.map(s => <button key={s.key} className={s.key === sel ? 'on' : ''} onClick={() => setSel(s.key)}>{s.label}{multi ? ` · ${s.pid.slice(0, 8)}` : ''}</button>)}
+        </div>}
+        {cur && !busy && (
+          <table><thead><tr><th>#</th><th>UID</th><th>Tên</th><th>Mã</th><th>Model</th><th>Trạng thái</th><th>Toạ độ</th><th>Địa chỉ</th></tr></thead>
+            <tbody>{items.map((d, i) => (
+              <tr key={d.id || d.uid} className="lrow"><td>{i + 1}</td><td><b>{d.uid || '–'}</b></td><td>{d.name}</td><td>{d.code}</td><td>{d.model}</td><td>{d.status ?? '–'}</td>
+                <td>{d.lat !== undefined ? `${d.lat.toFixed(5)}, ${d.lng!.toFixed(5)}` : '–'}</td><td>{d.address}</td></tr>))}</tbody></table>
+        )}
+      </div>
     </div>
   );
 }

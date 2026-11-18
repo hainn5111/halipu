@@ -18,7 +18,13 @@ export const TABS: GroupDef[] = [
   ] },
   { group: 'Thiết bị', tabs: [
     { id: 'lcus', label: 'Danh sách LCU', view: lazy(() => import('../features/lcus/Lcus')) },
-    { id: 'devices', label: 'Thiết bị khác', view: lazy(() => import('../features/devices/Devices')) },
+    { id: 'rtu', label: 'RTU', view: lazy(() => import('../features/devices/tabs').then(m => ({ default: m.Rtu }))) },
+    { id: 'gateway', label: 'Gateway', view: lazy(() => import('../features/devices/tabs').then(m => ({ default: m.Gateway }))) },
+    { id: 'smartbox', label: 'SmartBox', view: lazy(() => import('../features/devices/tabs').then(m => ({ default: m.SmartBox }))) },
+    { id: 'sensor', label: 'Cảm biến', view: lazy(() => import('../features/devices/tabs').then(m => ({ default: m.Sensor }))) },
+    { id: 'meter', label: 'Công tơ', view: lazy(() => import('../features/devices/tabs').then(m => ({ default: m.Meter }))) },
+    { id: 'camera', label: 'Camera', view: lazy(() => import('../features/devices/tabs').then(m => ({ default: m.Camera }))) },
+    { id: 'devices', label: 'Thiết bị khác', view: lazy(() => import('../features/devices/tabs').then(m => ({ default: m.Other }))) },
     { id: 'groups', label: 'Nhóm đèn' },
   ] },
   { group: 'Vận hành', tabs: [
