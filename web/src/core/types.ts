@@ -36,3 +36,21 @@ export interface LightStatus {
 }
 
 export type LampCommand = 'turnOn' | 'turnOff' | 'dimming';
+
+/** Loại thiết bị của dự án (LCU, RTU, Gateway, Cảm biến…). */
+export interface DeviceType { id: string; value: number; name: string }
+
+/** Thiết bị bất kỳ (không phải LCU) từ API thiết bị chung. */
+export interface DeviceItem {
+  id: string;
+  uid: string;
+  name: string;
+  code: string;
+  typeValue: number;
+  model: string;
+  /** Mã trạng thái thô của Fonda (chưa rõ nghĩa từng giá trị). */
+  status?: number;
+  lat?: number;
+  lng?: number;
+  address: string;
+}

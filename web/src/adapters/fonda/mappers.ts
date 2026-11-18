@@ -1,5 +1,5 @@
 // Hàm THUẦN chuyển DTO Fonda → kiểu của mình. Mọi đặc thù của Fonda (tên trường, epoch ms, danh sách LCU từ 2 API…) nằm ở đây.
-import type { LightStatus, Measurement } from '../../core/types';
+import type { DeviceItem, DeviceType, LightStatus, Measurement } from '../../core/types';
 
 type Rec = Record<string, unknown>;
 const num = (v: unknown): number | undefined => { const x = typeof v === 'number' ? v : parseFloat(String(v ?? '')); return Number.isFinite(x) ? x : undefined; };
@@ -66,6 +66,22 @@ export function mergeLcus(rows: Array<LcuRow & { projectId: string }>): Array<Lc
   const m = new Map<string, LcuRow & { projectId: string }>();
   for (const r of rows) if (!m.has(r.uid)) m.set(r.uid, r);
   return [...m.values()];
+}
+
+/** deviceTypeController/queryDeviceTypesWithUidOfProject → loại thiết bị (bỏ hàng thiếu giá trị, sắp theo mã). */
+export function mapDeviceTypes(d: unknown): DeviceType[] {
+  if (!Array.isArray(d)) return [];
+  const out: DeviceType[] = [];
+  for (const r of d as Rec[]) { const value = num(r?.deviceTypeValue); if (value !== undefined) out.push({ id: str(r.deviceTypeId), value, name: str(r.deviceTypeName) || `Loại ${value}` }); }
+  return out.sort((a, b) => a.value - b.value);
+}
+
+/** device/queryDevicePage → một thiết bị. Toạ độ (0,0) coi như chưa có. */
+export function mapDeviceRow(r: Rec): DeviceItem | null {
+  const id = str(r.deviceId), uid = str(r.uid);
+  if (!id && !uid) return null;
+  const g = { lat: num(r.lat) as number, lng: num(r.lng) as number };
+  return { id, uid, name: str(r.deviceName), code: str(r.deviceCode), typeValue: num(r.deviceTypeValue) ?? num(r.superDeviceType) ?? -1, model: str(r.deviceModelName), status: num(r.deviceStatus), ...(validGeo(g) ? g : {}), address: str(r.geographicAddress) };
 }
 
 export function toCsv(cols: string[], rows: Array<Array<unknown>>): string {

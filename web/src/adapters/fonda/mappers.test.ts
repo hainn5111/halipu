@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { mapLight, mapListRow, mapPageRow, mapTrend, mergeLcus, pickGeo, ratedPowerOf, toCsv, validGeo } from './mappers';
+import { mapDeviceRow, mapDeviceTypes, mapLight, mapListRow, mapPageRow, mapTrend, mergeLcus, pickGeo, ratedPowerOf, toCsv, validGeo } from './mappers';
 
 describe('pickGeo / validGeo', () => {
   it('đọc lat/lng dạng chuỗi', () => expect(pickGeo({ lat: '20.93271', lng: '105.67026' })).toEqual({ lat: 20.93271, lng: 105.67026 }));
@@ -32,4 +32,18 @@ describe('khác', () => {
   it('ratedPowerOf', () => { expect(ratedPowerOf({ deviceConfig: { lampPower: '100' } })).toBe(100); expect(ratedPowerOf({})).toBeUndefined(); });
   it('mapLight', () => { expect(mapLight({ dtime: 't', power: 50, powerFactor: 0.9 })).toMatchObject({ time: 't', power: 50, pf: 0.9 }); expect(mapLight(null)).toBeNull(); });
   it('toCsv escape dấu nháy và có BOM', () => { const c = toCsv(['a'], [['x"y']]); expect(c.startsWith('﻿')).toBe(true); expect(c).toContain('"x""y"'); });
+});
+
+describe('thiết bị khác', () => {
+  it('mapDeviceTypes sắp theo mã, bỏ hàng thiếu mã, đặt tên mặc định', () => {
+    const r = mapDeviceTypes([{ deviceTypeId: 'b', deviceTypeValue: 5, deviceTypeName: 'RTU' }, { deviceTypeId: 'a', deviceTypeValue: 2 }, { deviceTypeName: 'x' }]);
+    expect(r).toEqual([{ id: 'a', value: 2, name: 'Loại 2' }, { id: 'b', value: 5, name: 'RTU' }]);
+    expect(mapDeviceTypes(null)).toEqual([]);
+  });
+  it('mapDeviceRow đọc trường và bỏ toạ độ (0,0)', () => {
+    const r = mapDeviceRow({ deviceId: 'D', uid: 'U', deviceName: 'n', deviceCode: 'c', deviceTypeValue: 3, deviceModelName: 'M', deviceStatus: 1, lat: 21, lng: 105, geographicAddress: 'addr' });
+    expect(r).toMatchObject({ id: 'D', uid: 'U', typeValue: 3, model: 'M', status: 1, lat: 21, lng: 105 });
+    expect(mapDeviceRow({ deviceId: 'D', lat: 0, lng: 0 })?.lat).toBeUndefined();
+    expect(mapDeviceRow({})).toBeNull();
+  });
 });

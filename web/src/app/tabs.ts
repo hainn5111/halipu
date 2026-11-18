@@ -18,6 +18,7 @@ export const TABS: GroupDef[] = [
   ] },
   { group: 'Thiết bị', tabs: [
     { id: 'lcus', label: 'Danh sách LCU', view: lazy(() => import('../features/lcus/Lcus')) },
+    { id: 'devices', label: 'Thiết bị khác', view: lazy(() => import('../features/devices/Devices')) },
     { id: 'groups', label: 'Nhóm đèn' },
   ] },
   { group: 'Vận hành', tabs: [
