@@ -75,8 +75,10 @@ function open(id) {
   pane.innerHTML = '';
   fwrap.hidden = !t.frame; pane.hidden = !!t.frame;   // tab dạng iframe: giữ iframe sống khi chuyển tab, không tải lại
   fwrap.querySelectorAll('iframe').forEach(f => { f.hidden = f.dataset.id !== t.id; });
-  if (t.frame && !fwrap.querySelector(`iframe[data-id="${t.id}"]`)) {
-    const f = document.createElement('iframe'); f.dataset.id = t.id; f.src = t.frame; fwrap.appendChild(f);
+  if (t.frame) {
+    const ex = fwrap.querySelector(`iframe[data-id="${t.id}"]`);
+    if (!ex) { const f = document.createElement('iframe'); f.dataset.id = t.id; f.src = t.frame; fwrap.appendChild(f); }
+    else ex.contentWindow.postMessage('slcp:activate', location.origin);   // bấm lại tab → trang con tải lại dữ liệu (không reload cả trang)
   }
   if (t.render) cleanup = t.render(pane) || null;
   else if (!t.frame) pane.innerHTML = `<div class="empty">Tab “${esc(t.label)}” chưa được dựng.</div>`;

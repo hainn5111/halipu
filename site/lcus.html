@@ -54,7 +54,9 @@ SLCP.openWs((m, raw) => {
   renderLive();
 }, st => { ws.textContent = st; wsState = st; renderLive(); });
 renderLive();
-(async () => {
+let loading = false;
+async function loadAll() {   // tải danh sách LCU + đọc trạng thái; gọi lại được khi tab được bấm lại trong home.html
+  if (loading) return; loading = true; s.textContent = 'Đang tải…'; e.textContent = '';
   try {
     const { rows, report } = await SLCP.listAllLcus(m => { s.textContent = m; });
     s.textContent = `${rows.length} LCU`;
@@ -71,7 +73,10 @@ renderLive();
     const loop = () => tds.forEach((td, i) => setTimeout(() => refreshRt(td), i * 400));
     loop();   // đọc trạng thái 1 lần khi mở trang
   } catch (x) { s.textContent = ''; e.textContent = x.message; }
-})();
+  loading = false;
+}
+loadAll();
+addEventListener('message', ev => { if (ev.origin === location.origin && ev.data === 'slcp:activate') loadAll(); });
 async function readState(td, num) {   // đọc trạng thái qua HTTP (không cần WebSocket), chỉ đọc
   const pid = td.dataset.pid, lcuId = td.dataset.lcuid, uid = td.dataset.uid, out = {};
   const run = async (k, f) => { try { out[k] = await f(); } catch (x) { out[k] = 'LỖI: ' + x.message; } };
