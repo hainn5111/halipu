@@ -6,14 +6,14 @@ const { FONDA_USER, FONDA_PASS } = process.env;
 const out = (k, v) => console.log(`[e2e] ${k}: ${typeof v === 'string' ? v : JSON.stringify(v)}`);
 (async () => {
   if (!FONDA_USER || !FONDA_PASS) { out('SKIP', 'chưa có secret FONDA_USER / FONDA_PASS'); return; }
-  const b = await chromium.launch(); const p = await b.newPage({ viewport: { width: 1400, height: 850 } });
+  const b = await chromium.launch({ args: BASE.startsWith('https') ? ['--allow-running-insecure-content'] : [] });  // trang https gọi API http: tương đương người dùng bật Site settings → Insecure content → Allow const p = await b.newPage({ viewport: { width: 1400, height: 850 } });
   p.on('pageerror', e => out('PAGE_ERROR', e.message));
   p.on('requestfailed', r => out('REQ_FAILED', `${r.method()} ${r.url().replace(/\?.*/, '')} ${r.failure() && r.failure().errorText}`));
   p.on('response', r => { if (r.url().includes(':18080') && r.status() >= 400) out('API_HTTP_' + r.status(), r.url().replace(/\?.*/, '')); });
   let step = 'login';
   try {
     await p.goto(BASE + '/index.html'); await p.fill('#u', FONDA_USER); await p.fill('#p', FONDA_PASS); await p.click('#b');
-    await p.waitForURL(/home\.html/, { timeout: 30000 }); out('login', 'OK');
+    await p.waitForURL(/home\.html/, { timeout: 30000 }); out('login', 'OK @ ' + BASE);
 
     step = 'gis'; await p.waitForSelector('#ddb', { timeout: 30000 });
     await p.waitForFunction(() => /\(\d+\)/.test(document.querySelector('#ddb').textContent), null, { timeout: 60000 });

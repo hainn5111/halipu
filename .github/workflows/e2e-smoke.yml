@@ -3,6 +3,11 @@ name: E2E smoke (read-only)
 # Chạy test đọc-only trên build web bằng tài khoản trong secret FONDA_USER / FONDA_PASS (dùng tài khoản chỉ đọc/thử).
 on:
   workflow_dispatch:
+    inputs:
+      base_url:
+        description: 'URL bản deploy để test (vd https://<user>.github.io/<repo>); bỏ trống = build trong repo (localhost)'
+        required: false
+        default: ''
   push:
     branches: [feature/home-tabs-gis]
     paths: ['e2e/**', '.github/workflows/e2e-smoke.yml']
@@ -31,7 +36,9 @@ jobs:
         env:
           FONDA_USER: ${{ secrets.FONDA_USER }}
           FONDA_PASS: ${{ secrets.FONDA_PASS }}
+          BASE: ${{ inputs.base_url || 'http://localhost:8080' }}
         run: node e2e/smoke.js
+        # BASE do input quyết định (để trống thì dùng localhost:8080)
       - uses: actions/upload-artifact@v4
         if: always()
         with: { name: e2e-screenshots, path: e2e-*.png, if-no-files-found: ignore }
