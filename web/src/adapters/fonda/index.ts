@@ -2,6 +2,8 @@
 import { call } from '../../core/api';
 import { config } from '../../core/config';
 import type { PoleLinks, DeviceItem, DeviceModel, DeviceType, LampCommand, LightStatus, Lcu, Measurement } from '../../core/types';
+import { WRITE_ENABLED } from '../../core/flags';
+import { modelCreateBody, poleIdsBody, poleUpdateBody } from './writeBodies';
 import { mapPoleLinks, mapModels, mapDeviceRow, mapDeviceTypes, mapLight, mapListRow, mapPageRow, mapTrend, mergeLcus, pickGeo, ratedPowerOf, validGeo, type LcuRow } from './mappers';
 
 const PID_KEY = 'pid';
@@ -133,3 +135,25 @@ export async function poleLinks(projectId: string, poleId: string, modelName: (i
   ]);
   return mapPoleLinks(related, attr, modelName);
 }
+
+/** Chốt chặn ở tầng adapter: bản build không bật ghi thì mọi hàm gửi lệnh ghi đều từ chối. */
+const assertWrite = () => { if (!WRITE_ENABLED) throw new Error('Thao tác ghi đang tắt ở bản này'); };
+
+// ---- THAO TÁC GHI (payload đã bắt từ web Fonda gốc — docs/15 §7). UI phải xác nhận trước khi gọi. ----
+
+/** Đối tượng cột thô (để sửa). */
+export const poleRaw = (projectId: string, poleId: string) => call<Record<string, unknown>>('GET', `poleActor/queryPoleAndRelatedById/${poleId}`, { projectId });
+
+/** Body sẽ gửi khi sửa tên/mã cột (xem trước trước khi xác nhận). */
+export async function previewPoleUpdate(projectId: string, poleId: string, patch: { deviceName?: string; deviceCode?: string }) {
+  return poleUpdateBody(await poleRaw(projectId, poleId), patch);
+}
+export const sendPoleUpdate = (projectId: string, body: Record<string, unknown>) => { assertWrite(); return call('PUT', 'poleActor/update', { projectId, body }); };
+
+/** Số thiết bị liên quan của cột (0 = xoá được). */
+export const poleRelatedCount = (projectId: string, poleId: string) => call<number>('POST', 'device/checkDeviceRelated', { projectId, body: poleIdsBody([poleId]) });
+export const sendPoleDelete = (projectId: string, poleId: string) => { assertWrite(); return call('POST', 'poleActor/delete', { projectId, body: poleIdsBody([poleId]) }); };
+
+/** Body nhân bản model (xem trước) và gửi. */
+export const previewModelClone = (projectId: string, base: { typeId: string; typeValue: number; config: Record<string, unknown> }, name: string) => modelCreateBody(base, name, projectId);
+export const sendModelCreate = (projectId: string, body: Record<string, unknown>) => { assertWrite(); return call('POST', 'deviceModel/saveNew', { projectId, body }); };

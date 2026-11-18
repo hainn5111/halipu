@@ -1,5 +1,8 @@
 import { useEffect, useMemo, useState } from 'react';
-import { listDeviceTypes, listDevices, listModels, poleLinks, projectIds } from '../../adapters/fonda';
+import { listDeviceTypes, listDevices, listModels, poleLinks, poleRelatedCount, previewPoleUpdate, projectIds, sendPoleDelete, sendPoleUpdate } from '../../adapters/fonda';
+import { poleIdsBody } from '../../adapters/fonda/writeBodies';
+import { WRITE_ENABLED } from '../../core/flags';
+import ConfirmWrite from '../common/ConfirmWrite';
 import type { DeviceItem, PoleLinks } from '../../core/types';
 
 // Cột đèn & liên kết — chỉ ĐỌC. Danh sách cột; bấm một cột để xem cái gì đang gắn trên nó:
@@ -15,6 +18,10 @@ export default function Poles() {
   const [busy, setBusy] = useState(true), [linkBusy, setLinkBusy] = useState(false);
   const [err, setErr] = useState(''), [linkErr, setLinkErr] = useState('');
 
+  const [reload, setReload] = useState(0);
+  const [edit, setEdit] = useState({ name: '', code: '' });
+  const [confirm, setConfirm] = useState<null | { title: string; summary: string; method: string; path: string; body: unknown; danger?: boolean; run: () => Promise<void> }>(null);
+  const [writeMsg, setWriteMsg] = useState('');
   useEffect(() => {
     let live = true;
     (async () => {
@@ -28,16 +35,37 @@ export default function Poles() {
       } catch (e) { if (live) setErr((e as Error).message); } finally { if (live) setBusy(false); }
     })();
     return () => { live = false; };
-  }, []);
+  }, [reload]);
 
   const modelName = useMemo(() => (id: string) => models.get(id) ?? '', [models]);
   useEffect(() => {
     if (!sel) { setLinks(null); return; }
+    setEdit({ name: sel.name, code: sel.code }); setWriteMsg('');
     let live = true;
     setLinkBusy(true); setLinkErr(''); setLinks(null);
     poleLinks(sel.pid, sel.id, modelName).then(r => { if (live) setLinks(r); }).catch(e => { if (live) setLinkErr((e as Error).message); }).finally(() => { if (live) setLinkBusy(false); });
     return () => { live = false; };
   }, [sel, modelName]);
+
+  async function askUpdate() {
+    if (!sel) return;
+    setWriteMsg('');
+    try {
+      const r = await previewPoleUpdate(sel.pid, sel.id, { deviceName: edit.name.trim(), deviceCode: edit.code.trim() });
+      if (!r.ok) { setWriteMsg(r.reason); return; }
+      setConfirm({ title: `Sửa cột "${sel.name}"`, summary: `Tên: "${edit.name.trim()}" · Mã: "${edit.code.trim()}". Các LCU/đèn đang gắn được gửi lại nguyên vẹn.`, method: 'PUT', path: 'poleActor/update', body: r.body, run: async () => { await sendPoleUpdate(sel.pid, r.body); } });
+    } catch (e) { setWriteMsg((e as Error).message); }
+  }
+  async function askDelete() {
+    if (!sel || !links) return;
+    setWriteMsg('');
+    if (links.groups.length > 0 || links.others.length > 0) { setWriteMsg('Cột còn thiết bị gắn trên đó — không xoá (chưa kiểm chứng việc xoá cột có LCU/đèn). Gỡ thiết bị trước.'); return; }
+    try {
+      const n = await poleRelatedCount(sel.pid, sel.id);
+      if (n !== 0) { setWriteMsg(`Fonda báo cột còn ${n} thiết bị liên quan — không xoá.`); return; }
+      setConfirm({ title: `Xoá cột "${sel.name}"`, summary: 'Cột không có thiết bị liên quan (đã kiểm tra bằng device/checkDeviceRelated). Không hoàn tác được.', method: 'POST', path: 'poleActor/delete', body: poleIdsBody([sel.id]), danger: true, run: async () => { await sendPoleDelete(sel.pid, sel.id); } });
+    } catch (e) { setWriteMsg((e as Error).message); }
+  }
 
   const lampCount = links?.groups.reduce((n, g) => n + g.lamps.length, 0) ?? 0;
   return (
@@ -75,8 +103,19 @@ export default function Poles() {
             {links.others.length > 0 && <h3>Thiết bị khác gắn trên cột</h3>}
             {links.others.map(o => <div key={o.kind}><b>{o.kind}</b> ({o.items.length}): {o.items.map(x => x.name).join(', ')}</div>)}
           </>}
+          {WRITE_ENABLED && sel && (<>
+            <h3>Sửa / xoá (ghi thật · chỉ bản preview)</h3>
+            <label className="sub" style={{ display: 'block' }}>Tên</label><input style={{ width: '100%' }} value={edit.name} onChange={e => setEdit(v => ({ ...v, name: e.target.value }))} />
+            <label className="sub" style={{ display: 'block', marginTop: 8 }}>Mã</label><input style={{ width: '100%' }} value={edit.code} onChange={e => setEdit(v => ({ ...v, code: e.target.value }))} />
+            <div style={{ display: 'flex', gap: 8, marginTop: 10 }}>
+              <button disabled={!links || !edit.name.trim() || (edit.name === sel.name && edit.code === sel.code)} onClick={() => void askUpdate()}>Lưu thay đổi…</button>
+              <button className="b" disabled={!links} onClick={() => void askDelete()}>Xoá cột…</button>
+            </div>
+            {writeMsg && <div className="err" style={{ marginTop: 8 }}>{writeMsg}</div>}
+          </>)}
         </aside>
       )}
+      {confirm && <ConfirmWrite {...confirm} onConfirm={confirm.run} onClose={changed => { setConfirm(null); if (changed) { setSel(null); setReload(n => n + 1); } }} />}
     </div>
   );
 }

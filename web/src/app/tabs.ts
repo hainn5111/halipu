@@ -1,5 +1,6 @@
 import type { ComponentType, LazyExoticComponent } from 'react';
 import { lazy } from 'react';
+import { PREVIEW_TOOLS } from '../core/flags';
 
 // Manifest điều hướng: group → tab. Thêm màn hình mới = thêm 1 mục + 1 thư mục trong features/. Mỗi tab tải lười khi được mở.
 export interface TabDef {
@@ -12,7 +13,7 @@ export interface GroupDef { group: string; tabs: TabDef[] }
 
 // Công cụ dò/thử nghiệm: CHỈ có trong bản build có VITE_ENABLE_PROBE=1 (preview của nhánh/PR, hoặc `npm run dev`).
 // Bản deploy từ main (pages.yml) không đặt biến này → nhóm bị loại khỏi bundle, không có tab lẫn mã. Công cụ dò mới thêm vào nhóm này.
-const PROBE_TOOLS = import.meta.env.VITE_ENABLE_PROBE === '1' || import.meta.env.DEV;
+const PROBE_TOOLS = PREVIEW_TOOLS;
 
 export const TABS: GroupDef[] = [
   { group: 'Giám sát', tabs: [

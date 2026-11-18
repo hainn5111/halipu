@@ -1,5 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
-import { listDeviceTypes, listModels, projectIds } from '../../adapters/fonda';
+import { listDeviceTypes, listModels, previewModelClone, projectIds, sendModelCreate } from '../../adapters/fonda';
+import { WRITE_ENABLED } from '../../core/flags';
+import ConfirmWrite from '../common/ConfirmWrite';
 import { configEntries } from '../../adapters/fonda/mappers';
 import type { DeviceModel, DeviceType } from '../../core/types';
 
@@ -10,20 +12,25 @@ export default function Models() {
   const [typeId, setTypeId] = useState<string | null>(null);
   const [selId, setSelId] = useState<string | null>(null);
   const [busy, setBusy] = useState(true);
+  const [pid, setPid] = useState('');
   const [err, setErr] = useState('');
+  const [reload, setReload] = useState(0);
+  const [cloneName, setCloneName] = useState('');
+  const [confirm, setConfirm] = useState<null | { pid: string; body: Record<string, unknown> }>(null);
 
   useEffect(() => {
     let live = true;
     (async () => {
       try {
         const ts: DeviceType[] = [], ms: DeviceModel[] = [];
-        for (const pid of await projectIds()) { ts.push(...await listDeviceTypes(pid)); ms.push(...await listModels(pid)); }
+        const ps = await projectIds();
+        for (const pid of ps) { ts.push(...await listDeviceTypes(pid)); ms.push(...await listModels(pid)); }
         if (!live) return;
-        setTypes(ts); setModels(ms); setTypeId(ms[0]?.typeId ?? null);
+        setTypes(ts); setModels(ms); setTypeId(t => t ?? ms[0]?.typeId ?? null); setPid(ps[0] ?? '');
       } catch (e) { if (live) setErr((e as Error).message); } finally { if (live) setBusy(false); }
     })();
     return () => { live = false; };
-  }, []);
+  }, [reload]);
 
   const withModels = useMemo(() => {
     const count = new Map<string, number>(); for (const m of models) count.set(m.typeId, (count.get(m.typeId) ?? 0) + 1);
@@ -33,6 +40,8 @@ export default function Models() {
   const sel = models.find(m => m.id === selId);
   const entries = useMemo(() => (sel ? configEntries(sel.config) : []), [sel]);
 
+  const selType = types.find(t => t.id === sel?.typeId);
+  const canClone = WRITE_ENABLED && !!sel && selType?.value === 6;   // chỉ loại Lamp Pole đã bắt payload (docs/15 §7)
   return (
     <div className="lcus">
       <div className="listwrap">
@@ -64,8 +73,17 @@ export default function Models() {
               <ul style={{ margin: '4px 0 0', paddingLeft: 18 }}>{e.items.map((it, i) => (
                 <li key={i} style={{ opacity: it.checked ? 1 : .55 }}>{it.checked ? '✔' : '○'} {it.name}{it.extra ? ` (${it.extra})` : ''}</li>))}</ul>
             </div>))}
+          {WRITE_ENABLED && sel && (<>
+            <h3>Nhân bản template (ghi thật · chỉ bản preview)</h3>
+            {canClone ? (<>
+              <input style={{ width: '100%' }} placeholder="Tên template mới" value={cloneName} onChange={e => setCloneName(e.target.value)} />
+              <button style={{ marginTop: 8 }} disabled={!cloneName.trim()} onClick={() => setConfirm({ pid, body: previewModelClone(pid, { typeId: sel.typeId, typeValue: 6, config: sel.config }, cloneName.trim()) })}>Tạo bản sao…</button>
+            </>) : <p className="sub">Chỉ hỗ trợ template cột đèn (Lamp Pole) — các loại khác chưa bắt được payload.</p>}
+          </>)}
         </aside>
       )}
+      {confirm && <ConfirmWrite title="Tạo template mới" summary={`Nhân bản "${sel?.name}" thành "${cloneName.trim()}" (cùng loại, cùng cấu hình).`} method="POST" path="deviceModel/saveNew" body={confirm.body}
+        onConfirm={async () => { await sendModelCreate(confirm.pid, confirm.body); }} onClose={changed => { setConfirm(null); if (changed) { setCloneName(''); setSelId(null); setReload(n => n + 1); } }} />}
     </div>
   );
 }
