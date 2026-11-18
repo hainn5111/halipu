@@ -66,6 +66,33 @@ function shape(v, path = '', acc = new Set()) {
       save(`model-by-type-${tag}`, await api('POST', 'deviceModel/queryDeviceModelByDeviceTypeAndProject', { projectId: pid, deviceTypeId: t.deviceTypeId, deviceType: t.deviceTypeValue }));
       save(`devices-${tag}`, await api('POST', 'device/queryDevicePage', { projectId: pid, current: 1, size: 3, deviceTypeValue: t.deviceTypeValue }));
     }
+
+    // ---- Quan hệ LCU ↔ model(template) ↔ đèn ↔ cột (chỉ đọc, tối đa 3 LCU) ----
+    const modelById = new Map((Array.isArray(models) ? models : []).map(m => [m.deviceModelId, m]));
+    const typeById = new Map((Array.isArray(types.data) ? types.data : []).map(t => [t.deviceTypeId, t.deviceTypeName]));
+    const flat = (v, path = '', acc = []) => { if (Array.isArray(v)) v.slice(0, 3).forEach((x, i) => flat(x, `${path}[]`, acc)); else if (v && typeof v === 'object') Object.entries(v).forEach(([k, x]) => flat(x, path ? `${path}.${k}` : k, acc)); else acc.push([path, v]); return acc; };
+    // Trường nào của bản ghi trỏ tới model nào (so id với danh sách model) — in tên trường + tên loại model, không in id
+    const links = (name, d) => {
+      const seen = new Set();
+      for (const [path, v] of flat(d)) { const m = typeof v === 'string' && modelById.get(v); if (m) seen.add(`${path} → model "${m.deviceModelName}" (loại ${typeById.get(m.deviceTypeId) || '?'})`); }
+      out(`links ${name}`, seen.size ? '' : 'không có trường nào trỏ tới model'); for (const l of seen) console.log(`    ${l}`);
+    };
+    const pg = await api('POST', 'lcuActor/page', { projectId: pid, current: 1, size: 20, integratedQuery: '' });
+    const lcus = (pg.data && pg.data.records) || [];
+    out('LCU mẫu', `${lcus.length} (lấy tối đa 3 để dò quan hệ)`);
+    for (const [i, l] of lcus.slice(0, 3).entries()) {
+      const tag = `lcu${i}`;
+      const det = await api('GET', `lcuActor/queryLcuAndRelatedByUid/${l.uid || l.lcuId}`); save(`${tag}-detail-byUid`, det); links(`${tag}-detail`, det.data);
+      const d = det.data || {}; const lcuId = d.lcuId || l.lcuId, modelId = d.deviceModelId || l.deviceModelId;
+      save(`${tag}-detail-byLcuId`, await api('GET', `lcuActor/queryLcuAndRelatedByLcuId/${lcuId}`));
+      if (modelId) { save(`${tag}-model-byId`, await api('GET', `deviceModel/queryDeviceModelByDeviceModelId/${modelId}`)); save(`${tag}-model-full`, await api('GET', `deviceModel/queryDeviceModelAndTypeAndSystemAndFactoryById/${modelId}`)); }
+      save(`${tag}-lamps-of-lcu`, await api('GET', `projectLampActor/queryLampOfLcu/${lcuId}`));
+      const lamp0 = (Array.isArray(d.lamp) ? d.lamp[0] : null); if (lamp0 && lamp0.lampId) save(`${tag}-lamp-related`, await api('GET', `projectLampActor/queryLampAndRelatedById/${lamp0.lampId}`));
+      save(`${tag}-poles-of-lcu`, await api('GET', `poleActor/queryLcusOfPoleByLcuId/${lcuId}`));
+      const poleId = d.poleId || (Array.isArray(d.pole) && d.pole[0] && (d.pole[0].deviceId || d.pole[0].poleId));
+      if (poleId) { save(`${tag}-pole-related`, await api('GET', `poleActor/queryPoleAndRelatedById/${poleId}`)); save(`${tag}-pole-attr-devices`, await api('GET', `poleActor/queryAttributeDeviceOfPole/${poleId}`)); }
+      else out(`${tag}`, 'LCU không gắn cột (không có poleId)');
+    }
   } catch (x) { out('FAILED', x.message.split('\n')[0]); process.exitCode = 1; }
   await b.close();
 })();
