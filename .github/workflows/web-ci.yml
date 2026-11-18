@@ -1,0 +1,42 @@
+name: Web CI (React)
+
+# Build + kiểm thử bản React trong web/. KHÔNG deploy: GitHub Pages vẫn phục vụ bản site/ cho tới khi chuyển xong.
+on:
+  workflow_dispatch:
+  push:
+    branches: [feature/react-app]
+    paths: ['web/**', 'e2e/web-smoke.js', '.github/workflows/web-ci.yml']
+
+permissions:
+  contents: read
+
+jobs:
+  web:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    defaults: { run: { working-directory: web } }
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 20, cache: npm, cache-dependency-path: web/package-lock.json }
+      - run: npm ci
+      - name: Typecheck + unit tests + build
+        run: |
+          npm run typecheck
+          npm test
+          VITE_BUILD_INFO="${GITHUB_REF_NAME}@${GITHUB_SHA::7}" npm run build
+      - uses: actions/upload-artifact@v4
+        with: { name: web-dist, path: web/dist }
+      - name: E2E smoke (read-only, cần secret FONDA_USER/FONDA_PASS)
+        working-directory: .
+        env:
+          FONDA_USER: ${{ secrets.FONDA_USER }}
+          FONDA_PASS: ${{ secrets.FONDA_PASS }}
+        run: |
+          npm init -y >/dev/null && npm i playwright@1.49.1 >/dev/null && npx playwright install --with-deps chromium >/dev/null
+          python3 -m http.server 8080 --directory web/dist >/dev/null 2>&1 &
+          sleep 2
+          node e2e/web-smoke.js
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with: { name: web-e2e-screenshots, path: web-*.png, if-no-files-found: ignore }

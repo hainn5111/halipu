@@ -1,0 +1,25 @@
+# Ví dụ: phục vụ bản build tĩnh (web/dist) + reverse proxy HTTPS tới Fonda → web chỉ gọi /fonda/... cùng origin,
+# hết lỗi mixed-content/CORS và không cần bật "Insecure content" ở trình duyệt.
+# Trong config.json đặt:  "apiBase": "/fonda",  "wsUrl": "wss://<domain>/fonda-ws"
+server {
+  listen 443 ssl;
+  server_name example.com;
+  # ssl_certificate ...; ssl_certificate_key ...;
+
+  root /var/www/slcp;            # nội dung thư mục web/dist
+  index index.html;
+
+  location /fonda/ {             # REST: /fonda/api/... → http://159.138.45.45:18080/api/...
+    proxy_pass http://159.138.45.45:18080/;
+    proxy_set_header Host $host;
+    proxy_pass_header Authorization;
+    proxy_hide_header Access-Control-Allow-Origin;
+  }
+  location /fonda-ws {           # WebSocket realtime
+    proxy_pass http://159.138.45.45:81/clesws;
+    proxy_http_version 1.1;
+    proxy_set_header Upgrade $http_upgrade;
+    proxy_set_header Connection "upgrade";
+    proxy_read_timeout 3600s;
+  }
+}

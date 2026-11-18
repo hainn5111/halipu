@@ -1,0 +1,4 @@
+node_modules/
+web/dist/
+*.png
+!docs/**/*.png
