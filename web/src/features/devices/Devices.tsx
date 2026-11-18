@@ -78,7 +78,7 @@ export default function DeviceTab({ cat }: { cat: DeviceCat }) {
           <button className="x" onClick={() => setRow(null)}>✕</button>
           <h2>{row.name || row.id}</h2>
           <h3>Toàn bộ trường API trả về</h3>
-          <table><tbody>{Object.entries(row.raw).filter(([, v]) => v !== null && v !== '').map(([k, v]) => <tr key={k}><td>{k}</td><td>{typeof v === 'object' ? JSON.stringify(v) : String(v)}</td></tr>)}</tbody></table>
+          <table className="kv"><tbody>{Object.entries(row.raw).filter(([, v]) => v !== null && v !== '').map(([k, v]) => <tr key={k}><td>{k}</td><td>{typeof v === 'object' ? JSON.stringify(v) : String(v)}</td></tr>)}</tbody></table>
         </aside>
       )}
     </div>

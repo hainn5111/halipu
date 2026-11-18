@@ -54,7 +54,7 @@ export default function Models() {
           <h2>{sel.name}</h2>
           <h3>Cấu hình (deviceConfig)</h3>
           {!entries.length && <p className="sub">Không có trường cấu hình.</p>}
-          <table><tbody>
+          <table className="kv"><tbody>
             {entries.filter(e => e.kind === 'value').map(e => e.kind === 'value' && <tr key={e.key}><td>{e.key}</td><td>{e.text}</td></tr>)}
           </tbody></table>
           {entries.some(e => e.kind === 'attached') && <h3>Thiết bị đính kèm theo template</h3>}
