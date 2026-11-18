@@ -14,6 +14,8 @@ html,body{width:100%;height:100%}body{display:block;place-items:initial;padding:
 .tab.soon{opacity:.45}
 .main{display:flex;flex-direction:column;min-width:0;min-height:0}
 .crumb{padding:10px 16px;font-size:13px;color:#94a3b8;border-bottom:1px solid #334155}.crumb b{color:#e2e8f0}
+.frames{flex:1;min-height:0;width:100%;position:relative}.frames iframe{position:absolute;inset:0;width:100%;height:100%;border:0;background:#0f172a}.frames iframe[hidden]{display:none}
+.pane[hidden]{display:none}
 .pane{flex:1;min-height:0;width:100%;display:flex}
 .gis{position:relative;flex:1;min-width:0}#map{position:absolute;inset:0;background:#0f172a}
 .dd{position:absolute;top:12px;left:56px;z-index:1000;width:320px}
@@ -34,7 +36,7 @@ html,body{width:100%;height:100%}body{display:block;place-items:initial;padding:
 <div class="app">
   <header class="top"><b>SLCP</b><small id="b"></small><span>Xin chào, <b id="n" style="flex:none"></b></span><button id="o">Đăng xuất</button></header>
   <nav class="nav" id="nav"></nav>
-  <section class="main"><div class="crumb" id="crumb"></div><div class="pane" id="pane"></div></section>
+  <section class="main"><div class="crumb" id="crumb"></div><div class="pane" id="pane"></div><div class="frames" id="fwrap" hidden></div></section>
 </div>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
 <script src="build-info.js"></script><script src="config.js"></script><script src="api.js"></script>
@@ -54,7 +56,7 @@ const TREE = [
     { id: 'overview', label: 'Tổng quan' },
     { id: 'alarm', label: 'Cảnh báo' } ] },
   { group: 'Thiết bị', tabs: [
-    { id: 'lcus', label: 'Danh sách LCU', href: 'lcus.html' },
+    { id: 'lcus', label: 'Danh sách LCU', frame: 'lcus.html?embed=1' },
     { id: 'groups', label: 'Nhóm đèn' } ] },
   { group: 'Vận hành', tabs: [
     { id: 'schedule', label: 'Lịch điều khiển' },
@@ -63,17 +65,21 @@ const TREE = [
 const find = id => TREE.flatMap(g => g.tabs.map(t => ({ ...t, group: g.group }))).find(t => t.id === id);
 let cleanup = null;
 nav.innerHTML = TREE.map(g => `<div class="grp">${esc(g.group)}</div>` + g.tabs.map(t =>
-  `<button type="button" class="tab${t.render || t.href ? '' : ' soon'}" data-id="${t.id}">${esc(t.label)}${t.render || t.href ? '' : ' · sắp có'}</button>`).join('')).join('');
+  `<button type="button" class="tab${t.render || t.frame ? '' : ' soon'}" data-id="${t.id}">${esc(t.label)}${t.render || t.frame ? '' : ' · sắp có'}</button>`).join('')).join('');
 nav.onclick = e => { const bt = e.target.closest('.tab'); if (bt) open(bt.dataset.id); };
 function open(id) {
   const t = find(id) || find('gis');
-  if (t.href) { location.href = t.href; return; }
   if (cleanup) { cleanup(); cleanup = null; }
   nav.querySelectorAll('.tab').forEach(x => x.classList.toggle('on', x.dataset.id === t.id));
   crumb.innerHTML = `${esc(t.group)} › <b>${esc(t.label)}</b>`;
   pane.innerHTML = '';
+  fwrap.hidden = !t.frame; pane.hidden = !!t.frame;   // tab dạng iframe: giữ iframe sống khi chuyển tab, không tải lại
+  fwrap.querySelectorAll('iframe').forEach(f => { f.hidden = f.dataset.id !== t.id; });
+  if (t.frame && !fwrap.querySelector(`iframe[data-id="${t.id}"]`)) {
+    const f = document.createElement('iframe'); f.dataset.id = t.id; f.src = t.frame; fwrap.appendChild(f);
+  }
   if (t.render) cleanup = t.render(pane) || null;
-  else pane.innerHTML = `<div class="empty">Tab “${esc(t.label)}” chưa được dựng.</div>`;
+  else if (!t.frame) pane.innerHTML = `<div class="empty">Tab “${esc(t.label)}” chưa được dựng.</div>`;
   history.replaceState(null, '', '#' + t.id);
 }
 
