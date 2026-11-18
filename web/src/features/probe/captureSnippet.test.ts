@@ -22,7 +22,11 @@ describe('installCapture', () => {
     call('POST', 'http://h/api/v1.0/lcuActor/bindPole?lang=en', { lcuId: 'L', poleId: 'P', password: 'x', token: 't' }, { code: 200, message: 'ok', data: { a: 1 } });
     call('POST', 'http://h/api/v1.0/device/queryDevicePage', { current: 1 }, { code: 200, data: { records: [] } });
     call('POST', 'http://h/api/login', { username: 'u', password: 'p' }, { code: 200 });
-    expect(cap.log).toHaveLength(2);
+    call('GET', 'http://h/api/v1.0/area/queryAreaByCityId/33bad8bce12a4ea985a19e47cffb32de/9a59bd490ce14e139948fbda5addb2df', null, { code: 200 });
+    call('GET', 'http://h/api/v1.0/deviceImportOrExport/getImportStatus', null, { code: 200 });
+    call('PUT', 'http://h/api/v1.0/poleActor/update', {}, { code: 200 });
+    expect(cap.log).toHaveLength(5);
+    expect(cap.log.slice(2).map((x: { write: boolean }) => x.write)).toEqual([false, false, true]);
     expect(cap.log[0]).toMatchObject({ method: 'POST', path: 'lcuActor/bindPole', write: true, code: 200, body: { lcuId: 'L', poleId: 'P', password: '<redacted>', token: '<redacted>' } });
     expect(cap.log[1]).toMatchObject({ path: 'device/queryDevicePage', write: false });
   });

@@ -4,7 +4,8 @@
 // pass/token/secret/authorization/cookie. Bỏ qua /login. Hàm này TỰ CHỨA (không dùng biến ngoài) vì được sao chép qua toString().
 export function installCapture(win: any): any {
   if (win.__capture) return win.__capture;
-  const WRITE = /(save|add|update|delete|remove|bind|associate|dissociate|connect|disconnect|set[A-Z_]|place|copy|insert|relate|import|register|submit|move|clear|reset)/i;
+  // Phân loại theo TÊN PHƯƠNG THỨC (đoạn cuối không phải id 32 hex): bắt đầu bằng động từ ghi. getImportStatus / query* không tính.
+  const WRITE = /^(save|add|update|delete|remove|bind|associate|dissociate|connect|disconnect|set|place|copy|insert|relate|import|register|submit|move|clear|reset|check)/i;
   const SECRET = /pass|token|secret|authorization|cookie/i;
   const log: any[] = [];
   const scrub = (v: any, d = 0): any => {
@@ -23,7 +24,7 @@ export function installCapture(win: any): any {
     const path = pathOf(url);
     if (!path || /(^|\/)login/i.test(path)) return;
     const r = parse(resp);
-    log.push({ t: new Date().toISOString(), method: String(method).toUpperCase(), path, write: WRITE.test(path.split('/').pop() || ''), body: parse(body), status, code: r?.code, message: r?.message, data: r?.data });
+    log.push({ t: new Date().toISOString(), method: String(method).toUpperCase(), path, write: WRITE.test(path.split('/').filter((x: string) => !/^[0-9a-f]{32}$/i.test(x)).pop() || ''), body: parse(body), status, code: r?.code, message: r?.message, data: r?.data });
     badge();
   };
   const XHR = win.XMLHttpRequest.prototype, open = XHR.open, send = XHR.send;

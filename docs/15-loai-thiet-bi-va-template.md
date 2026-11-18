@@ -130,7 +130,47 @@ Cấu trúc `deviceConfig` đổi theo loại (mẫu model đầu tiên của t�
 
 **API ghi liên quan (CHƯA gọi, chưa biết body):** `deviceModel/saveNew|updateNew|delete|copyDeviceModel|useOrNo`, `device/save`, `device/placeDevice`, `lcuActor/save|update|bindPole|delete`, `projectLampActor/update`, `poleActor/save|sensorAssociatedWithPole|fogPileAssociatedWithPole|delete`, `device/connectAncillaryDevice|disconnectAncillaryDevice`. **Trong docs hiện có** chỉ có tên API và danh sách trường form (không có body JSON): `02-architecture.md` §10 — `device/save` (form Add Equipment: Project, Type, *Device Model, *Name, ID, *UID, Area, Road, Side, Road Classification, *Status, Remark; xoá `device/delete|deleteBatch`; đăng ký/huỷ register/unregister) và `deviceModel/save` (form Add Device Model: Project, *Type, *Function type/protocol, *Device Model, Picture, Remark + bộ trường `deviceConfig` theo loại; sửa `update`, xoá `delete`, copy). `03*-entities` chỉ dựng từ API đọc nên không có body của API ghi; `08-auth-and-reuse.md` §5 và `11-api-probe-and-security.md` §5 nêu cách bắt payload (hook XHR chỉ-đọc trên web gốc khi người dùng tự thao tác). Body bắt bằng tab **Bắt request (API ghi)** (nhóm Công cụ dò, chỉ ở preview) rồi mới thử (trên dữ liệu thử, có xác nhận).
 
-## 7. Việc còn mở
+## 7. API ghi đã bắt từ web Fonda gốc (tab "Bắt request")
+
+Bắt ngày 2026-11-18 khi người dùng tự thao tác trên **dữ liệu thử** (tạo model cột → tạo cột kèm LCU + đèn → sửa → xoá). Id thật thay bằng `<…>`. Mọi API trả `{code:200, message, data}`; body gửi dạng JSON, `projectId` nằm **trong body**.
+
+**Tạo template (model) — `POST deviceModel/saveNew`** (model cột, loại Lamp Pole)
+```
+{ deviceModelName, deviceTypeId, deviceTypeValue: 6, projectId,
+  deviceModelId: "",            // rỗng khi tạo mới
+  protocolId: "", protocolValue: -1, useTag: null,
+  deviceConfig: { ...bộ thuộc tính phẳng như mục 3a (poleType, poleTypeId, poleArmType, lampHolderNum, …) } }
+```
+→ `data` = model vừa tạo (có `deviceModelId` mới, `deviceTypeName`, `url`, `fileId`, `systemConfig:0`, `protocolName`…). Ở body `deviceConfig` là **object** (không phải chuỗi như khi đọc `queryAllDeviceModelByProjectId`).
+
+**Tạo cột kèm LCU và đèn trong một lần — `POST poleActor/save`**
+```
+{ deviceId: "", deviceModelId: <model cột>, deviceName, deviceCode, lat: "<chuỗi>", lng: "<chuỗi>",
+  geographicAddress, areaId: "", roadId: "", roadDirection: "", deviceStatus: 1, deviceSource: 1, projectId,
+  solarDevice: [],
+  attributeDevice: [ {                       // một "bộ gắn" = một LCU + các đèn của nó
+      checked: true, lampPosition: 1, uid: "<uid LCU>", solar: {}, solarLcu: {},
+      lamp: [ { checked: true, flag: true, lampNum: 1, lampPosition: 1, deviceModelId: <model đèn>, deviceName } ],
+      lcu: { deviceType: 2, deviceModelId: <model LCU>, deviceName, deviceCode: "", uid: "<uid>", lampHolderNum: 1,
+             protocolValue: 53, protocolName: "RF/F2", protocolMode: "", linkMode: 1, lcuTask: true, deviceSource: 1,
+             projectId, imsi: "", imei: "", sim: "", ccid: "", cls: "", fcntbits: "", lwan: "", factory: null } } ] }
+```
+→ `data` = cột (có `deviceId` mới) + `lamp[{lampId, dId, uid, num, ctype, deviceModelId, lat, lng}]` — **`uid` LCU được đệm 0 thành 12 ký tự hex** (`789DDD` → `000000789DDD`), `dId` = `deviceId` của LCU vừa tạo. LCU được **tạo mới cùng lúc** (lúc bắt, `lcuActor/queryLcuNotAssociatedWithPole` trả rỗng nên không có LCU rảnh để chọn; trường hợp chọn LCU có sẵn **chưa bắt**).
+- Cột không LCU: chưa bắt, nhưng dữ liệu đọc (mục 6) cho thấy là phần tử `attributeDevice` có `lcu:{}`.
+
+**Danh sách LCU chưa gắn cột (để chọn khi gắn) — `POST lcuActor/queryLcuNotAssociatedWithPole`**: `{integratedQuery:"", current:1, size:100, projectId, deviceType:2, deviceId:""}` → trang `{records, total, size, current, pages}`.
+
+**Sửa cột — `PUT poleActor/update`**: body là **toàn bộ đối tượng cột** như `queryPoleAndRelatedById` trả về (kèm `deviceConfig`, `attributeDevice[]` ở dạng đọc: lamp có `deviceId, luid, lcuId, checkNum, lampPosition`; lcu có `deviceId, uid(12 hex), linkMode: 2`) + phần sửa (ví dụ `deviceCode`); thêm `solarDevice:[{checked, lamp:{…}, solar:{}, wcu:{}, dtu:{}, serialId, …}]`. `data: null`. → quy ước: **đọc đối tượng, sửa trường, gửi lại nguyên đối tượng**.
+
+**Kiểm tra trước khi xoá — `POST device/checkDeviceRelated`**: `{deviceIdList:[<id>], deviceTypeValue: 6}` → `data: 0` (số thiết bị liên quan; 0 = xoá được — suy luận từ việc web gọi nó trước khi xoá).
+
+**Xoá cột — `POST poleActor/delete`**: `{deviceIdList:[<id cột>], deviceTypeValue: 6}` → `data: null`. **Chưa kiểm chứng** việc LCU/đèn đã gắn trên cột có bị xoá theo hay trở về trạng thái "chưa gắn".
+
+**Giá trị nhỏ:** `linkMode` của LCU trong `attributeDevice`: `1` khi tạo mới cùng cột, `2` ở dạng đọc/sửa (suy luận: 1 = tạo mới, 2 = đã tồn tại). `queryDeviceTypesWithUidOfProject` chính là danh sách loại mà form "Add Equipment" cho chọn (chỉ 3 loại có UID: Concentrator, Gateway, LCU). `deviceImportOrExport/getImportStatus` → `{isImportRun}`; `area/queryAreaByCityId/{cityId}/{projectId}` → danh sách khu vực.
+
+**Chưa bắt (cần bắt thêm):** sửa/xoá/copy model (`updateNew`, `delete`, `copyDeviceModel`); tạo model LCU/Lamps/tổ hợp (template có `lcuAndLamp`); gắn LCU **có sẵn** vào cột (`lcuActor/bindPole`?); thêm/bớt đèn của cột đã tồn tại; cột chỉ có đèn không LCU; xoá cột có gắn LCU (xem LCU/đèn còn không); `device/save` (tạo LCU/gateway riêng).
+
+## 8. Việc còn mở
 
 - Tìm tham số đúng của `deviceModel/queryDeviceModelByDeviceTypeAndProject` (bắt request từ web gốc).
 - Chưa dò dữ liệu của loại có thiết bị nhưng không thấy ở dự án mẫu (RTU, SmartBox, cảm biến… đều rỗng ở dự án này).
