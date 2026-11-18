@@ -6,9 +6,21 @@ const { FONDA_USER, FONDA_PASS } = process.env;
 const out = (k, v) => console.log(`[e2e] ${k}: ${typeof v === 'string' ? v : JSON.stringify(v)}`);
 (async () => {
   if (!FONDA_USER || !FONDA_PASS) { out('SKIP', 'chưa có secret FONDA_USER / FONDA_PASS'); return; }
-  // Trang https gọi API http: tương đương người dùng bật Site settings → Insecure content → Allow
-  const b = await chromium.launch({ args: BASE.startsWith('https') ? ['--allow-running-insecure-content', '--unsafely-treat-insecure-origin-as-secure=http://159.138.45.45:18080,http://159.138.45.45:81,ws://159.138.45.45:81'] : [] });
-  const p = await b.newPage({ viewport: { width: 1400, height: 850 } });
+  // Trang https gọi API http: người dùng bật Site settings → Insecure content → Allow. Mô phỏng bằng cách ghi content setting
+  // "mixed_script" = allow cho origin của trang vào profile Chromium (cờ dòng lệnh không vượt được chặn mixed-content của fetch).
+  let b, p;
+  if (BASE.startsWith('https')) {
+    const fs = require('fs'), os = require('os'), path = require('path');
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'pw-profile-')), origin = new URL(BASE).origin;
+    fs.mkdirSync(path.join(dir, 'Default'), { recursive: true });
+    const allow = { setting: 1, last_modified: '13300000000000000' };
+    fs.writeFileSync(path.join(dir, 'Default', 'Preferences'), JSON.stringify({ profile: { content_settings: { exceptions: { mixed_script: { [`${origin},*`]: allow, [`${origin}:443,*`]: allow } } } } }));
+    b = await chromium.launchPersistentContext(dir, { headless: true, viewport: { width: 1400, height: 850 } });
+    p = b.pages()[0] || await b.newPage();
+  } else {
+    b = await chromium.launch();
+    p = await b.newPage({ viewport: { width: 1400, height: 850 } });
+  }
   p.on('pageerror', e => out('PAGE_ERROR', e.message));
   p.on('requestfailed', r => out('REQ_FAILED', `${r.method()} ${r.url().replace(/\?.*/, '')} ${r.failure() && r.failure().errorText}`));
   p.on('response', r => { if (r.url().includes(':18080') && r.status() >= 400) out('API_HTTP_' + r.status(), r.url().replace(/\?.*/, '')); });
