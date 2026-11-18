@@ -32,6 +32,7 @@ Bộ tài liệu này mô tả cách tổ chức dữ liệu của hệ thống,
 | `12-vendor-weaknesses-lessons.md` | **Lỗ hổng & điểm yếu của Fonda → bài học cho hệ thống mới**: bảo mật (A1–A9), thiết kế API (B1–B5), kiến trúc (C1–C4); mỗi mục có "Fonda làm thế nào / rủi ro / mình đề xuất / cách kiểm tra"; kèm checklist trước khi chạy thật |
 | `13-target-architecture-framework.md` | **Khung kiến trúc tối thiểu cho hệ thống tự xây** (đề xuất): 7 lớp từ đèn/driver → node → truyền thông → nền tảng → web/app → quy trình thi công & vận hành; giao diện chuẩn ở mỗi ranh giới (Zhaga-D4i, NEMA, LoRaWAN, MQTT, TALQ); bảng mua/tự làm; 10 thí nghiệm T1–T10; lộ trình; danh sách chỗ còn thiếu |
 | `14-quy-trinh-phat-trien.md` | **Quy trình phát triển & kiến trúc web của repo**: vòng đời một thay đổi (nhánh → Web CI → preview → merge), 3 workflow, cấu trúc `web/`, cách thêm tab, kiểm thử, bài học vận hành (mixed content, API đã xác nhận), trang ẩn `scan.html` |
+| `15-loai-thiet-bi-va-template.md` | **Loại thiết bị & template model** (dò thật qua workflow Device probe): 60 loại thiết bị, payload `device/queryDevicePage` theo loại (Lamps, Lamp Pole, Gateway, LCU), cấu trúc `deviceConfig` (chuỗi JSON; dạng phẳng vs dạng tổ hợp khai thiết bị đính kèm), dictionary, việc còn mở |
 
 ## Tài liệu hãng (datasheets)
 

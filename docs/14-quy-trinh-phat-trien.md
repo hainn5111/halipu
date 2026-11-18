@@ -141,6 +141,7 @@ Môi trường cloud của Claude **không kết nối được** tới Fonda (`
 
 ## 8. Việc còn lại / ý tưởng
 
+- Loại thiết bị, tab thiết bị và template model: xem `15-loai-thiet-bi-va-template.md`. Dò API chỉ đọc bằng workflow `device-probe.yml` (chạy tay, cần secret, mẫu trong artifact).
 - Các tab hiện chỉ có nhãn "sắp có": Tổng quan, Cảnh báo, Nhóm đèn, Lịch điều khiển, Báo cáo.
 - Đổi sang **proxy HTTPS** khi có máy chủ (bỏ nhu cầu bật Insecure content).
 - Dịch vụ thu thập lịch sử chạy 24/7 nếu cần dữ liệu khi không mở web (hiện lịch sử lấy từ server Fonda).
