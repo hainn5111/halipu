@@ -3,7 +3,7 @@
 Bề mặt API đầy đủ, trích từ **webpack module** của frontend (không chỉ chuỗi text như lần đầu, nên đủ cả method HTTP và tham số). Tổng **2320 endpoint / 267 controller**: POST 1880, GET 401, DELETE 23, PUT 16.
 Base: `http://159.138.45.45:18080/api/` + path. Xem thêm `02-architecture.md`, `11-api-probe-and-security.md`.
 
-**Cột Lớp** (suy từ tên controller/method): **R** đọc DB · **W** ghi DB (save/update/delete/import…) · **RW** cả hai · **C** = `*Ctrl`/`*Control`: **gửi gói tin xuống thiết bị** (cấu hình, hỏi trạng thái, hoặc điều khiển). Lớp C và các method ghi là thao tác có tác dụng phụ — xem quy tắc R0–W2 ở `claude/10`.
+**Cột Lớp** (suy từ tên controller/method): **R** đọc DB · **W** ghi DB (save/update/delete/import…) · **RW** cả hai · **C** = `*Ctrl`/`*Control`: **gửi gói tin xuống thiết bị** (cấu hình, hỏi trạng thái, hoặc điều khiển). Lớp C và các method ghi là thao tác có tác dụng phụ — xem quy tắc R0–W2 ở `10`.
 
 > Có endpoint trong code chưa chắc còn sống; server có thể có endpoint frontend không gọi.
 

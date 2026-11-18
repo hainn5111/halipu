@@ -3,7 +3,7 @@
 Mục đích: liệt kê những gì Fonda làm sai hoặc làm yếu ở web/server, để hệ thống Hapulico **không lặp lại**. Mỗi mục gồm: Fonda đang làm thế nào → rủi ro → mình đề xuất làm thế nào → cách kiểm tra.
 
 - Phạm vi quan sát: chỉ từ phía client (frontend bundle, REST API, WebSocket). Không có mã nguồn server, DB hay hạ tầng → mọi nhận định về bên trong server là **Suy luận**.
-- Nguồn chính: `claude/11-api-probe-and-security.md` (phương pháp probe, frame WebSocket, luồng login), `04-api-catalog.md`, `claude/04b`/`04c` (danh sách method), `02-architecture.md`, `08-auth-and-reuse.md`.
+- Nguồn chính: `11-api-probe-and-security.md` (phương pháp probe, frame WebSocket, luồng login), `04-api-catalog.md`, `04b`/`04c` (danh sách method), `02-architecture.md`, `08-auth-and-reuse.md`.
 - Không ghi token, mật khẩu, cookie hay dữ liệu thật của người/thiết bị.
 - Cập nhật: 2026-11-14.
 
