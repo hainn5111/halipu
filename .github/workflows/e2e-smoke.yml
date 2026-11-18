@@ -9,7 +9,7 @@ on:
         required: false
         default: ''
   push:
-    branches: [feature/home-tabs-gis]
+    branches: [main, feature/home-tabs-gis]
     paths: ['e2e/**', '.github/workflows/e2e-smoke.yml']
 
 permissions:
