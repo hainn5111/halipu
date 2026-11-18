@@ -1,12 +1,11 @@
 name: Web CI (React)
 
-# Build + kiểm thử bản React trong web/ (typecheck, unit test, build, e2e chỉ đọc nếu có secret). Việc deploy do pages.yml đảm nhiệm.
+# Build + kiểm thử bản React trong web/ (typecheck, unit test, build, e2e chỉ đọc nếu có secret) trên MỌI nhánh, không deploy.
+# Deploy: pages.yml (main → gốc trang) và preview.yml (nhánh/PR → /preview/<nhánh>/).
 on:
   workflow_dispatch:
   push:
-    branches: [main, feature/react-app]
-    paths: ['web/**', 'e2e/web-smoke.js', '.github/workflows/web-ci.yml']
-  pull_request:
+    branches: ['**']        # mọi nhánh: có kết quả build/test ngay khi push, không cần mở PR
     paths: ['web/**', 'e2e/web-smoke.js', '.github/workflows/web-ci.yml']
 
 permissions:
