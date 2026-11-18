@@ -1,0 +1,37 @@
+name: E2E smoke (read-only)
+
+# Chạy test đọc-only trên build web bằng tài khoản trong secret FONDA_USER / FONDA_PASS (dùng tài khoản chỉ đọc/thử).
+on:
+  workflow_dispatch:
+  push:
+    branches: [feature/home-tabs-gis]
+    paths: ['e2e/**', '.github/workflows/e2e-smoke.yml']
+
+permissions:
+  contents: read
+
+jobs:
+  smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 20 }
+      - name: Install Playwright
+        run: |
+          npm init -y >/dev/null
+          npm i playwright@1.49.1 >/dev/null
+          npx playwright install --with-deps chromium >/dev/null
+      - name: Serve site
+        run: |
+          python3 -m http.server 8080 --directory site >/dev/null 2>&1 &
+          sleep 2
+      - name: Smoke test
+        env:
+          FONDA_USER: ${{ secrets.FONDA_USER }}
+          FONDA_PASS: ${{ secrets.FONDA_PASS }}
+        run: node e2e/smoke.js
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with: { name: e2e-screenshots, path: e2e-*.png, if-no-files-found: ignore }
