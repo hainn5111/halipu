@@ -48,7 +48,8 @@ jobs:
           SLUG: ${{ steps.slug.outputs.slug }}
         run: |
           npm ci
-          VITE_BUILD_INFO="preview/${SLUG}@${GITHUB_SHA::7}" npm run build
+          # VITE_ENABLE_PROBE=1: chỉ bản preview mới có nhóm "Công cụ dò" (pages.yml/main không đặt biến này)
+          VITE_ENABLE_PROBE=1 VITE_BUILD_INFO="preview/${SLUG}@${GITHUB_SHA::7}" npm run build
       - name: Publish preview
         uses: JamesIves/github-pages-deploy-action@v4
         with:

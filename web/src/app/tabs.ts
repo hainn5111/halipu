@@ -10,6 +10,10 @@ export interface TabDef {
 }
 export interface GroupDef { group: string; tabs: TabDef[] }
 
+// Công cụ dò/thử nghiệm: CHỈ có trong bản build có VITE_ENABLE_PROBE=1 (preview của nhánh/PR, hoặc `npm run dev`).
+// Bản deploy từ main (pages.yml) không đặt biến này → nhóm bị loại khỏi bundle, không có tab lẫn mã. Công cụ dò mới thêm vào nhóm này.
+const PROBE_TOOLS = import.meta.env.VITE_ENABLE_PROBE === '1' || import.meta.env.DEV;
+
 export const TABS: GroupDef[] = [
   { group: 'Giám sát', tabs: [
     { id: 'gis', label: 'GIS', view: lazy(() => import('../features/gis/Gis')) },
@@ -26,13 +30,15 @@ export const TABS: GroupDef[] = [
     { id: 'camera', label: 'Camera', view: lazy(() => import('../features/devices/tabs').then(m => ({ default: m.Camera }))) },
     { id: 'devices', label: 'Thiết bị khác', view: lazy(() => import('../features/devices/tabs').then(m => ({ default: m.Other }))) },
     { id: 'models', label: 'Mẫu thiết bị', view: lazy(() => import('../features/devices/Models')) },
-    { id: 'probe', label: 'Dò API (chỉ đọc)', view: lazy(() => import('../features/probe/Probe')) },
     { id: 'groups', label: 'Nhóm đèn' },
   ] },
   { group: 'Vận hành', tabs: [
     { id: 'schedule', label: 'Lịch điều khiển' },
     { id: 'report', label: 'Báo cáo' },
   ] },
+  ...(PROBE_TOOLS ? [{ group: 'Công cụ dò (chỉ preview)', tabs: [
+    { id: 'probe', label: 'Dò API (chỉ đọc)', view: lazy(() => import('../features/probe/Probe')) },
+  ] }] : []),
 ];
 
 export const ALL_TABS = TABS.flatMap(g => g.tabs.map(t => ({ ...t, group: g.group })));
