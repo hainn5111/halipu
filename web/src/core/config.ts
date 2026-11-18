@@ -26,13 +26,21 @@ export function wsUrlOf(c: AppConfig): string {
 let current: AppConfig = DEFAULT_CONFIG;
 export const config = (): AppConfig => current;
 
+/** projectId cố định đang áp dụng đến từ đâu: ?pid= trên URL, pid_fixed (trang ẩn scan.html), config.json, hoặc không có. */
+export let fixedSource: 'url' | 'scan' | 'config' | '' = '';
+export const FIXED_KEY = 'pid_fixed';
+
 export async function loadConfig(url = `${import.meta.env.BASE_URL}config.json`): Promise<AppConfig> {
   try {
     const res = await fetch(url, { cache: 'no-store' });
     if (res.ok) current = mergeConfig(await res.json());
   } catch { /* dùng mặc định */ }
   // Cho phép ghi đè nhanh bằng ?pid=<id> trên URL (giữ hành vi bản cũ).
+  // Thứ tự ưu tiên như bản cũ: ?pid= > pid_fixed (chọn từ scan.html) > config.json.
   const q = new URLSearchParams(location.search).get('pid');
-  if (q && q.trim()) current = { ...current, projectId: q.trim() };
+  let saved = ''; try { saved = (localStorage.getItem(FIXED_KEY) || '').trim(); } catch { /* bị chặn */ }
+  if (q && q.trim()) { current = { ...current, projectId: q.trim() }; fixedSource = 'url'; }
+  else if (saved) { current = { ...current, projectId: saved }; fixedSource = 'scan'; }
+  else if (current.projectId) fixedSource = 'config';
   return current;
 }

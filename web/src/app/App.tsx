@@ -1,6 +1,7 @@
 import { Suspense } from 'react';
 import { HashRouter, Navigate, NavLink, Route, Routes, useLocation } from 'react-router-dom';
 import { useAuth } from '../core/auth';
+import { config, FIXED_KEY, fixedSource } from '../core/config';
 import Login from '../features/login/Login';
 import { ALL_TABS, TABS } from './tabs';
 
@@ -12,7 +13,11 @@ function Shell() {
   const cur = ALL_TABS.find(t => loc.pathname === `/${t.id}`);
   return (
     <div className="app">
-      <header className="top"><b>SLCP</b><small>{BUILD}</small><span>Xin chào, <b>{user}</b></span><button onClick={signOut}>Đăng xuất</button></header>
+      <header className="top"><b>SLCP</b><small>{BUILD}</small>{fixedSource === 'scan' && (
+          <span className="fixed" title="Đang khoá theo dự án chọn ở trang scan">Dự án cố định {config().projectId.slice(0, 8)}
+            <button className="b" onClick={() => { try { localStorage.removeItem(FIXED_KEY); } catch { /* bị chặn */ } location.reload(); }}>Bỏ</button></span>
+        )}
+        <span>Xin chào, <b>{user}</b></span><button onClick={signOut}>Đăng xuất</button></header>
       <nav className="nav">
         {TABS.map(g => (
           <div key={g.group}>
