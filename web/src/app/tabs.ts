@@ -26,6 +26,7 @@ export const TABS: GroupDef[] = [
     { id: 'camera', label: 'Camera', view: lazy(() => import('../features/devices/tabs').then(m => ({ default: m.Camera }))) },
     { id: 'devices', label: 'Thiết bị khác', view: lazy(() => import('../features/devices/tabs').then(m => ({ default: m.Other }))) },
     { id: 'models', label: 'Mẫu thiết bị', view: lazy(() => import('../features/devices/Models')) },
+    { id: 'probe', label: 'Dò API (chỉ đọc)', view: lazy(() => import('../features/probe/Probe')) },
     { id: 'groups', label: 'Nhóm đèn' },
   ] },
   { group: 'Vận hành', tabs: [

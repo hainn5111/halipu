@@ -71,3 +71,4 @@ describe('model / deviceConfig', () => {
     expect(e[3]).toMatchObject({ kind: 'value' });
   });
 });
+
