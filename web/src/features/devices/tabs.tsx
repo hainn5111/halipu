@@ -7,4 +7,4 @@ export const SmartBox = () => <DeviceTab cat="smartbox" />;
 export const Sensor = () => <DeviceTab cat="sensor" />;
 export const Meter = () => <DeviceTab cat="meter" />;
 export const Camera = () => <DeviceTab cat="camera" />;
-export const Other = () => <DeviceTab cat="other" extras />;
+export const Other = () => <DeviceTab cat="other" />;

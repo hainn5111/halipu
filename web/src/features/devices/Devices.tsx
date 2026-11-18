@@ -1,12 +1,12 @@
 import { useEffect, useState } from 'react';
-import { listDeviceTypes, listDevices, listLamps, listPoles, projectIds } from '../../adapters/fonda';
+import { listDeviceTypes, listDevices, projectIds } from '../../adapters/fonda';
 import { categoryOf, type DeviceCat } from '../../adapters/fonda/mappers';
 import type { DeviceItem } from '../../core/types';
 
-// Chỉ ĐỌC. Mỗi tab = một nhóm loại thiết bị (theo tên loại). Tab "Thiết bị khác" (extras) thêm Đèn (lamp) và Cột đèn (pole).
+// Chỉ ĐỌC. Mỗi tab = một nhóm loại thiết bị (theo tên loại).
 interface Src { key: string; pid: string; label: string; load: () => Promise<DeviceItem[]> }
 
-export default function DeviceTab({ cat, extras = false }: { cat: DeviceCat; extras?: boolean }) {
+export default function DeviceTab({ cat }: { cat: DeviceCat }) {
   const [srcs, setSrcs] = useState<Src[]>([]);
   const [sel, setSel] = useState<string | null>(null);
   const [items, setItems] = useState<DeviceItem[]>([]);
@@ -20,17 +20,13 @@ export default function DeviceTab({ cat, extras = false }: { cat: DeviceCat; ext
         const out: Src[] = [];
         for (const pid of await projectIds()) {
           for (const t of await listDeviceTypes(pid)) if (categoryOf(t.name) === cat) out.push({ key: `${pid}:${t.value}`, pid, label: t.name, load: () => listDevices(pid, t.value) });
-          if (extras) {
-            out.push({ key: `${pid}:lamp`, pid, label: 'Đèn (Lamp)', load: () => listLamps(pid) });
-            out.push({ key: `${pid}:pole`, pid, label: 'Cột đèn (Pole)', load: () => listPoles(pid) });
-          }
         }
         if (!live) return;
         setSrcs(out); setSel(out[0]?.key ?? null); if (!out.length) setBusy(false);
       } catch (e) { if (live) { setErr((e as Error).message); setBusy(false); } }
     })();
     return () => { live = false; };
-  }, [cat, extras]);
+  }, [cat]);
 
   useEffect(() => {
     const s = srcs.find(x => x.key === sel); if (!s) return;

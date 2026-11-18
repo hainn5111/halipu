@@ -2,7 +2,7 @@
 import { call } from '../../core/api';
 import { config } from '../../core/config';
 import type { DeviceItem, DeviceType, LampCommand, LightStatus, Lcu, Measurement } from '../../core/types';
-import { mapLampRow, mapPoleRow, mapDeviceRow, mapDeviceTypes, mapLight, mapListRow, mapPageRow, mapTrend, mergeLcus, pickGeo, ratedPowerOf, validGeo, type LcuRow } from './mappers';
+import { mapDeviceRow, mapDeviceTypes, mapLight, mapListRow, mapPageRow, mapTrend, mergeLcus, pickGeo, ratedPowerOf, validGeo, type LcuRow } from './mappers';
 
 const PID_KEY = 'pid';
 
@@ -113,20 +113,3 @@ export async function listDevices(projectId: string, typeValue: number): Promise
   return out;
 }
 
-/** Cột đèn của dự án (chỉ đọc). */
-export async function listPoles(projectId: string): Promise<DeviceItem[]> {
-  const d = await call<unknown>('POST', 'poleActor/queryPoleOfProject', { projectId, body: { projectId } });
-  const rows = Array.isArray(d) ? d : ((d as { records?: unknown[] })?.records ?? []);
-  return (rows as Array<Record<string, unknown>>).map(mapPoleRow).filter((x): x is DeviceItem => !!x);
-}
-
-/** Đèn (lamp) của dự án (chỉ đọc, phân trang hết). */
-export async function listLamps(projectId: string): Promise<DeviceItem[]> {
-  const out: DeviceItem[] = []; let current = 1, pages = 1;
-  do {
-    const d = await call<{ records?: Array<Record<string, unknown>>; pages?: number }>('POST', 'projectLampActor/queryProjectLamp', { projectId, body: { projectId, current, size: 100 } });
-    for (const r of d.records || []) { const m = mapLampRow(r); if (m) out.push(m); }
-    pages = d.pages || 1; current++;
-  } while (current <= pages && current < 100);
-  return out;
-}

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { categoryOf, mapLampRow, mapPoleRow, mapDeviceRow, mapDeviceTypes, mapLight, mapListRow, mapPageRow, mapTrend, mergeLcus, pickGeo, ratedPowerOf, toCsv, validGeo } from './mappers';
+import { categoryOf, mapDeviceRow, mapDeviceTypes, mapLight, mapListRow, mapPageRow, mapTrend, mergeLcus, pickGeo, ratedPowerOf, toCsv, validGeo } from './mappers';
 
 describe('pickGeo / validGeo', () => {
   it('đọc lat/lng dạng chuỗi', () => expect(pickGeo({ lat: '20.93271', lng: '105.67026' })).toEqual({ lat: 20.93271, lng: 105.67026 }));
@@ -54,10 +54,5 @@ describe('phân loại & lamp/pole', () => {
     expect(categoryOf('Gateway')).toBe('gateway'); expect(categoryOf('RTU')).toBe('rtu'); expect(categoryOf('Tilt Sensor')).toBe('sensor');
     expect(categoryOf('Meter')).toBe('meter'); expect(categoryOf('Camera')).toBe('camera'); expect(categoryOf('Power Box')).toBe('other');
   });
-  it('mapLampRow / mapPoleRow', () => {
-    expect(mapLampRow({ lampId: 'L', name: 'Đèn', luid: 'U', channel: 1, lat: 21, lng: 105 })).toMatchObject({ id: 'L', uid: 'U', code: 'kênh 1', lat: 21 });
-    expect(mapLampRow({})).toBeNull();
-    expect(mapPoleRow({ deviceId: 'P', deviceName: 'Cột', lat: '21.1', lng: '105.2', geographicAddress: 'a' })).toMatchObject({ id: 'P', lat: 21.1, address: 'a' });
-    expect(mapPoleRow({})).toBeNull();
-  });
+  it('Lamps / Lamp Pole rơi vào other', () => { expect(categoryOf('Lamps')).toBe('other'); expect(categoryOf('Lamp Pole')).toBe('other'); });
 });

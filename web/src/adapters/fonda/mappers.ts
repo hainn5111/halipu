@@ -99,20 +99,6 @@ export function categoryOf(typeName: string): DeviceCat {
   return 'other';
 }
 
-/** projectLampActor/queryProjectLamp → đèn (lamp). `uid` = UID LCU chứa đèn. */
-export function mapLampRow(r: Rec): DeviceItem | null {
-  const id = str(r.lampId); if (!id) return null;
-  const g = { lat: num(r.lat) as number, lng: num(r.lng) as number };
-  return { id, uid: str(r.luid), name: str(r.name), code: r.channel != null ? `kênh ${str(r.channel)}` : '', typeValue: -2, model: str(r.deviceModel), ...(validGeo(g) ? g : {}), address: '' };
-}
-
-/** poleActor/queryPoleOfProject → cột đèn (lamp post). */
-export function mapPoleRow(r: Rec): DeviceItem | null {
-  const id = str(r.deviceId); if (!id) return null;
-  const g = { lat: num(r.lat) as number, lng: num(r.lng) as number };
-  return { id, uid: '', name: str(r.deviceName), code: str(r.deviceCode), typeValue: -3, model: '', status: num(r.deviceStatus), ...(validGeo(g) ? g : {}), address: str(r.geographicAddress) };
-}
-
 export function toCsv(cols: string[], rows: Array<Array<unknown>>): string {
   const q = (v: unknown) => `"${String(v ?? '').replace(/"/g, '""')}"`;
   return '﻿' + [cols.map(q).join(','), ...rows.map(r => r.map(q).join(','))].join('\n');
