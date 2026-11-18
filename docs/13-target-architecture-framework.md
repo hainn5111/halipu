@@ -227,7 +227,7 @@ Kết quả mỗi thí nghiệm nên ghi thành doc riêng trong nhóm này (14,
 
 ## Nguồn
 
-- Doc trong project: `01-overview.md`, `02-architecture.md`, `claude/09-vendor-api-survey.md`, `claude/10-task-behavior-qa.md`, `claude/12-vendor-weaknesses-lessons.md`, `datasheets/00-INDEX.md`.
+- Doc trong project: `01-overview.md`, `02-architecture.md`, `09-vendor-api-survey.md`, `10-task-behavior-qa.md`, `12-vendor-weaknesses-lessons.md`, `datasheets/00-INDEX.md`.
 - [Zhaga — cơ sở dữ liệu sản phẩm được chứng nhận](https://zhagastandard.org/products)
 - [TALQ — phát hành Smart City Protocol 2.7.0 (27/02/2026)](https://www.talq-consortium.org/news/81/talq-consortium-releases-version-270-of-its-interface-standard)
 - [TALQ — danh sách sản phẩm được chứng nhận](https://www.talq-consortium.org/certified-products.html)
