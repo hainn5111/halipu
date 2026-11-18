@@ -26,9 +26,9 @@ function shape(v, path = '', acc = new Set()) {
     await p.goto(BASE + '/'); await p.fill('#u', FONDA_USER); await p.fill('#p', FONDA_PASS); await p.click('#b');
     await p.waitForSelector('#ddb', { timeout: 30000 });
     const cfg = await (await p.request.get(BASE + '/config.json')).json();
-    // pid: cấu hình cố định hoặc app đã dò (localStorage)
+    // pid: PROBE_PROJECT_ID (workflow) > config.json > app đã dò hoặc app đã dò (localStorage)
     await p.waitForFunction(() => localStorage.getItem('pid') || true, null, { timeout: 5000 }).catch(() => {});
-    const pid = cfg.projectId || await p.evaluate(() => localStorage.getItem('pid'));
+    const pid = process.env.PROBE_PROJECT_ID || cfg.projectId || await p.evaluate(() => localStorage.getItem('pid'));
     if (!pid) throw new Error('không xác định được projectId');
     out('projectId', pid.slice(0, 8) + '…');
 

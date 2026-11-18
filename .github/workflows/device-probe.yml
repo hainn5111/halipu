@@ -26,6 +26,7 @@ jobs:
         env:
           FONDA_USER: ${{ secrets.FONDA_USER }}
           FONDA_PASS: ${{ secrets.FONDA_PASS }}
+          PROBE_PROJECT_ID: 9a59bd490ce14e139948fbda5addb2df   # projectId (không phải bí mật); chỉ dùng cho probe, không đổi hành vi web
         run: |
           npm init -y >/dev/null && npm i playwright@1.49.1 >/dev/null && npx playwright install --with-deps chromium >/dev/null
           python3 -m http.server 8080 --directory web/dist >/dev/null 2>&1 &
