@@ -1,4 +1,4 @@
-// Gọi thẳng API Fonda từ trình duyệt (docs/claude/11 §3). Token lưu sessionStorage — mất khi đóng tab, giống Fonda.
+// Gọi thẳng API Fonda từ trình duyệt (docs/11 §3). Token lưu sessionStorage — mất khi đóng tab, giống Fonda.
 const SLCP = {
   get token() { return sessionStorage.getItem('slcp_token'); },
   async login(username, password) {
@@ -139,7 +139,7 @@ const SLCP = {
     body.projectId = projectId;
     return this.call('POST', `lampControl/unicast/${cmd}`, { body });
   },
-  // WebSocket realtime (docs/claude/11 §2). onFrame nhận {cmd, ctrl, data, raw}.
+  // WebSocket realtime (docs/11 §2). onFrame nhận {cmd, ctrl, data, raw}.
   openWs(onFrame, onState) {
     const base = window.SLCP_CONFIG.API_BASE.replace(/^http/, 'ws').replace(/:\d+$/, '');
     const url = `${base}:81/clesws`; let hb;

@@ -1,6 +1,3 @@
-# hapulico
-Lập trình web cho project smart lighting
-
 ## Cấu trúc
 - `web/` — **bản chính đang phát triển**: React + TypeScript + Vite, build tĩnh, không phụ thuộc host (xem `web/README.md`).
 - `site/` — bản vanilla cũ, giữ tới khi chuyển hết sang `web/`.
