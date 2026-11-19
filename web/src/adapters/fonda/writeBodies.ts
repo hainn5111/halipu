@@ -15,14 +15,17 @@ export type PoleUpdate = { ok: true; body: Rec } | { ok: false; reason: string }
  * mỗi bộ gắn thêm `uid`, `lampPosition`; lcu thêm `linkMode: 2`; lamp thêm `checkNum`, `lampPosition`; `solarDevice` rỗng → 1 phần tử mẫu.
  * Chỉ dựng cho cột mà MỌI bộ gắn đều có LCU (cột có đèn rời không LCU chưa bắt được payload → từ chối thay vì đoán).
  */
-export function poleUpdateBody(raw: Rec, patch: { deviceName?: string; deviceCode?: string }): PoleUpdate {
+export function poleUpdateBody(raw: Rec, patch: { deviceName?: string; deviceCode?: string }, add: GroupInput[] = [], projectId = ''): PoleUpdate {
   if (!raw.deviceId) return { ok: false, reason: 'Thiếu deviceId của cột' };
   const groups = arr(raw.attributeDevice);
-  if (groups.some(g => !obj(g.lcu).deviceId && arr(g.lamp).length > 0)) return { ok: false, reason: 'Cột có đèn chưa gắn LCU — chưa bắt được payload sửa cho trường hợp này' };
-  const attributeDevice = groups.map((g, i) => {
+  const bad = add.map((g, i) => groupError(g, `Bộ mới #${i + 1}`)).find(Boolean) ?? groupsError(add, groups.map(g => String(obj(g.lcu).uid ?? '')));
+  if (bad) return { ok: false, reason: bad };
+  // Bộ có sẵn: đèn không LCU có `lcu: {}` (không có uid) — payload cho trường hợp này CHƯA bắt, dựng theo cùng quy ước (cần thử).
+  const existing = groups.map((g, i) => {
     const lcu = obj(g.lcu), hasLcu = !!lcu.deviceId;
     return { ...g, ...(hasLcu ? { uid: lcu.uid } : {}), lampPosition: i + 1, lcu: hasLcu ? { ...lcu, linkMode: 2 } : lcu, lamp: arr(g.lamp).map(l => ({ ...l, checkNum: l.lampNum ?? 1, lampPosition: i + 1 })) };
   });
+  const attributeDevice = [...existing, ...add.map((g, i) => groupBody(g, existing.length + i + 1, projectId))];
   const solarDevice = arr(raw.solarDevice).length ? raw.solarDevice : [{ checked: true, lamp: { checked: true, deviceModelId: '', deviceName: '', lampNum: 1, flag: true }, solar: {}, wcu: {}, dtu: {}, serialId: '', serialNum: '', addr: '', communicationEquipmentName: '', lampPosition: 1 }];
   const body: Rec = { ...raw, attributeDevice, solarDevice };
   if (patch.deviceName !== undefined) body.deviceName = patch.deviceName;
@@ -33,39 +36,71 @@ export function poleUpdateBody(raw: Rec, patch: { deviceName?: string; deviceCod
 /** device/checkDeviceRelated và poleActor/delete dùng cùng dạng body (deviceTypeValue 6 = Lamp Pole). */
 export const poleIdsBody = (ids: string[]): Rec => ({ deviceIdList: ids, deviceTypeValue: 6 });
 
-export interface PoleCreateInput {
-  projectId: string; poleModelId: string; name: string; code: string; lat: string; lng: string; address: string;
-  /** LCU CÓ SẴN (chưa gắn cột) và các đèn MỚI gắn vào các kênh của nó. */
-  lcu: { deviceId: string; uid: string; slots: number };
-  lamps: Array<{ modelId: string; name: string; channel: number }>;
+
+// ---- Bộ "đèn – LCU" (attributeDevice[]) dùng chung cho tạo cột và thêm bộ vào cột có sẵn ----
+
+/** Kiểu LCU của một bộ: không có (đèn gắn thẳng cột), LCU có sẵn (linkMode 2), hoặc LCU tạo mới cùng lúc (linkMode 1). */
+export type GroupLcu =
+  | { kind: 'none' }
+  | { kind: 'existing'; deviceId: string; uid: string; slots: number }
+  | { kind: 'new'; modelId: string; name: string; uid: string; slots: number; protocolValue: number; protocolName: string };
+export interface GroupInput { lcu: GroupLcu; lamps: Array<{ modelId: string; name: string; channel: number }> }
+
+const normUid = (u: string) => u.trim().toUpperCase().padStart(12, '0');
+
+export function groupError(g: GroupInput, label: string): string | null {
+  if (!g.lamps.length) return `${label}: cần ít nhất một đèn`;
+  if (g.lamps.some(l => !l.modelId || !l.name.trim())) return `${label}: mỗi đèn cần model và tên`;
+  const l = g.lcu;
+  if (l.kind === 'none') return g.lamps.length === 1 && g.lamps[0].channel === 1 ? null : `${label}: bộ không LCU chỉ có đúng 1 đèn (kênh 1)`;
+  if (l.kind === 'existing' && (!l.deviceId || !l.uid)) return `${label}: chưa chọn LCU`;
+  if (l.kind === 'new') {
+    if (!l.modelId) return `${label}: chưa chọn model LCU`;
+    if (!l.name.trim()) return `${label}: thiếu tên LCU`;
+    if (!/^[0-9A-Fa-f]{1,12}$/.test(l.uid.trim())) return `${label}: UID LCU phải là 1–12 ký tự hex`;
+  }
+  const slots = l.slots, ch = g.lamps.map(x => x.channel);
+  if (new Set(ch).size !== ch.length || ch.some(c => !Number.isInteger(c) || c < 1 || c > slots)) return `${label}: kênh đèn phải khác nhau và trong 1..${slots} (số đầu đèn của LCU)`;
+  return null;
 }
 
-/**
- * poleActor/save — tạo cột + gắn LCU có sẵn (linkMode 2) + đèn mới, đúng payload đã bắt (docs/15 §7).
- * Trả null kèm lý do nếu dữ liệu không hợp lệ.
- */
+/** Kiểm tra giữa các bộ: không dùng một LCU hai lần, UID LCU mới không trùng LCU nào (`taken` = UID đã có trên cột). */
+export function groupsError(groups: GroupInput[], taken: string[] = []): string | null {
+  const seen = new Set(taken.filter(Boolean).map(normUid));
+  for (const [i, g] of groups.entries()) {
+    if (g.lcu.kind === 'none') continue;
+    const u = normUid(g.lcu.uid);
+    if (seen.has(u)) return `Bộ #${i + 1}: LCU ${u} đã dùng ở bộ khác`;
+    seen.add(u);
+  }
+  return null;
+}
+
+/** Một phần tử attributeDevice theo payload đã bắt (docs/15 §7); `position` = vị trí bộ trong cột (từ 1). */
+export function groupBody(g: GroupInput, position: number, projectId: string): Rec {
+  const lamp = g.lamps.map(l => ({ checked: true, deviceModelId: l.modelId, deviceName: l.name.trim(), lampPosition: position, lampNum: l.channel, flag: true }));
+  const l = g.lcu;
+  if (l.kind === 'none') return { checked: true, lamp, lcu: {}, solarLcu: {}, solar: {}, lampPosition: position };
+  if (l.kind === 'existing') return { checked: true, lamp, lcu: { deviceId: l.deviceId, uid: l.uid, lampHolderNum: l.slots, linkMode: 2 }, solarLcu: {}, solar: {}, uid: l.uid, lampPosition: position };
+  const uid = l.uid.trim().toUpperCase();
+  return { checked: true, lamp, solarLcu: {}, solar: {}, uid, lampPosition: position,
+    lcu: { lcuTask: true, deviceType: 2, deviceModelId: l.modelId, deviceName: l.name.trim(), deviceCode: '', uid, imsi: '', imei: '', sim: '', ccid: '', protocolValue: l.protocolValue, protocolMode: '', deviceSource: 1, projectId, cls: '', fcntbits: '', lwan: '', protocolName: l.protocolName, factory: null, linkMode: 1, lampHolderNum: l.slots } };
+}
+
+export interface PoleCreateInput { projectId: string; poleModelId: string; name: string; code: string; lat: string; lng: string; address: string; groups: GroupInput[] }
+
+/** poleActor/save — tạo cột + danh sách bộ (đèn–LCU). Trả lý do nếu dữ liệu không hợp lệ. */
 export function poleCreateBody(i: PoleCreateInput): { ok: true; body: Rec } | { ok: false; reason: string } {
   const lat = Number(i.lat), lng = Number(i.lng);
   if (!i.name.trim()) return { ok: false, reason: 'Thiếu tên cột' };
   if (!i.poleModelId) return { ok: false, reason: 'Chưa chọn template cột' };
   if (!Number.isFinite(lat) || lat < -90 || lat > 90 || !Number.isFinite(lng) || lng < -180 || lng > 180 || (lat === 0 && lng === 0)) return { ok: false, reason: 'Toạ độ không hợp lệ' };
-  if (!i.lcu.deviceId || !i.lcu.uid) return { ok: false, reason: 'Chưa chọn LCU' };
-  if (!i.lamps.length) return { ok: false, reason: 'Cần ít nhất một đèn (chưa bắt payload cho cột không đèn)' };
-  if (i.lamps.some(l => !l.modelId || !l.name.trim())) return { ok: false, reason: 'Mỗi đèn cần model và tên' };
-  const ch = i.lamps.map(l => l.channel);
-  if (new Set(ch).size !== ch.length || ch.some(c => !Number.isInteger(c) || c < 1 || c > i.lcu.slots)) return { ok: false, reason: `Kênh đèn phải khác nhau và trong 1..${i.lcu.slots} (số đầu đèn của LCU)` };
-  return {
-    ok: true,
-    body: {
-      areaId: '', roadId: '', roadDirection: '', deviceStatus: 1, deviceSource: 1,
-      attributeDevice: [{
-        checked: true,
-        lamp: i.lamps.map(l => ({ checked: true, deviceModelId: l.modelId, deviceName: l.name.trim(), lampPosition: 1, lampNum: l.channel, flag: true })),
-        lcu: { deviceId: i.lcu.deviceId, uid: i.lcu.uid, lampHolderNum: i.lcu.slots, linkMode: 2 },
-        solarLcu: {}, solar: {}, uid: i.lcu.uid, lampPosition: 1,
-      }],
-      solarDevice: [], deviceId: '', deviceModelId: i.poleModelId, deviceName: i.name.trim(), deviceCode: i.code.trim() || i.name.trim(),
-      lat: String(i.lat).trim(), lng: String(i.lng).trim(), geographicAddress: i.address.trim(), projectId: i.projectId,
-    },
-  };
+  if (!i.groups.length) return { ok: false, reason: 'Cần ít nhất một bộ đèn' };
+  const bad = i.groups.map((g, k) => groupError(g, `Bộ #${k + 1}`)).find(Boolean) ?? groupsError(i.groups);
+  if (bad) return { ok: false, reason: bad };
+  return { ok: true, body: {
+    areaId: '', roadId: '', roadDirection: '', deviceStatus: 1, deviceSource: 1,
+    attributeDevice: i.groups.map((g, k) => groupBody(g, k + 1, i.projectId)),
+    solarDevice: [], deviceId: '', deviceModelId: i.poleModelId, deviceName: i.name.trim(), deviceCode: i.code.trim() || i.name.trim(),
+    lat: String(i.lat).trim(), lng: String(i.lng).trim(), geographicAddress: i.address.trim(), projectId: i.projectId } };
 }

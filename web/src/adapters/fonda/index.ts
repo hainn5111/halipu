@@ -3,7 +3,7 @@ import { call } from '../../core/api';
 import { config } from '../../core/config';
 import type { PoleLinks, DeviceItem, DeviceModel, DeviceType, LampCommand, LightStatus, Lcu, Measurement } from '../../core/types';
 import { WRITE_ENABLED } from '../../core/flags';
-import { modelCreateBody, poleIdsBody, poleUpdateBody } from './writeBodies';
+import { modelCreateBody, poleIdsBody, poleUpdateBody, type GroupInput } from './writeBodies';
 import { mapPoleLinks, mapModels, mapDeviceRow, mapDeviceTypes, mapLight, mapListRow, mapPageRow, mapTrend, mergeLcus, pickGeo, ratedPowerOf, validGeo, type LcuRow } from './mappers';
 
 const PID_KEY = 'pid';
@@ -145,8 +145,8 @@ const assertWrite = () => { if (!WRITE_ENABLED) throw new Error('Thao tác ghi �
 export const poleRaw = (projectId: string, poleId: string) => call<Record<string, unknown>>('GET', `poleActor/queryPoleAndRelatedById/${poleId}`, { projectId });
 
 /** Body sẽ gửi khi sửa tên/mã cột (xem trước trước khi xác nhận). */
-export async function previewPoleUpdate(projectId: string, poleId: string, patch: { deviceName?: string; deviceCode?: string }) {
-  return poleUpdateBody(await poleRaw(projectId, poleId), patch);
+export async function previewPoleUpdate(projectId: string, poleId: string, patch: { deviceName?: string; deviceCode?: string }, add: GroupInput[] = []) {
+  return poleUpdateBody(await poleRaw(projectId, poleId), patch, add, projectId);
 }
 export const sendPoleUpdate = (projectId: string, body: Record<string, unknown>) => { assertWrite(); return call('PUT', 'poleActor/update', { projectId, body }); };
 
@@ -157,6 +157,25 @@ export const sendPoleDelete = (projectId: string, poleId: string) => { assertWri
 /** Body nhân bản model (xem trước) và gửi. */
 export const previewModelClone = (projectId: string, base: { typeId: string; typeValue: number; config: Record<string, unknown> }, name: string) => modelCreateBody(base, name, projectId);
 export const sendModelCreate = (projectId: string, body: Record<string, unknown>) => { assertWrite(); return call('POST', 'deviceModel/saveNew', { projectId, body }); };
+
+/** Danh mục để dựng form bộ đèn–LCU: model cột/đèn/LCU (LCU kèm giao thức) và LCU chưa gắn cột. */
+export interface LcuModel { id: string; name: string; slots: number; protocolValue: number; protocolName: string }
+export interface PoleCatalog { poleModels: DeviceModel[]; lampModels: DeviceModel[]; lcuModels: LcuModel[]; freeLcus: FreeLcu[] }
+export async function loadPoleCatalog(projectId: string): Promise<PoleCatalog> {
+  const [types, models, freeLcus] = await Promise.all([listDeviceTypes(projectId), listModels(projectId), listFreeLcus(projectId)]);
+  const idsOf = (v: number) => new Set(types.filter(t => t.value === v).map(t => t.id));
+  const lcuType = types.find(t => t.value === 2);
+  // giao thức của model LCU (protocolValue/Name) chỉ có ở deviceModel/getDeviceModelPage
+  const proto = new Map<string, { v: number; n: string }>();
+  if (lcuType) {
+    try {
+      const d = await call<{ records?: Array<Record<string, unknown>> }>('POST', 'deviceModel/getDeviceModelPage', { projectId, body: { projectId, current: 1, size: 100, deviceTypeId: lcuType.id } });
+      for (const r of d.records || []) proto.set(String(r.deviceModelId), { v: Number(r.protocolValue), n: String(r.protocolName ?? '') });
+    } catch { /* thiếu giao thức: chỉ ảnh hưởng LCU mới */ }
+  }
+  const lcuModels = models.filter(m => idsOf(2).has(m.typeId)).map(m => ({ id: m.id, name: m.name, slots: Number(m.config.lampHolderNum) || 1, protocolValue: proto.get(m.id)?.v ?? NaN, protocolName: proto.get(m.id)?.n ?? '' }));
+  return { poleModels: models.filter(m => idsOf(6).has(m.typeId)), lampModels: models.filter(m => idsOf(5).has(m.typeId)), lcuModels, freeLcus };
+}
 
 export const sendPoleCreate = (projectId: string, body: Record<string, unknown>) => { assertWrite(); return call('POST', 'poleActor/save', { projectId, body }); };
 

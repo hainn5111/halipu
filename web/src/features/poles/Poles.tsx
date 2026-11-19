@@ -5,6 +5,7 @@ import { WRITE_ENABLED } from '../../core/flags';
 import ConfirmWrite from '../common/ConfirmWrite';
 // Form thêm cột chỉ nạp khi bật ghi: bản main không chứa mã này (hằng số WRITE_ENABLED được gập lúc build).
 const PoleCreate = WRITE_ENABLED ? lazy(() => import('./PoleCreate')) : null;
+const PoleAddGroups = WRITE_ENABLED ? lazy(() => import('./PoleAddGroups')) : null;
 import type { DeviceItem, PoleLinks } from '../../core/types';
 
 // Cột đèn & liên kết — chỉ ĐỌC. Danh sách cột; bấm một cột để xem cái gì đang gắn trên nó:
@@ -24,7 +25,7 @@ export default function Poles() {
   const [edit, setEdit] = useState({ name: '', code: '' });
   const [confirm, setConfirm] = useState<null | { title: string; summary: string; method: string; path: string; body: unknown; danger?: boolean; run: () => Promise<void> }>(null);
   const [writeMsg, setWriteMsg] = useState('');
-  const [adding, setAdding] = useState(false);
+  const [adding, setAdding] = useState(false), [addingGroups, setAddingGroups] = useState(false);
   const [pids, setPids] = useState<string[]>([]);
   useEffect(() => {
     let live = true;
@@ -114,6 +115,7 @@ export default function Poles() {
             <label className="sub" style={{ display: 'block', marginTop: 8 }}>Mã</label><input style={{ width: '100%' }} value={edit.code} onChange={e => setEdit(v => ({ ...v, code: e.target.value }))} />
             <div style={{ display: 'flex', gap: 8, marginTop: 10 }}>
               <button disabled={!links || !edit.name.trim() || (edit.name === sel.name && edit.code === sel.code)} onClick={() => void askUpdate()}>Lưu thay đổi…</button>
+              <button className="b" disabled={!links} onClick={() => setAddingGroups(true)}>+ Thêm bộ đèn–LCU…</button>
               <button className="b" disabled={!links} onClick={() => void askDelete()}>Xoá cột…</button>
             </div>
             {writeMsg && <div className="err" style={{ marginTop: 8 }}>{writeMsg}</div>}
@@ -121,6 +123,7 @@ export default function Poles() {
         </aside>
       )}
       {adding && PoleCreate && <Suspense fallback={null}><PoleCreate pid={pids[0] ?? ''} onClose={changed => { setAdding(false); if (changed) setReload(n => n + 1); }} /></Suspense>}
+      {addingGroups && sel && PoleAddGroups && <Suspense fallback={null}><PoleAddGroups pid={sel.pid} poleId={sel.id} poleName={sel.name} onClose={changed => { setAddingGroups(false); if (changed) { setSel(null); setReload(n => n + 1); } }} /></Suspense>}
       {confirm && <ConfirmWrite {...confirm} onConfirm={confirm.run} onClose={changed => { setConfirm(null); if (changed) { setSel(null); setReload(n => n + 1); } }} />}
     </div>
   );
