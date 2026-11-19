@@ -45,7 +45,7 @@ Trước khi push luôn chạy `npm run typecheck && npm test && npm run build` 
 
 | File | Khi nào chạy | Làm gì | Deploy? |
 |---|---|---|---|
-| `web-ci.yml` | Mở/cập nhật PR có đổi `web/`, hoặc chạy tay | typecheck → test → build → e2e chỉ đọc (cần secret) → lưu artifact (`web-dist`, ảnh chụp). Có `concurrency` huỷ run cũ | Không |
+| `web-ci.yml` | Mở/cập nhật PR **không phải Draft** có đổi `web/` (bấm *Ready for review* để chạy), hoặc chạy tay | typecheck → test → build → e2e chỉ đọc (cần secret) → lưu artifact (`web-dist`, ảnh chụp). Có `concurrency` huỷ run cũ | Không |
 | `pages.yml` | Push lên `main` có đổi `web/`, hoặc chạy tay | typecheck + test (fail thì dừng, không deploy) → build (đóng dấu `main@sha`) → đẩy vào `gh-pages` ở **gốc** | Có, ra gốc trang |
 
 - Workflow **Preview** (link `/preview/<nhánh>/`) đã bỏ để tiết kiệm minute Actions; xem thử bằng `preview-commit-local.bat` (xem `docs/15-chay-local-sourcetree.md`). Cần lại thì khôi phục `preview.yml` từ lịch sử git.
