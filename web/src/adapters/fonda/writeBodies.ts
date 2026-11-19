@@ -23,11 +23,10 @@ export function poleUpdateBody(raw: Rec, patch: { deviceName?: string; deviceCod
   // Bộ có sẵn: đèn không LCU có `lcu: {}` (không có uid) — payload cho trường hợp này CHƯA bắt, dựng theo cùng quy ước (cần thử).
   for (const i of removeIdx) {
     if (!groups[i]) return { ok: false, reason: `Không có bộ #${i + 1} để gỡ` };
-    if (obj(groups[i].lcu).deviceId) return { ok: false, reason: `Bộ #${i + 1} có LCU — chưa bắt được payload gỡ bộ có LCU (chỉ gỡ được bộ không LCU)` };
   }
   const existing = groups.map((g, i) => {
     const lcu = obj(g.lcu), hasLcu = !!lcu.deviceId;
-    // Gỡ bộ (đã bắt): giữ nguyên bộ trong danh sách, đặt checked:false + remove:true; vị trí KHÔNG đánh số lại.
+    // Gỡ bộ (đã bắt với bộ không LCU; người dùng xác nhận bộ có LCU gỡ được như nhau): giữ bộ trong danh sách, checked:false + remove:true; vị trí KHÔNG đánh số lại.
     const drop = removeIdx.includes(i) ? { checked: false, remove: true } : {};
     return { ...g, ...(hasLcu ? { uid: lcu.uid } : {}), lampPosition: i + 1, lcu: hasLcu ? { ...lcu, linkMode: 2 } : lcu, lamp: arr(g.lamp).map(l => ({ ...l, checkNum: l.lampNum ?? 1, lampPosition: i + 1 })), ...drop };
   });

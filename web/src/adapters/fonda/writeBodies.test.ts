@@ -35,8 +35,9 @@ describe('poleUpdateBody', () => {
     expect(gs[0]).toMatchObject({ checked: false, remove: true, lampPosition: 1 }); expect(gs[0].lamp[0]).toMatchObject({ deviceId: 'DA', checkNum: 1, lampPosition: 1 });
     expect(gs[1].remove).toBeUndefined(); expect(gs[1].checked).toBe(true); expect(gs[1].lampPosition).toBe(2);
   });
-  it('không gỡ bộ có LCU / bộ không tồn tại', () => {
-    expect(poleUpdateBody(raw, {}, [], 'PID', [0]).ok).toBe(false);
+  it('gỡ bộ có LCU cũng dùng cùng cách (remove:true), bộ không tồn tại → từ chối', () => {
+    const r = poleUpdateBody(raw, {}, [], 'PID', [0]); expect(r.ok).toBe(true); if (!r.ok) return;
+    expect((r.body.attributeDevice as Array<Record<string, any>>)[0]).toMatchObject({ checked: false, remove: true, uid: '000000789DDD', lcu: { deviceId: 'L', linkMode: 2 } });   // eslint-disable-line @typescript-eslint/no-explicit-any
     expect(poleUpdateBody(raw, {}, [], 'PID', [5]).ok).toBe(false);
   });
   it('thiếu id → từ chối', () => expect(poleUpdateBody({}, {}).ok).toBe(false));

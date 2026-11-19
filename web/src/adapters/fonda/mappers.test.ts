@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { mapPoleLinks, categoryOf, configEntries, mapModels, mapDeviceRow, mapDeviceTypes, mapLight, mapListRow, mapPageRow, mapTrend, mergeLcus, pickGeo, ratedPowerOf, toCsv, validGeo } from './mappers';
+import { mapLcuLamps, mapPoleLinks, categoryOf, configEntries, mapModels, mapDeviceRow, mapDeviceTypes, mapLight, mapListRow, mapPageRow, mapTrend, mergeLcus, pickGeo, ratedPowerOf, toCsv, validGeo } from './mappers';
 
 describe('pickGeo / validGeo', () => {
   it('đọc lat/lng dạng chuỗi', () => expect(pickGeo({ lat: '20.93271', lng: '105.67026' })).toEqual({ lat: 20.93271, lng: 105.67026 }));
@@ -80,7 +80,7 @@ describe('mapPoleLinks', () => {
     const rel = { deviceId: 'P1', deviceName: 'Cột 1', deviceModelName: 'Cột thép', lat: '20.9', lng: '105.6', attributeDevice: [{ checked: true, lcu: { deviceId: 'L1', uid: 'U1', lampHolderNum: 1, deviceModelId: 'MLCU' }, lamp: [{ lampNum: 1, deviceId: 'D1', deviceName: 'Đèn 1', deviceModelId: 'MLAMP' }] }] };
     const r = mapPoleLinks(rel, { lamp: [{ lampId: 'D1', deviceModelName: 'Đèn đường phố' }], camera: [] }, nm);
     expect(r.pole).toMatchObject({ id: 'P1', name: 'Cột 1', lat: 20.9 });
-    expect(r.groups).toEqual([{ lcu: { id: 'L1', uid: 'U1', slots: 1, model: 'LCU-RF' }, lamps: [{ id: 'D1', name: 'Đèn 1', channel: 1, model: 'Đèn đường phố' }] }]);
+    expect(r.groups).toEqual([{ lcu: { id: 'L1', uid: 'U1', slots: 1, model: 'LCU-RF' }, lamps: [{ id: 'D1', name: 'Đèn 1', channel: 1, model: 'Đèn đường phố', checked: true }] }]);
     expect(r.others).toEqual([]);
   });
   it('cột không LCU: mỗi đèn một nhóm, không có lcu; thiết bị khác gom theo loại', () => {
@@ -90,4 +90,16 @@ describe('mapPoleLinks', () => {
     expect(r.others).toEqual([{ kind: 'camera', items: [{ name: 'Cam 1' }] }]);
   });
   it('dữ liệu rỗng không lỗi', () => expect(mapPoleLinks(null, null, nm).groups).toEqual([]));
+});
+
+describe('LCU nhiều đèn', () => {
+  it('mapLcuLamps sắp theo kênh, bỏ phần tử không có lampId', () => {
+    const r = mapLcuLamps([{ lampId: 'B', channel: 2, deviceName: 'Đèn 2', deviceModelId: 'MLAMP' }, { lampId: 'A', channel: 1, deviceName: 'Đèn 1' }, { channel: 3 }], id => (id === 'MLAMP' ? 'Đèn LED' : ''));
+    expect(r.map(l => [l.id, l.channel, l.model])).toEqual([['A', 1, ''], ['B', 2, 'Đèn LED']]); expect(mapLcuLamps(null, () => '')).toEqual([]);
+  });
+  it('số đầu đèn lấy max(tham chiếu LCU, model LCU); lamp có cờ checked', () => {
+    const rel = { attributeDevice: [{ lcu: { deviceId: 'L', uid: 'U', lampHolderNum: 1, deviceModelId: 'MLCU' }, lamp: [{ lampNum: 1, deviceId: 'D1', checked: true }, { lampNum: 2, deviceId: 'D2', checked: false }] }] };
+    const r = mapPoleLinks(rel, null, () => '', id => (id === 'MLCU' ? 4 : undefined));
+    expect(r.groups[0].lcu?.slots).toBe(4); expect(r.groups[0].lamps.map(l => l.checked)).toEqual([true, false]);
+  });
 });

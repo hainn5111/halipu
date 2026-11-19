@@ -4,7 +4,7 @@ import { config } from '../../core/config';
 import type { PoleLinks, DeviceItem, DeviceModel, DeviceType, LampCommand, LightStatus, Lcu, Measurement } from '../../core/types';
 import { WRITE_ENABLED } from '../../core/flags';
 import { modelCreateBody, poleIdsBody, poleUpdateBody, type GroupInput } from './writeBodies';
-import { mapPoleLinks, mapModels, mapDeviceRow, mapDeviceTypes, mapLight, mapListRow, mapPageRow, mapTrend, mergeLcus, pickGeo, ratedPowerOf, validGeo, type LcuRow } from './mappers';
+import { mapLcuLamps, mapPoleLinks, mapModels, mapDeviceRow, mapDeviceTypes, mapLight, mapListRow, mapPageRow, mapTrend, mergeLcus, pickGeo, ratedPowerOf, validGeo, type LcuRow } from './mappers';
 
 const PID_KEY = 'pid';
 
@@ -127,13 +127,23 @@ export async function listModels(projectId: string): Promise<DeviceModel[]> {
   return mapModels(await call('GET', `deviceModel/queryAllDeviceModelByProjectId/${projectId}`, { projectId }));
 }
 
-/** Liên kết của một cột: thiết bị đang gắn trên cột (chỉ đọc). `modelName` tra tên model từ id. */
-export async function poleLinks(projectId: string, poleId: string, modelName: (id: string) => string): Promise<PoleLinks> {
+/**
+ * Liên kết của một cột: thiết bị đang gắn trên cột (chỉ đọc). `modelName`/`modelSlots` tra tên và số đầu đèn từ id model.
+ * Với mỗi bộ có LCU còn đọc đèn thực của LCU (queryLampOfLcu): số đầu đèn trong tham chiếu LCU của cột không đáng tin
+ * (đã gặp LCU nhiều đèn nhưng `lampHolderNum` ghi 1), nên các kênh vẽ theo dữ liệu của chính LCU.
+ */
+export async function poleLinks(projectId: string, poleId: string, modelName: (id: string) => string, modelSlots?: (id: string) => number | undefined): Promise<PoleLinks> {
   const [related, attr] = await Promise.all([
     call('GET', `poleActor/queryPoleAndRelatedById/${poleId}`, { projectId }),
     call('GET', `poleActor/queryAttributeDeviceOfPole/${poleId}`, { projectId }).catch(() => null),   // lỗi phần phụ vẫn hiện được phần chính
   ]);
-  return mapPoleLinks(related, attr, modelName);
+  const links = mapPoleLinks(related, attr, modelName, modelSlots);
+  await Promise.all(links.groups.map(async g => {
+    if (!g.lcu) return;
+    try { g.lcuLamps = mapLcuLamps(await call('GET', `projectLampActor/queryLampOfLcu/${g.lcu.id}`, { projectId }), modelName); } catch { /* giữ đèn theo attributeDevice */ }
+    if (g.lcuLamps?.length) g.lcu.slots = Math.max(g.lcu.slots ?? 0, ...g.lcuLamps.map(l => l.channel));
+  }));
+  return links;
 }
 
 /** Chốt chặn ở tầng adapter: bản build không bật ghi thì mọi hàm gửi lệnh ghi đều từ chối. */

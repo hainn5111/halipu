@@ -9,16 +9,38 @@ const PoleCreate = WRITE_ENABLED ? lazy(() => import('./PoleCreate')) : null;
 // ("Parameter deviceId cannot be empty") vì thiếu `checkNum` ở đèn mới — đã sửa theo capture (docs/15 §7).
 const ADD_GROUP_TO_EXISTING = true;
 const PoleAddGroups = WRITE_ENABLED && ADD_GROUP_TO_EXISTING ? lazy(() => import('./PoleAddGroups')) : null;
-import type { DeviceItem, PoleLinks } from '../../core/types';
+import type { DeviceItem, PoleLamp, PoleLinks } from '../../core/types';
 
 // Cột đèn & liên kết — chỉ ĐỌC. Danh sách cột; bấm một cột để xem cái gì đang gắn trên nó:
 // LCU kèm đèn theo kênh, đèn gắn thẳng vào cột (chưa có LCU), và thiết bị khác (camera, cảm biến…).
 type Pole = DeviceItem & { pid: string };
 const POLE_TYPE = /lamp\s*pole/i;
 
+// Các kênh của một LCU: 1..slots, mỗi kênh một đèn hoặc "(trống)". Nguồn chuẩn là đèn của LCU (lcuLamps); thiếu thì dùng attributeDevice.
+function ChannelStrip({ lcuSlots, lcuLamps, attrLamps }: { lcuSlots?: number; lcuLamps?: PoleLamp[]; attrLamps: PoleLamp[] }) {
+  const lamps = lcuLamps?.length ? lcuLamps : attrLamps.filter(l => l.checked);
+  const slots = Math.max(lcuSlots ?? 0, ...lamps.map(l => l.channel), 1);
+  const by = new Map<number, PoleLamp[]>(); for (const l of lamps) by.set(l.channel, [...(by.get(l.channel) ?? []), l]);
+  const cols = Array.from({ length: slots }, (_, i) => i + 1);
+  const attrIds = new Set(attrLamps.filter(l => l.checked).map(l => l.id)), lcuIds = new Set((lcuLamps ?? []).map(l => l.id));
+  const diff = lcuLamps?.length && (lcuLamps.some(l => !attrIds.has(l.id)) || attrLamps.some(l => l.checked && !lcuIds.has(l.id)));
+  return (
+    <div style={{ marginTop: 4 }}>
+      <div className="sub" style={{ margin: '0 0 4px' }}>{lamps.length}/{slots} kênh có đèn</div>
+      <div style={{ display: 'grid', gridTemplateColumns: 'auto 1fr', gap: '2px 8px', fontSize: 13 }}>
+        {cols.map(c => (<span key={c} style={{ display: 'contents' }}>
+          <span style={{ color: 'var(--muted)' }}>kênh {c}</span>
+          <span>{by.get(c)?.map(l => `${l.name}${l.model ? ` — ${l.model}` : ''}`).join(' · ') || <i style={{ color: 'var(--muted)' }}>(trống)</i>}</span>
+        </span>))}
+      </div>
+      {diff && <div className="sub" style={{ margin: '4px 0 0', color: 'var(--bad)' }}>Đèn của LCU khác danh sách trên cột — đang hiện theo dữ liệu của LCU.</div>}
+    </div>
+  );
+}
+
 export default function Poles() {
   const [poles, setPoles] = useState<Pole[]>([]);
-  const [models, setModels] = useState<Map<string, string>>(new Map());
+  const [models, setModels] = useState<Map<string, { name: string; slots?: number }>>(new Map());
   const [sel, setSel] = useState<Pole | null>(null);
   const [links, setLinks] = useState<PoleLinks | null>(null);
   const [busy, setBusy] = useState(true), [linkBusy, setLinkBusy] = useState(false);
@@ -34,10 +56,10 @@ export default function Poles() {
     let live = true;
     (async () => {
       try {
-        const ps: Pole[] = [], ms = new Map<string, string>();
+        const ps: Pole[] = [], ms = new Map<string, { name: string; slots?: number }>();
         const all = await projectIds(); if (live) setPids(all);
         for (const pid of all) {
-          for (const m of await listModels(pid)) ms.set(m.id, m.name);
+          for (const m of await listModels(pid)) ms.set(m.id, { name: m.name, slots: Number(m.config.lampHolderNum) || undefined });
           for (const t of await listDeviceTypes(pid)) if (POLE_TYPE.test(t.name)) ps.push(...(await listDevices(pid, t.value)).map(d => ({ ...d, pid })));
         }
         if (live) { setPoles(ps); setModels(ms); }
@@ -46,15 +68,16 @@ export default function Poles() {
     return () => { live = false; };
   }, [reload]);
 
-  const modelName = useMemo(() => (id: string) => models.get(id) ?? '', [models]);
+  const modelName = useMemo(() => (id: string) => models.get(id)?.name ?? '', [models]);
+  const modelSlots = useMemo(() => (id: string) => models.get(id)?.slots, [models]);
   useEffect(() => {
     if (!sel) { setLinks(null); return; }
     setEdit({ name: sel.name, code: sel.code }); setWriteMsg('');
     let live = true;
     setLinkBusy(true); setLinkErr(''); setLinks(null);
-    poleLinks(sel.pid, sel.id, modelName).then(r => { if (live) setLinks(r); }).catch(e => { if (live) setLinkErr((e as Error).message); }).finally(() => { if (live) setLinkBusy(false); });
+    poleLinks(sel.pid, sel.id, modelName, modelSlots).then(r => { if (live) setLinks(r); }).catch(e => { if (live) setLinkErr((e as Error).message); }).finally(() => { if (live) setLinkBusy(false); });
     return () => { live = false; };
-  }, [sel, modelName]);
+  }, [sel, modelName, modelSlots]);
 
   async function askUpdate() {
     if (!sel) return;
@@ -71,7 +94,7 @@ export default function Poles() {
     try {
       const r = await previewPoleUpdate(sel.pid, sel.id, {}, [], [i]);
       if (!r.ok) { setWriteMsg(r.reason); return; }
-      setConfirm({ title: `Gỡ bộ #${i + 1} khỏi cột "${sel.name}"`, summary: 'Đánh dấu bộ đèn không LCU này là remove:true (đúng cách web Fonda gốc gỡ). Chưa rõ Fonda xoá luôn đèn hay chỉ gỡ khỏi cột — kiểm tra lại sau khi thực hiện.', method: 'PUT', path: 'poleActor/update', body: r.body, danger: true, run: async () => { await sendPoleUpdate(sel.pid, r.body); } });
+      setConfirm({ title: `Gỡ bộ #${i + 1} khỏi cột "${sel.name}"`, summary: 'Đánh dấu bộ này là remove:true (đúng cách web Fonda gốc gỡ; bộ có LCU hay không đều như nhau). Chưa rõ Fonda xoá luôn đèn/LCU hay chỉ gỡ khỏi cột — kiểm tra lại sau khi thực hiện.', method: 'PUT', path: 'poleActor/update', body: r.body, danger: true, run: async () => { await sendPoleUpdate(sel.pid, r.body); } });
     } catch (e) { setWriteMsg((e as Error).message); }
   }
   async function askDelete() {
@@ -85,7 +108,7 @@ export default function Poles() {
     } catch (e) { setWriteMsg((e as Error).message); }
   }
 
-  const lampCount = links?.groups.reduce((n, g) => n + g.lamps.length, 0) ?? 0;
+  const lampCount = links?.groups.reduce((n, g) => n + (g.lcuLamps?.length ? g.lcuLamps.length : g.lamps.filter(l => l.checked).length), 0) ?? 0;
   return (
     <div className="lcus">
       <div className="listwrap">
@@ -112,11 +135,11 @@ export default function Poles() {
             {!links.groups.length && <p className="sub">Chưa có thiết bị nào gắn trên cột này.</p>}
             {links.groups.map((g, i) => (
               <div key={i} style={{ marginBottom: 10, paddingLeft: 8, borderLeft: `3px solid ${g.lcu ? 'var(--accent)' : 'var(--line)'}` }}>
-                <b>{g.lcu ? `LCU ${g.lcu.uid}` : 'Đèn chưa gắn LCU'}</b>{WRITE_ENABLED && !g.lcu && <button className="b" style={{ marginLeft: 8, padding: '1px 8px', fontSize: 11 }} onClick={() => void askRemoveGroup(i)}>Gỡ bộ…</button>}
+                <b>{g.lcu ? `LCU ${g.lcu.uid}` : 'Đèn chưa gắn LCU'}</b>{WRITE_ENABLED && <button className="b" style={{ marginLeft: 8, padding: '1px 8px', fontSize: 11 }} onClick={() => void askRemoveGroup(i)}>Gỡ bộ…</button>}
                 {g.lcu && <div className="sub" style={{ margin: 0 }}>{g.lcu.model}{g.lcu.slots ? ` · ${g.lcu.slots} đầu đèn` : ''}</div>}
-                <ul style={{ margin: '4px 0 0', paddingLeft: 18 }}>
-                  {g.lamps.map(l => <li key={l.id}>{g.lcu ? `kênh ${l.channel}: ` : ''}{l.name}{l.model ? ` — ${l.model}` : ''}</li>)}
-                </ul>
+                {g.lcu
+                  ? <ChannelStrip lcuSlots={g.lcu.slots} lcuLamps={g.lcuLamps} attrLamps={g.lamps} />
+                  : <ul style={{ margin: '4px 0 0', paddingLeft: 18 }}>{g.lamps.map(l => <li key={l.id} style={{ opacity: l.checked ? 1 : .5 }}>{l.name}{l.model ? ` — ${l.model}` : ''}{l.checked ? '' : ' (ô chưa chọn)'}</li>)}</ul>}
               </div>))}
             {links.others.length > 0 && <h3>Thiết bị khác gắn trên cột</h3>}
             {links.others.map(o => <div key={o.kind}><b>{o.kind}</b> ({o.items.length}): {o.items.map(x => x.name).join(', ')}</div>)}

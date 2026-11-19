@@ -66,11 +66,14 @@ export type ConfigEntry =
   | { key: string; kind: 'attached'; items: Array<{ name: string; checked: boolean; extra: string }> };
 
 /** Liên kết của một cột đèn: những gì đang gắn trên cột (LCU kèm đèn theo kênh, đèn rời không LCU, thiết bị khác). */
-export interface PoleLamp { id: string; name: string; channel: number; model: string }
+export interface PoleLamp { id: string; name: string; channel: number; model: string; /** false = ô chưa chọn (checked:false trong attributeDevice) */ checked: boolean }
 export interface PoleGroup {
   /** Có = nhóm "LCU + đèn"; không có = đèn gắn thẳng vào cột (chưa có LCU). */
   lcu?: { id: string; uid: string; slots?: number; model: string };
+  /** Đèn theo attributeDevice của cột. */
   lamps: PoleLamp[];
+  /** Đèn thực sự của LCU (projectLampActor/queryLampOfLcu) — nguồn chuẩn cho các kênh của LCU; chỉ có với bộ có LCU. */
+  lcuLamps?: PoleLamp[];
 }
 export interface PoleLinks {
   pole: { id: string; name: string; code: string; model: string; address: string; lat?: number; lng?: number };

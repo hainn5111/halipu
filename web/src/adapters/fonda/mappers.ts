@@ -1,5 +1,5 @@
 // Hàm THUẦN chuyển DTO Fonda → kiểu của mình. Mọi đặc thù của Fonda (tên trường, epoch ms, danh sách LCU từ 2 API…) nằm ở đây.
-import type { PoleGroup, PoleLinks, ConfigEntry, DeviceItem, DeviceModel, DeviceType, LightStatus, Measurement } from '../../core/types';
+import type { PoleLamp, PoleGroup, PoleLinks, ConfigEntry, DeviceItem, DeviceModel, DeviceType, LightStatus, Measurement } from '../../core/types';
 
 type Rec = Record<string, unknown>;
 const num = (v: unknown): number | undefined => { const x = typeof v === 'number' ? v : parseFloat(String(v ?? '')); return Number.isFinite(x) ? x : undefined; };
@@ -135,7 +135,7 @@ export function configEntries(config: Record<string, unknown>): ConfigEntry[] {
  * attributeDevice[] = các "bộ gắn": {lcu:{…}|{}, lamp:[{lampNum,…}]}; lcu rỗng = đèn gắn thẳng vào cột.
  * `modelName` tra tên model từ deviceModelId (tên không có trong payload attributeDevice).
  */
-export function mapPoleLinks(related: unknown, attr: unknown, modelName: (id: string) => string): PoleLinks {
+export function mapPoleLinks(related: unknown, attr: unknown, modelName: (id: string) => string, modelSlots: (id: string) => number | undefined = () => undefined): PoleLinks {
   const r = (related && typeof related === 'object' ? related : {}) as Rec, a = (attr && typeof attr === 'object' ? attr : {}) as Rec;
   const lampsAttr = new Map<string, Rec>(); for (const l of (Array.isArray(a.lamp) ? a.lamp : []) as Rec[]) lampsAttr.set(str(l.lampId), l);
   const groups: PoleGroup[] = [];
@@ -143,16 +143,22 @@ export function mapPoleLinks(related: unknown, attr: unknown, modelName: (id: st
     const lcu = g.lcu && typeof g.lcu === 'object' ? (g.lcu as Rec) : {};
     const lamps = ((Array.isArray(g.lamp) ? g.lamp : []) as Rec[]).map(l => {
       const info = lampsAttr.get(str(l.deviceId));
-      return { id: str(l.deviceId), name: str(l.deviceName) || str(info?.deviceName), channel: num(l.lampNum) ?? num(info?.channel) ?? 1, model: str(info?.deviceModelName) || modelName(str(l.deviceModelId)) };
+      return { id: str(l.deviceId), name: str(l.deviceName) || str(info?.deviceName), channel: num(l.lampNum) ?? num(info?.channel) ?? 1, model: str(info?.deviceModelName) || modelName(str(l.deviceModelId)), checked: l.checked !== false };
     });
     const hasLcu = !!str(lcu.deviceId);
-    groups.push({ ...(hasLcu ? { lcu: { id: str(lcu.deviceId), uid: str(lcu.uid), slots: num(lcu.lampHolderNum), model: modelName(str(lcu.deviceModelId)) } } : {}), lamps });
+    groups.push({ ...(hasLcu ? { lcu: { id: str(lcu.deviceId), uid: str(lcu.uid), slots: Math.max(num(lcu.lampHolderNum) ?? 0, modelSlots(str(lcu.deviceModelId)) ?? 0) || undefined, model: modelName(str(lcu.deviceModelId)) } } : {}), lamps });
   }
   const SKIP = new Set(['lamp', 'lcu', 'pole']);   // đã hiện ở groups / chính là cột
   const others = Object.entries(a).filter(([k, v]) => !SKIP.has(k) && Array.isArray(v) && v.length > 0)
     .map(([kind, v]) => ({ kind, items: (v as Rec[]).map(x => ({ name: str(x.deviceName) || str(x.deviceCode) || str(x.deviceId) })) }));
   const g = { lat: num(r.lat) as number, lng: num(r.lng) as number };
   return { pole: { id: str(r.deviceId), name: str(r.deviceName), code: str(r.deviceCode), model: str(r.deviceModelName), address: str(r.geographicAddress), ...(validGeo(g) ? g : {}) }, groups, others };
+}
+
+/** projectLampActor/queryLampOfLcu → đèn thực của LCU theo kênh (`channel`). */
+export function mapLcuLamps(d: unknown, modelName: (id: string) => string): PoleLamp[] {
+  if (!Array.isArray(d)) return [];
+  return (d as Rec[]).filter(l => str(l.lampId)).map(l => ({ id: str(l.lampId), name: str(l.deviceName), channel: num(l.channel) ?? num(l.lampNum) ?? 1, model: modelName(str(l.deviceModelId)), checked: true })).sort((a, b) => a.channel - b.channel);
 }
 
 export function toCsv(cols: string[], rows: Array<Array<unknown>>): string {
