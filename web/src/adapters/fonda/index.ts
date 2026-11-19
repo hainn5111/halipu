@@ -3,7 +3,7 @@ import { call } from '../../core/api';
 import { config } from '../../core/config';
 import type { PoleLinks, DeviceItem, DeviceModel, DeviceType, LampCommand, LightStatus, Lcu, Measurement } from '../../core/types';
 import { WRITE_ENABLED } from '../../core/flags';
-import { modelCreateBody, poleIdsBody, poleUpdateBody, type GroupInput } from './writeBodies';
+import { lcuModelCreateBody, modelCreateBody, poleIdsBody, poleUpdateBody, type GroupInput } from './writeBodies';
 import { lcuSlotCount, mapLcuLamps, mapPoleLinks, mapModels, mapDeviceRow, mapDeviceTypes, mapLight, mapListRow, mapPageRow, mapTrend, mergeLcus, pickGeo, ratedPowerOf, validGeo, type LcuRow } from './mappers';
 
 const PID_KEY = 'pid';
@@ -166,14 +166,16 @@ export const sendPoleDelete = (projectId: string, poleId: string) => { assertWri
 
 /** Body nhân bản model (xem trước) và gửi. */
 export const previewModelClone = (projectId: string, base: { typeId: string; typeValue: number; config: Record<string, unknown> }, name: string) => modelCreateBody(base, name, projectId);
+/** Body nhân bản model LCU (xem trước). */
+export const previewLcuModelClone = (projectId: string, base: { typeId: string; config: Record<string, unknown>; protocol: ModelProto }, name: string, remark = '') => lcuModelCreateBody({ typeId: base.typeId, config: base.config, protocol: base.protocol }, name, projectId, remark);
 export const sendModelCreate = (projectId: string, body: Record<string, unknown>) => { assertWrite(); return call('POST', 'deviceModel/saveNew', { projectId, body }); };
 
 /** Giao thức/phiên bản/systemConfig của các model một loại (deviceModel/getDeviceModelPage — danh sách model trả kèm các trường này). */
-export interface ModelProto { value: number; name: string; version: string; systemConfig: number }
+export interface ModelProto { id: string; value: number; name: string; version: string; systemConfig: number }
 export async function modelProtocols(projectId: string, typeId: string): Promise<Map<string, ModelProto>> {
   const out = new Map<string, ModelProto>();
   const d = await call<{ records?: Array<Record<string, unknown>> }>('POST', 'deviceModel/getDeviceModelPage', { projectId, body: { projectId, current: 1, size: 100, deviceTypeId: typeId } });
-  for (const r of d.records || []) out.set(String(r.deviceModelId), { value: Number(r.protocolValue), name: String(r.protocolName ?? ''), version: String(r.protocolVersion ?? ''), systemConfig: Number(r.systemConfig) || 0 });
+  for (const r of d.records || []) out.set(String(r.deviceModelId), { id: String(r.protocolId ?? ''), value: Number(r.protocolValue), name: String(r.protocolName ?? ''), version: String(r.protocolVersion ?? ''), systemConfig: Number(r.systemConfig) || 0 });
   return out;
 }
 

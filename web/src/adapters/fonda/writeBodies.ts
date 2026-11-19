@@ -8,6 +8,15 @@ export function modelCreateBody(base: { typeId: string; typeValue: number; confi
   return { protocolId: '', protocolValue: -1, useTag: null, deviceTypeValue: base.typeValue, deviceConfig: base.config, deviceModelId: '', projectId, deviceTypeId: base.typeId, deviceModelName: name };
 }
 
+/**
+ * deviceModel/saveNew cho model LCU (đã bắt 2026-11-19): ngoài deviceConfig còn khai giao thức (`protocolId/Value/Name/Version`)
+ * và `remark`; không có khoá `deviceModelId` (khác body model cột). Nhân bản = giữ nguyên deviceConfig và giao thức của model gốc.
+ */
+export function lcuModelCreateBody(base: { typeId: string; config: Rec; protocol: { id: string; value: number; name: string; version: string } }, name: string, projectId: string, remark = ''): Rec {
+  return { deviceTypeId: base.typeId, protocolId: base.protocol.id, protocolValue: base.protocol.value, useTag: null, deviceTypeValue: 2, deviceConfig: base.config,
+    protocolName: base.protocol.name, protocolVersion: base.protocol.version, deviceModelName: name, remark, projectId };
+}
+
 export type PoleUpdate = { ok: true; body: Rec } | { ok: false; reason: string };
 
 /**

@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { listDeviceTypes, listModels, modelProtocols, previewModelClone, projectIds, sendModelCreate, type ModelProto } from '../../adapters/fonda';
+import { listDeviceTypes, listModels, modelProtocols, previewLcuModelClone, previewModelClone, projectIds, sendModelCreate, type ModelProto } from '../../adapters/fonda';
 import { WRITE_ENABLED } from '../../core/flags';
 import ConfirmWrite from '../common/ConfirmWrite';
 import { configEntries, lcuSpec } from '../../adapters/fonda/mappers';
@@ -49,7 +49,9 @@ export default function Models() {
   const entries = useMemo(() => (sel ? configEntries(sel.config) : []), [sel]);
 
   const selType = types.find(t => t.id === sel?.typeId);
-  const canClone = WRITE_ENABLED && !!sel && selType?.value === 6;   // chỉ loại Lamp Pole đã bắt payload (docs/15 §7)
+  const selProto = sel ? protos.get(sel.id) : undefined;
+  // Chỉ loại đã bắt payload (docs/15 §7): Lamp Pole (6) và LCU (2, cần giao thức của model gốc)
+  const canClone = WRITE_ENABLED && !!sel && (selType?.value === 6 || (selType?.value === 2 && !!selProto));
   return (
     <div className="lcus">
       <div className="listwrap">
@@ -87,8 +89,8 @@ export default function Models() {
             <h3>Nhân bản template (ghi thật · chỉ bản preview)</h3>
             {canClone ? (<>
               <input style={{ width: '100%' }} placeholder="Tên template mới" value={cloneName} onChange={e => setCloneName(e.target.value)} />
-              <button style={{ marginTop: 8 }} disabled={!cloneName.trim()} onClick={() => setConfirm({ pid, body: previewModelClone(pid, { typeId: sel.typeId, typeValue: 6, config: sel.config }, cloneName.trim()) })}>Tạo bản sao…</button>
-            </>) : <p className="sub">Chỉ hỗ trợ template cột đèn (Lamp Pole) — các loại khác chưa bắt được payload.</p>}
+              <button style={{ marginTop: 8 }} disabled={!cloneName.trim()} onClick={() => setConfirm({ pid, body: selType?.value === 2 && selProto ? previewLcuModelClone(pid, { typeId: sel.typeId, config: sel.config, protocol: selProto }, cloneName.trim(), 'Nhân bản từ ' + sel.name) : previewModelClone(pid, { typeId: sel.typeId, typeValue: 6, config: sel.config }, cloneName.trim()) })}>Tạo bản sao…</button>
+            </>) : <p className="sub">Chỉ hỗ trợ template cột đèn (Lamp Pole) và LCU — các loại khác chưa bắt được payload.</p>}
           </>)}
         </aside>
       )}
