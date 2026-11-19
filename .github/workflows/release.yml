@@ -1,0 +1,64 @@
+name: Release
+
+# Tạo GitHub Release (tag + ghi chú tự sinh từ commit) cho một commit của main.
+#  - Chạy tay: Actions → Release → Run workflow (chọn nhánh main), nhập tên tag, ví dụ v0.0.1-test.1. Tag chưa có thì được tạo tại commit đang chọn.
+#  - Hoặc đẩy tag dạng v* lên GitHub: workflow tự chạy.
+# Tag có dấu "-" (v1.0.0-test.1) hoặc tick "prerelease" => đánh dấu Pre-release, dễ xoá khi thử nghiệm.
+# Không build, không deploy (pages.yml lo việc đó) nên gần như không tốn minute.
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Tên tag (vd v0.0.1-test.1)'
+        required: true
+      prerelease:
+        description: 'Đánh dấu Pre-release'
+        type: boolean
+        default: true
+
+permissions:
+  contents: write
+
+concurrency:
+  group: release
+  cancel-in-progress: false
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with: { fetch-depth: 0 }
+      - name: Tạo release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG_IN: ${{ inputs.tag }}
+          PRE_IN: ${{ inputs.prerelease }}
+        run: |
+          set -euo pipefail
+          TAG="${TAG_IN:-$GITHUB_REF_NAME}"
+          [[ "$TAG" =~ ^[A-Za-z0-9._-]+$ ]] || { echo "Tên tag không hợp lệ: $TAG"; exit 1; }
+          PRE=""
+          if [[ "$TAG" == *-* || "$PRE_IN" == "true" ]]; then PRE="--prerelease"; fi
+
+          # Tag trước đó (mới nhất, khác tag này) để lấy khoảng commit
+          PREV="$(git tag --sort=-creatordate | grep -vx -- "$TAG" | head -1 || true)"
+          if [ -n "$PREV" ]; then RANGE="$PREV..$GITHUB_SHA"; else RANGE="$GITHUB_SHA"; fi
+          git log --no-merges --pretty='%s (%h)' "$RANGE" > all.txt
+
+          {
+            if [ -n "$PREV" ]; then echo "Commit \`${GITHUB_SHA::7}\` — thay đổi từ \`$PREV\`"; else echo "Commit \`${GITHUB_SHA::7}\` — toàn bộ lịch sử"; fi
+            for sec in "feat:Tính năng" "fix:Sửa lỗi" "docs:Tài liệu" "ci:CI/CD" "test:Kiểm thử"; do
+              k="${sec%%:*}"; t="${sec#*:}"
+              grep -E "^$k(\(|:|!)" all.txt > part.txt || true
+              if [ -s part.txt ]; then echo; echo "### $t"; sed 's/^/- /' part.txt; fi
+            done
+            grep -Ev '^(feat|fix|docs|ci|test)(\(|:|!)' all.txt > part.txt || true
+            if [ -s part.txt ]; then echo; echo "### Khác"; sed 's/^/- /' part.txt; fi
+          } > notes.md
+          cat notes.md
+
+          gh release create "$TAG" --target "$GITHUB_SHA" --title "$TAG" --notes-file notes.md $PRE
