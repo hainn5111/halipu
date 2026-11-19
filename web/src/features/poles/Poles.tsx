@@ -140,11 +140,19 @@ export default function Poles() {
             {!links.groups.length && <p className="sub">Chưa có thiết bị nào gắn trên cột này.</p>}
             {links.groups.map((g, i) => (
               <div key={i} style={{ marginBottom: 10, paddingLeft: 8, borderLeft: `3px solid ${g.lcu ? 'var(--accent)' : 'var(--line)'}` }}>
-                <b>{g.lcu ? `LCU ${g.lcu.uid}` : 'Đèn chưa gắn LCU'}</b>{WRITE_ENABLED && <button className="b" style={{ marginLeft: 8, padding: '1px 8px', fontSize: 11 }} onClick={() => void askRemoveGroup(i)}>Gỡ bộ…</button>}
-                {g.lcu && <div className="sub" style={{ margin: 0 }}>{g.lcu.model}{g.lcu.slots ? ` · ${g.lcu.slots} đầu đèn` : ''}</div>}
+                <b>{g.lcu ? `LCU ${g.lcu.uid}` : 'LCU N/A'}</b>{WRITE_ENABLED && <button className="b" style={{ marginLeft: 8, padding: '1px 8px', fontSize: 11 }} onClick={() => void askRemoveGroup(i)}>Gỡ bộ…</button>}
+                <div className="sub" style={{ margin: 0 }}>{g.lcu ? `${g.lcu.model}${g.lcu.slots ? ` · ${g.lcu.slots} đầu đèn` : ''}` : 'Đèn gắn thẳng cột (chưa gắn LCU)'}</div>
                 {g.lcu
                   ? <ChannelStrip lcuSlots={g.lcu.slots} lcuLamps={g.lcuLamps} attrLamps={g.lamps} />
-                  : <ul style={{ margin: '4px 0 0', paddingLeft: 18 }}>{g.lamps.map(l => <li key={l.id} style={{ opacity: l.checked ? 1 : .5 }}>{l.name}{l.model ? ` — ${l.model}` : ''}{l.checked ? '' : ' (ô chưa chọn)'}</li>)}</ul>}
+                  : <div style={{ marginTop: 4 }}>
+                      <div className="sub" style={{ margin: '0 0 4px' }}>{g.lamps.filter(l => l.checked).length}/1 đèn</div>
+                      <div style={{ display: 'grid', gridTemplateColumns: 'auto 1fr', gap: '2px 8px', fontSize: 13 }}>
+                        {g.lamps.map(l => (<span key={l.id} style={{ display: 'contents', opacity: l.checked ? 1 : .5 }}>
+                          <span style={{ color: 'var(--muted)' }}>kênh N/A</span>
+                          <span>{l.name}{l.model ? ` — ${l.model}` : ''}{l.checked ? '' : ' (ô chưa chọn)'}</span>
+                        </span>))}
+                      </div>
+                    </div>}
               </div>))}
             {links.others.length > 0 && <h3>Thiết bị khác gắn trên cột</h3>}
             {links.others.map(o => <div key={o.kind}><b>{o.kind}</b> ({o.items.length}): {o.items.map(x => x.name).join(', ')}</div>)}

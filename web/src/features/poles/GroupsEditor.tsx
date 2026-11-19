@@ -34,12 +34,14 @@ export default function GroupsEditor({ groups, onChange, catalog, takenLcuIds = 
                 <input placeholder="Tên LCU" value={g.newName} onChange={e => upd(i, { newName: e.target.value })} />
                 <input placeholder="UID (hex, vd 789DDD)" value={g.newUid} onChange={e => upd(i, { newUid: e.target.value })} />
               </div>)}
+            {g.kind === 'none' && <p className="sub" style={{ margin: '8px 0 0' }}>LCU: <b>N/A</b> — đèn gắn thẳng cột, 1 đèn.</p>}
             {g.kind !== 'none' && <p className="sub" style={{ margin: '8px 0 0' }}>LCU này có <b>{slots}</b> đầu đèn (cố định theo model) — tối đa {slots} đèn, kênh 1..{slots}.</p>}
             {g.lamps.map((l, j) => (
               <div key={j} style={{ display: 'flex', gap: 6, marginTop: 8, alignItems: 'center' }}>
                 <span className="sub" style={{ margin: 0, minWidth: 44 }}>Đèn {j + 1}</span>
                 <select style={{ flex: 1 }} value={l.modelId} onChange={e => updLamp(i, j, { modelId: e.target.value })}>{catalog.lampModels.map(m => <option key={m.id} value={m.id}>{m.name}</option>)}</select>
                 <input style={{ flex: 1 }} placeholder="Tên đèn" value={l.name} onChange={e => updLamp(i, j, { name: e.target.value })} />
+                {g.kind === 'none' && <input disabled title="Không có LCU" style={{ width: 60, textAlign: 'center' }} value="N/A" readOnly />}
                 {g.kind !== 'none' && slots > 1 && <input type="number" min={1} max={slots} title={`Kênh 1..${slots}`} style={{ width: 60 }} value={l.channel} onChange={e => updLamp(i, j, { channel: Number(e.target.value) })} />}
                 {g.kind !== 'none' && g.lamps.length > 1 && <button className="b" onClick={() => upd(i, { lamps: g.lamps.filter((_, k) => k !== j) })}>×</button>}
               </div>))}
