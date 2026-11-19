@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { mapLcuLamps, mapPoleLinks, categoryOf, configEntries, mapModels, mapDeviceRow, mapDeviceTypes, mapLight, mapListRow, mapPageRow, mapTrend, mergeLcus, pickGeo, ratedPowerOf, toCsv, validGeo } from './mappers';
+import { channelRows, lcuSlotCount, mapLcuLamps, mapPoleLinks, categoryOf, configEntries, mapModels, mapDeviceRow, mapDeviceTypes, mapLight, mapListRow, mapPageRow, mapTrend, mergeLcus, pickGeo, ratedPowerOf, toCsv, validGeo } from './mappers';
 
 describe('pickGeo / validGeo', () => {
   it('đọc lat/lng dạng chuỗi', () => expect(pickGeo({ lat: '20.93271', lng: '105.67026' })).toEqual({ lat: 20.93271, lng: 105.67026 }));
@@ -101,5 +101,22 @@ describe('LCU nhiều đèn', () => {
     const rel = { attributeDevice: [{ lcu: { deviceId: 'L', uid: 'U', lampHolderNum: 1, deviceModelId: 'MLCU' }, lamp: [{ lampNum: 1, deviceId: 'D1', checked: true }, { lampNum: 2, deviceId: 'D2', checked: false }] }] };
     const r = mapPoleLinks(rel, null, () => '', id => (id === 'MLCU' ? 4 : undefined));
     expect(r.groups[0].lcu?.slots).toBe(4); expect(r.groups[0].lamps.map(l => l.checked)).toEqual([true, false]);
+  });
+});
+
+describe('số kênh và hàng kênh của LCU', () => {
+  it('lcuSlotCount: lấy lớn nhất của tham chiếu, model, kênh cao nhất; tối thiểu 1', () => {
+    expect(lcuSlotCount(1, 4, [1, 3])).toBe(4);      // tham chiếu ghi 1 nhưng model có 4 đầu đèn (đúng ca LCU nhiều đèn)
+    expect(lcuSlotCount(1, 1, [1, 6])).toBe(6);      // có đèn ở kênh 6 dù model/tham chiếu nhỏ hơn
+    expect(lcuSlotCount(2, undefined, [])).toBe(2);
+    expect(lcuSlotCount(undefined, undefined, [])).toBe(1);
+    expect(lcuSlotCount(0, 0, [NaN])).toBe(1);
+  });
+  it('channelRows: đủ 1..N, kênh trống là [], nhiều đèn cùng kênh giữ hết, đèn kênh ngoài phạm vi không mất khi slots đã tính đủ', () => {
+    const lamps = [{ channel: 1, n: 'a' }, { channel: 3, n: 'c' }, { channel: 3, n: 'c2' }];
+    const rows = channelRows(lcuSlotCount(1, 4, lamps.map(l => l.channel)), lamps);
+    expect(rows.map(r => r.channel)).toEqual([1, 2, 3, 4]);
+    expect(rows.map(r => r.lamps.length)).toEqual([1, 0, 2, 0]);
+    expect(rows.flatMap(r => r.lamps)).toHaveLength(lamps.length);
   });
 });

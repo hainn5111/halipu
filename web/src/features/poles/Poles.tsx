@@ -1,5 +1,6 @@
 import { lazy, Suspense, useEffect, useMemo, useState } from 'react';
 import { listDeviceTypes, listDevices, listModels, poleLinks, poleRelatedCount, previewPoleUpdate, projectIds, sendPoleDelete, sendPoleUpdate } from '../../adapters/fonda';
+import { channelRows, lcuSlotCount } from '../../adapters/fonda/mappers';
 import { poleIdsBody } from '../../adapters/fonda/writeBodies';
 import { WRITE_ENABLED } from '../../core/flags';
 import ConfirmWrite from '../common/ConfirmWrite';
@@ -19,18 +20,17 @@ const POLE_TYPE = /lamp\s*pole/i;
 // Các kênh của một LCU: 1..slots, mỗi kênh một đèn hoặc "(trống)". Nguồn chuẩn là đèn của LCU (lcuLamps); thiếu thì dùng attributeDevice.
 function ChannelStrip({ lcuSlots, lcuLamps, attrLamps }: { lcuSlots?: number; lcuLamps?: PoleLamp[]; attrLamps: PoleLamp[] }) {
   const lamps = lcuLamps?.length ? lcuLamps : attrLamps.filter(l => l.checked);
-  const slots = Math.max(lcuSlots ?? 0, ...lamps.map(l => l.channel), 1);
-  const by = new Map<number, PoleLamp[]>(); for (const l of lamps) by.set(l.channel, [...(by.get(l.channel) ?? []), l]);
-  const cols = Array.from({ length: slots }, (_, i) => i + 1);
+  const slots = lcuSlotCount(lcuSlots, undefined, lamps.map(l => l.channel));
+  const rows = channelRows(slots, lamps);
   const attrIds = new Set(attrLamps.filter(l => l.checked).map(l => l.id)), lcuIds = new Set((lcuLamps ?? []).map(l => l.id));
   const diff = lcuLamps?.length && (lcuLamps.some(l => !attrIds.has(l.id)) || attrLamps.some(l => l.checked && !lcuIds.has(l.id)));
   return (
     <div style={{ marginTop: 4 }}>
       <div className="sub" style={{ margin: '0 0 4px' }}>{lamps.length}/{slots} kênh có đèn</div>
       <div style={{ display: 'grid', gridTemplateColumns: 'auto 1fr', gap: '2px 8px', fontSize: 13 }}>
-        {cols.map(c => (<span key={c} style={{ display: 'contents' }}>
-          <span style={{ color: 'var(--muted)' }}>kênh {c}</span>
-          <span>{by.get(c)?.map(l => `${l.name}${l.model ? ` — ${l.model}` : ''}`).join(' · ') || <i style={{ color: 'var(--muted)' }}>(trống)</i>}</span>
+        {rows.map(r => (<span key={r.channel} style={{ display: 'contents' }}>
+          <span style={{ color: 'var(--muted)' }}>kênh {r.channel}</span>
+          <span>{r.lamps.map(l => `${l.name}${l.model ? ` — ${l.model}` : ''}`).join(' · ') || <i style={{ color: 'var(--muted)' }}>(trống)</i>}</span>
         </span>))}
       </div>
       {diff && <div className="sub" style={{ margin: '4px 0 0', color: 'var(--bad)' }}>Đèn của LCU khác danh sách trên cột — đang hiện theo dữ liệu của LCU.</div>}

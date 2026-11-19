@@ -4,7 +4,7 @@ import { config } from '../../core/config';
 import type { PoleLinks, DeviceItem, DeviceModel, DeviceType, LampCommand, LightStatus, Lcu, Measurement } from '../../core/types';
 import { WRITE_ENABLED } from '../../core/flags';
 import { modelCreateBody, poleIdsBody, poleUpdateBody, type GroupInput } from './writeBodies';
-import { mapLcuLamps, mapPoleLinks, mapModels, mapDeviceRow, mapDeviceTypes, mapLight, mapListRow, mapPageRow, mapTrend, mergeLcus, pickGeo, ratedPowerOf, validGeo, type LcuRow } from './mappers';
+import { lcuSlotCount, mapLcuLamps, mapPoleLinks, mapModels, mapDeviceRow, mapDeviceTypes, mapLight, mapListRow, mapPageRow, mapTrend, mergeLcus, pickGeo, ratedPowerOf, validGeo, type LcuRow } from './mappers';
 
 const PID_KEY = 'pid';
 
@@ -141,7 +141,7 @@ export async function poleLinks(projectId: string, poleId: string, modelName: (i
   await Promise.all(links.groups.map(async g => {
     if (!g.lcu) return;
     try { g.lcuLamps = mapLcuLamps(await call('GET', `projectLampActor/queryLampOfLcu/${g.lcu.id}`, { projectId }), modelName); } catch { /* giữ đèn theo attributeDevice */ }
-    if (g.lcuLamps?.length) g.lcu.slots = Math.max(g.lcu.slots ?? 0, ...g.lcuLamps.map(l => l.channel));
+    if (g.lcuLamps?.length) g.lcu.slots = lcuSlotCount(g.lcu.slots, undefined, g.lcuLamps.map(l => l.channel));
   }));
   return links;
 }

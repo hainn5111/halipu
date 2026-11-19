@@ -53,9 +53,19 @@ export async function runProbe(pid: string, log: (line: string) => void, withLcu
 
   if (withLcu) {
     // lcuActor/page có thể trả rỗng dù LCU tồn tại (đã gặp) → lấy LCU từ device/queryDevicePage loại 2 (LCU): deviceId = lcuId, có uid
-    const pg = (await get('lcu-list', 'POST', 'device/queryDevicePage', { projectId: pid, current: 1, size: 5, deviceTypeValue: 2 })) as Rec | null;
+    const pg = (await get('lcu-list', 'POST', 'device/queryDevicePage', { projectId: pid, current: 1, size: 20, deviceTypeValue: 2 })) as Rec | null;
     const lcus: Rec[] = (pg?.records || []).map((r: Rec) => ({ uid: r.uid, lcuId: r.deviceId, deviceModelId: r.deviceModelId, poleId: r.poleId }));
     await get('lcu-list-getLcuListByProjectId', 'POST', 'lcuActor/getLcuListByProjectId', { projectId: pid });
+    // Tóm tắt kênh của TẤT CẢ LCU (tối đa 20): số đầu đèn của model vs kênh có đèn thật — để đối chiếu cách web vẽ kênh
+    say('=== Kênh của từng LCU (model lampHolderNum / kênh có đèn theo queryLampOfLcu) ===');
+    const cfgOf = new Map<string, number>(); for (const m of Array.isArray(models) ? models : []) { try { cfgOf.set(m.deviceModelId, Number(JSON.parse(m.deviceConfig).lampHolderNum) || 0); } catch { /* bỏ */ } }
+    for (const l of lcus.slice(0, 20)) {
+      try {
+        const lamps = (await call<Rec[]>('GET', `projectLampActor/queryLampOfLcu/${l.lcuId}`, { projectId: pid })) || [];
+        const ch = lamps.map(x => Number(x.channel)).sort((a, b) => a - b);
+        say(`  LCU …${String(l.uid).slice(-4)}: model lampHolderNum=${cfgOf.get(l.deviceModelId) ?? '?'} · đèn theo kênh=[${ch.join(',')}] (${ch.length} đèn)`);
+      } catch (e) { say(`  LCU …${String(l.uid).slice(-4)}: lỗi ${(e as Error).message}`); }
+    }
     for (const [i, l] of lcus.slice(0, 3).entries()) {
       const tag = `lcu${i}`;
       const d = ((await get(`${tag}-detail-byUid`, 'GET', `lcuActor/queryLcuAndRelatedByUid/${l.uid || l.lcuId}`)) || {}) as Rec;

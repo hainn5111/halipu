@@ -161,6 +161,16 @@ export function mapLcuLamps(d: unknown, modelName: (id: string) => string): Pole
   return (d as Rec[]).filter(l => str(l.lampId)).map(l => ({ id: str(l.lampId), name: str(l.deviceName), channel: num(l.channel) ?? num(l.lampNum) ?? 1, model: modelName(str(l.deviceModelId)), checked: true })).sort((a, b) => a.channel - b.channel);
 }
 
+/** Số kênh của một LCU: lớn nhất giữa tham chiếu trên cột, model LCU và kênh cao nhất đang có đèn (≥ 1). */
+export function lcuSlotCount(refSlots: number | undefined, modelSlots: number | undefined, lampChannels: number[]): number {
+  return Math.max(refSlots ?? 0, modelSlots ?? 0, ...lampChannels.filter(c => Number.isFinite(c)), 1);
+}
+
+/** Các hàng "kênh → đèn" của LCU (1..slots). Nhiều đèn cùng kênh được giữ hết; kênh không có đèn có `lamps: []`. */
+export function channelRows<T extends { channel: number }>(slots: number, lamps: T[]): Array<{ channel: number; lamps: T[] }> {
+  return Array.from({ length: slots }, (_, i) => ({ channel: i + 1, lamps: lamps.filter(l => l.channel === i + 1) }));
+}
+
 export function toCsv(cols: string[], rows: Array<Array<unknown>>): string {
   const q = (v: unknown) => `"${String(v ?? '').replace(/"/g, '""')}"`;
   return '﻿' + [cols.map(q).join(','), ...rows.map(r => r.map(q).join(','))].join('\n');
