@@ -9,5 +9,5 @@
 ## Triển khai và xem thử (GitHub Pages)
 Pages phục vụ nhánh `gh-pages` (Settings → Pages → Source: *Deploy from a branch* → `gh-pages` / root).
 - **`main` → gốc trang** `https://<user>.github.io/<repo>/` (`pages.yml`): typecheck, test (fail thì dừng, không deploy), build rồi đẩy vào `gh-pages`. Chỉ main được ghi ra gốc.
-- **Thử nghiệm** chạy ở localhost (`chay-local.bat`, xem `docs/15-chay-local-sourcetree.md`); không còn bản preview trên GitHub.
+- **Thử nghiệm** chạy ở localhost (`preview-commit-local.bat`, xem `docs/15-chay-local-sourcetree.md`); không còn bản preview trên GitHub.
 - **Web CI** (`web-ci.yml`): build + test, chỉ chạy khi mở PR hoặc chạy tay, không deploy.
