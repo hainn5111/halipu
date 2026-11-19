@@ -44,8 +44,13 @@ jobs:
           PRE=""
           if [[ "$TAG" == *-* || "$PRE_IN" == "true" ]]; then PRE="--prerelease"; fi
 
-          # Tag trước đó (mới nhất, khác tag này) để lấy khoảng commit
-          PREV="$(git tag --sort=-creatordate | grep -vx -- "$TAG" | head -1 || true)"
+          # Tag trước đó: mới nhất, khác tag này, VÀ là tổ tiên của commit đang phát hành
+          # (tag nằm trên nhánh khác như gh-pages bị bỏ qua, tránh ghi chú liệt kê cả lịch sử)
+          PREV=""
+          while read -r t; do
+            [ "$t" = "$TAG" ] && continue
+            if git merge-base --is-ancestor "$t" "$GITHUB_SHA" 2>/dev/null; then PREV="$t"; break; fi
+          done < <(git tag --sort=-creatordate)
           if [ -n "$PREV" ]; then RANGE="$PREV..$GITHUB_SHA"; else RANGE="$GITHUB_SHA"; fi
           git log --no-merges --pretty='%s (%h)' "$RANGE" > all.txt
 
