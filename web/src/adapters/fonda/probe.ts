@@ -1,7 +1,7 @@
 // Dò API CHỈ ĐỌC từ trình duyệt: kéo cấu trúc payload (loại thiết bị, model/template, dictionary, thiết bị, quan hệ LCU↔model↔đèn↔cột).
 // Chỉ gọi GET hoặc POST truy vấn (query*/page/get*). KHÔNG có lampControl/save/update/delete.
 import { call } from '../../core/api';
-import { linkPaths, relationScan, shape, trim } from './probeUtil';
+import { linkPaths, relationScan, shape } from './probeUtil';
 
 type Rec = Record<string, any>;   // eslint-disable-line @typescript-eslint/no-explicit-any
 export interface ProbeResult { name: string; ok: boolean; message?: string; data?: unknown }
@@ -15,8 +15,20 @@ export async function runProbe(pid: string, log: (line: string) => void, withLcu
   const get = async (name: string, method: 'GET' | 'POST', path: string, body?: unknown): Promise<unknown> => {
     try {
       const data = await call(method, path, { body, projectId: pid });
-      results.push({ name, ok: true, data: trim(data) }); say(`✔ ${name}`); for (const s of shape(data)) say(`    ${s}`); return data;
+      results.push({ name, ok: true, data }); say(`✔ ${name}`); for (const s of shape(data)) say(`    ${s}`); return data;
     } catch (e) { results.push({ name, ok: false, message: (e as Error).message }); say(`✘ ${name}: ${(e as Error).message}`); return null; }
+  };
+  // Lấy ĐỦ mọi trang (size 100) — không cắt mẫu
+  const getPaged = async (name: string, path: string, body: Rec): Promise<void> => {
+    try {
+      const all: unknown[] = []; let total = 0;
+      for (let cur = 1; cur <= 50; cur++) {
+        const d = await call<Rec>('POST', path, { body: { ...body, current: cur, size: 100 }, projectId: pid });
+        all.push(...((d.records || []) as unknown[])); total = Number(d.total) || all.length;
+        if (cur >= (Number(d.pages) || 1)) break;
+      }
+      results.push({ name, ok: true, data: { records: all, total } }); say(`✔ ${name} (${all.length}/${total})`); for (const x of shape(all)) say(`    ${x}`);
+    } catch (e) { results.push({ name, ok: false, message: (e as Error).message }); say(`✘ ${name}: ${(e as Error).message}`); }
   };
   const types = (await get('types-all-by-project', 'GET', `deviceTypeController/queryAllDeviceTypeByProjectId/${pid}`)) as Rec[] | null;
   const models = (await get('models-by-project', 'GET', `deviceModel/queryAllDeviceModelByProjectId/${pid}`)) as Rec[] | null;
@@ -24,8 +36,8 @@ export async function runProbe(pid: string, log: (line: string) => void, withLcu
   const list = Array.isArray(types) ? types : [];
   say(`Loại thiết bị: ${list.map(t => `${t.deviceTypeValue}=${t.deviceTypeName}`).join(', ')}`);
   for (const t of list) {
-    await get(`model-page-${t.deviceTypeValue}`, 'POST', 'deviceModel/getDeviceModelPage', { projectId: pid, current: 1, size: 3, deviceTypeId: t.deviceTypeId });
-    await get(`devices-${t.deviceTypeValue}`, 'POST', 'device/queryDevicePage', { projectId: pid, current: 1, size: 3, deviceTypeValue: t.deviceTypeValue });
+    await getPaged(`model-page-${t.deviceTypeValue}`, 'deviceModel/getDeviceModelPage', { projectId: pid, deviceTypeId: t.deviceTypeId });
+    await getPaged(`devices-${t.deviceTypeValue}`, 'device/queryDevicePage', { projectId: pid, deviceTypeValue: t.deviceTypeValue });
   }
   // Quan hệ giữa thiết bị thật: kéo toàn bộ thiết bị của các loại có dữ liệu rồi đối chiếu id/uid giữa các loại
   const byType: Record<string, Rec[]> = {};
@@ -49,7 +61,7 @@ export async function runProbe(pid: string, log: (line: string) => void, withLcu
     (parsed[typeName.get(m.deviceTypeId) || m.deviceTypeId] ||= []).push({ name: m.deviceModelName, config: c });
   }
   for (const [tn, ms] of Object.entries(parsed)) { say(`deviceConfig ${tn}: ${ms.length} model`); for (const s of shape((ms[0] as Rec).config)) say(`    ${s}`); }
-  results.push({ name: 'model-config-by-type', ok: true, data: trim(parsed) });
+  results.push({ name: 'model-config-by-type', ok: true, data: parsed });
 
   // Phân bố systemConfig của model theo loại: 0 = model người dùng tự khai; khác 0 = model dựng sẵn của hệ thống (nội bộ bộ tập trung/power box…)
   await get('device-systems', 'GET', 'deviceSystemController/queryDeviceSystemList');
@@ -81,20 +93,20 @@ export async function runProbe(pid: string, log: (line: string) => void, withLcu
 
   if (withLcu) {
     // lcuActor/page có thể trả rỗng dù LCU tồn tại (đã gặp) → lấy LCU từ device/queryDevicePage loại 2 (LCU): deviceId = lcuId, có uid
-    const pg = (await get('lcu-list', 'POST', 'device/queryDevicePage', { projectId: pid, current: 1, size: 20, deviceTypeValue: 2 })) as Rec | null;
+    const pg = (await get('lcu-list', 'POST', 'device/queryDevicePage', { projectId: pid, current: 1, size: 100, deviceTypeValue: 2 })) as Rec | null;
     const lcus: Rec[] = (pg?.records || []).map((r: Rec) => ({ uid: r.uid, lcuId: r.deviceId, deviceModelId: r.deviceModelId, poleId: r.poleId }));
     await get('lcu-list-getLcuListByProjectId', 'POST', 'lcuActor/getLcuListByProjectId', { projectId: pid });
     // Tóm tắt kênh của TẤT CẢ LCU (tối đa 20): số đầu đèn của model vs kênh có đèn thật — để đối chiếu cách web vẽ kênh
     say('=== Kênh của từng LCU (model lampHolderNum / kênh có đèn theo queryLampOfLcu) ===');
     const cfgOf = new Map<string, number>(); for (const m of Array.isArray(models) ? models : []) { try { cfgOf.set(m.deviceModelId, Number(JSON.parse(m.deviceConfig).lampHolderNum) || 0); } catch { /* bỏ */ } }
-    for (const l of lcus.slice(0, 20)) {
+    for (const l of lcus.slice(0, 100)) {
       try {
         const lamps = (await call<Rec[]>('GET', `projectLampActor/queryLampOfLcu/${l.lcuId}`, { projectId: pid })) || [];
         const ch = lamps.map(x => Number(x.channel)).sort((a, b) => a - b);
         say(`  LCU …${String(l.uid).slice(-4)}: model lampHolderNum=${cfgOf.get(l.deviceModelId) ?? '?'} · đèn theo kênh=[${ch.join(',')}] (${ch.length} đèn)`);
       } catch (e) { say(`  LCU …${String(l.uid).slice(-4)}: lỗi ${(e as Error).message}`); }
     }
-    for (const [i, l] of lcus.slice(0, 3).entries()) {
+    for (const [i, l] of lcus.slice(0, 20).entries()) {
       const tag = `lcu${i}`;
       const d = ((await get(`${tag}-detail-byUid`, 'GET', `lcuActor/queryLcuAndRelatedByUid/${l.uid || l.lcuId}`)) || {}) as Rec;
       const lk = linkPaths(d, modelMap); say(`links ${tag}: ${lk.length ? '' : 'không có trường nào trỏ tới model'}`); lk.forEach(x => say(`    ${x}`));
@@ -111,7 +123,7 @@ export async function runProbe(pid: string, log: (line: string) => void, withLcu
   }
   if (withLcu) {
     // Cột bất kỳ (kể cả cột chưa gắn LCU): cấu trúc thiết bị gắn trên cột
-    for (const [i, p] of (byType['Lamp Pole'] || []).slice(0, 3).entries()) {
+    for (const [i, p] of (byType['Lamp Pole'] || []).slice(0, 30).entries()) {
       await get(`pole${i}-related`, 'GET', `poleActor/queryPoleAndRelatedById/${p.deviceId}`);
       await get(`pole${i}-attr-devices`, 'GET', `poleActor/queryAttributeDeviceOfPole/${p.deviceId}`);
     }
