@@ -15,17 +15,24 @@ export type PoleUpdate = { ok: true; body: Rec } | { ok: false; reason: string }
  * mỗi bộ gắn thêm `uid`, `lampPosition`; lcu thêm `linkMode: 2`; lamp thêm `checkNum`, `lampPosition`; `solarDevice` rỗng → 1 phần tử mẫu.
  * Chỉ dựng cho cột mà MỌI bộ gắn đều có LCU (cột có đèn rời không LCU chưa bắt được payload → từ chối thay vì đoán).
  */
-export function poleUpdateBody(raw: Rec, patch: { deviceName?: string; deviceCode?: string }, add: GroupInput[] = [], projectId = ''): PoleUpdate {
+export function poleUpdateBody(raw: Rec, patch: { deviceName?: string; deviceCode?: string }, add: GroupInput[] = [], projectId = '', removeIdx: number[] = []): PoleUpdate {
   if (!raw.deviceId) return { ok: false, reason: 'Thiếu deviceId của cột' };
   const groups = arr(raw.attributeDevice);
   const bad = add.map((g, i) => groupError(g, `Bộ mới #${i + 1}`)).find(Boolean) ?? groupsError(add, groups.map(g => String(obj(g.lcu).uid ?? '')));
   if (bad) return { ok: false, reason: bad };
   // Bộ có sẵn: đèn không LCU có `lcu: {}` (không có uid) — payload cho trường hợp này CHƯA bắt, dựng theo cùng quy ước (cần thử).
+  for (const i of removeIdx) {
+    if (!groups[i]) return { ok: false, reason: `Không có bộ #${i + 1} để gỡ` };
+    if (obj(groups[i].lcu).deviceId) return { ok: false, reason: `Bộ #${i + 1} có LCU — chưa bắt được payload gỡ bộ có LCU (chỉ gỡ được bộ không LCU)` };
+  }
   const existing = groups.map((g, i) => {
     const lcu = obj(g.lcu), hasLcu = !!lcu.deviceId;
-    return { ...g, ...(hasLcu ? { uid: lcu.uid } : {}), lampPosition: i + 1, lcu: hasLcu ? { ...lcu, linkMode: 2 } : lcu, lamp: arr(g.lamp).map(l => ({ ...l, checkNum: l.lampNum ?? 1, lampPosition: i + 1 })) };
+    // Gỡ bộ (đã bắt): giữ nguyên bộ trong danh sách, đặt checked:false + remove:true; vị trí KHÔNG đánh số lại.
+    const drop = removeIdx.includes(i) ? { checked: false, remove: true } : {};
+    return { ...g, ...(hasLcu ? { uid: lcu.uid } : {}), lampPosition: i + 1, lcu: hasLcu ? { ...lcu, linkMode: 2 } : lcu, lamp: arr(g.lamp).map(l => ({ ...l, checkNum: l.lampNum ?? 1, lampPosition: i + 1 })), ...drop };
   });
-  const attributeDevice = [...existing, ...add.map((g, i) => groupBody(g, existing.length + i + 1, projectId))];
+  // Bộ mới trong update: đèn mới có thêm `checkNum` (= lampNum) so với khi tạo cột bằng save (đã bắt).
+  const attributeDevice = [...existing, ...add.map((g, i) => groupBody(g, existing.length + i + 1, projectId, true))];
   const solarDevice = arr(raw.solarDevice).length ? raw.solarDevice : [{ checked: true, lamp: { checked: true, deviceModelId: '', deviceName: '', lampNum: 1, flag: true }, solar: {}, wcu: {}, dtu: {}, serialId: '', serialNum: '', addr: '', communicationEquipmentName: '', lampPosition: 1 }];
   const body: Rec = { ...raw, attributeDevice, solarDevice };
   if (patch.deviceName !== undefined) body.deviceName = patch.deviceName;
@@ -77,8 +84,8 @@ export function groupsError(groups: GroupInput[], taken: string[] = []): string 
 }
 
 /** Một phần tử attributeDevice theo payload đã bắt (docs/15 §7); `position` = vị trí bộ trong cột (từ 1). */
-export function groupBody(g: GroupInput, position: number, projectId: string): Rec {
-  const lamp = g.lamps.map(l => ({ checked: true, deviceModelId: l.modelId, deviceName: l.name.trim(), lampPosition: position, lampNum: l.channel, flag: true }));
+export function groupBody(g: GroupInput, position: number, projectId: string, forUpdate = false): Rec {
+  const lamp = g.lamps.map(l => ({ checked: true, deviceModelId: l.modelId, deviceName: l.name.trim(), lampPosition: position, lampNum: l.channel, flag: true, ...(forUpdate ? { checkNum: l.channel } : {}) }));
   const l = g.lcu;
   if (l.kind === 'none') return { checked: true, lamp, lcu: {}, solarLcu: {}, solar: {}, lampPosition: position };
   if (l.kind === 'existing') return { checked: true, lamp, lcu: { deviceId: l.deviceId, uid: l.uid, lampHolderNum: l.slots, linkMode: 2 }, solarLcu: {}, solar: {}, uid: l.uid, lampPosition: position };

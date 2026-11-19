@@ -145,8 +145,8 @@ const assertWrite = () => { if (!WRITE_ENABLED) throw new Error('Thao tác ghi �
 export const poleRaw = (projectId: string, poleId: string) => call<Record<string, unknown>>('GET', `poleActor/queryPoleAndRelatedById/${poleId}`, { projectId });
 
 /** Body sẽ gửi khi sửa tên/mã cột (xem trước trước khi xác nhận). */
-export async function previewPoleUpdate(projectId: string, poleId: string, patch: { deviceName?: string; deviceCode?: string }, add: GroupInput[] = []) {
-  return poleUpdateBody(await poleRaw(projectId, poleId), patch, add, projectId);
+export async function previewPoleUpdate(projectId: string, poleId: string, patch: { deviceName?: string; deviceCode?: string }, add: GroupInput[] = [], removeIdx: number[] = []) {
+  return poleUpdateBody(await poleRaw(projectId, poleId), patch, add, projectId, removeIdx);
 }
 export const sendPoleUpdate = (projectId: string, body: Record<string, unknown>) => { assertWrite(); return call('PUT', 'poleActor/update', { projectId, body }); };
 

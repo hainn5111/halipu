@@ -5,9 +5,9 @@ import { WRITE_ENABLED } from '../../core/flags';
 import ConfirmWrite from '../common/ConfirmWrite';
 // Form thêm cột chỉ nạp khi bật ghi: bản main không chứa mã này (hằng số WRITE_ENABLED được gập lúc build).
 const PoleCreate = WRITE_ENABLED ? lazy(() => import('./PoleCreate')) : null;
-// Thêm bộ vào cột CÓ SẴN qua poleActor/update bị Fonda từ chối ("Parameter deviceId cannot be empty", code 1005): update dường như chỉ nhận
-// các phần tử đã có deviceId. Tắt nút cho tới khi bắt được cách web Fonda gốc thêm bộ vào cột đã có (docs/15 §7).
-const ADD_GROUP_TO_EXISTING = false;
+// Thêm bộ vào cột có sẵn = PUT poleActor/update với bộ mới nối vào attributeDevice (đã bắt: bộ dùng LCU có sẵn). Lần thử đầu bị từ chối
+// ("Parameter deviceId cannot be empty") vì thiếu `checkNum` ở đèn mới — đã sửa theo capture (docs/15 §7).
+const ADD_GROUP_TO_EXISTING = true;
 const PoleAddGroups = WRITE_ENABLED && ADD_GROUP_TO_EXISTING ? lazy(() => import('./PoleAddGroups')) : null;
 import type { DeviceItem, PoleLinks } from '../../core/types';
 
@@ -65,6 +65,15 @@ export default function Poles() {
       setConfirm({ title: `Sửa cột "${sel.name}"`, summary: `Tên: "${edit.name.trim()}" · Mã: "${edit.code.trim()}". Các LCU/đèn đang gắn được gửi lại nguyên vẹn.`, method: 'PUT', path: 'poleActor/update', body: r.body, run: async () => { await sendPoleUpdate(sel.pid, r.body); } });
     } catch (e) { setWriteMsg((e as Error).message); }
   }
+  async function askRemoveGroup(i: number) {
+    if (!sel) return;
+    setWriteMsg('');
+    try {
+      const r = await previewPoleUpdate(sel.pid, sel.id, {}, [], [i]);
+      if (!r.ok) { setWriteMsg(r.reason); return; }
+      setConfirm({ title: `Gỡ bộ #${i + 1} khỏi cột "${sel.name}"`, summary: 'Đánh dấu bộ đèn không LCU này là remove:true (đúng cách web Fonda gốc gỡ). Chưa rõ Fonda xoá luôn đèn hay chỉ gỡ khỏi cột — kiểm tra lại sau khi thực hiện.', method: 'PUT', path: 'poleActor/update', body: r.body, danger: true, run: async () => { await sendPoleUpdate(sel.pid, r.body); } });
+    } catch (e) { setWriteMsg((e as Error).message); }
+  }
   async function askDelete() {
     if (!sel || !links) return;
     setWriteMsg('');
@@ -103,7 +112,7 @@ export default function Poles() {
             {!links.groups.length && <p className="sub">Chưa có thiết bị nào gắn trên cột này.</p>}
             {links.groups.map((g, i) => (
               <div key={i} style={{ marginBottom: 10, paddingLeft: 8, borderLeft: `3px solid ${g.lcu ? 'var(--accent)' : 'var(--line)'}` }}>
-                <b>{g.lcu ? `LCU ${g.lcu.uid}` : 'Đèn chưa gắn LCU'}</b>
+                <b>{g.lcu ? `LCU ${g.lcu.uid}` : 'Đèn chưa gắn LCU'}</b>{WRITE_ENABLED && !g.lcu && <button className="b" style={{ marginLeft: 8, padding: '1px 8px', fontSize: 11 }} onClick={() => void askRemoveGroup(i)}>Gỡ bộ…</button>}
                 {g.lcu && <div className="sub" style={{ margin: 0 }}>{g.lcu.model}{g.lcu.slots ? ` · ${g.lcu.slots} đầu đèn` : ''}</div>}
                 <ul style={{ margin: '4px 0 0', paddingLeft: 18 }}>
                   {g.lamps.map(l => <li key={l.id}>{g.lcu ? `kênh ${l.channel}: ` : ''}{l.name}{l.model ? ` — ${l.model}` : ''}</li>)}

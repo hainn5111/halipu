@@ -26,12 +26,25 @@ describe('poleUpdateBody', () => {
     const gs = r.body.attributeDevice as Array<Record<string, any>>;   // eslint-disable-line @typescript-eslint/no-explicit-any
     expect(gs[0].lcu).toEqual({}); expect(gs[0].uid).toBeUndefined(); expect(gs[1].lampPosition).toBe(2); expect(gs[1].lamp[0]).toMatchObject({ checkNum: 1, lampPosition: 2 });
   });
+  it('gỡ bộ không LCU: checked:false + remove:true, vị trí các bộ khác giữ nguyên (khớp capture)', () => {
+    const rw = { deviceId: 'P', solarDevice: [], attributeDevice: [
+      { checked: true, solar: {}, solarLcu: {}, lcu: {}, lamp: [{ lampNum: 1, deviceId: 'DA' }] },
+      { checked: true, solar: {}, solarLcu: {}, lcu: {}, lamp: [{ lampNum: 1, deviceId: 'DB' }] }] };
+    const r = poleUpdateBody(rw, {}, [], 'PID', [0]); expect(r.ok).toBe(true); if (!r.ok) return;
+    const gs = r.body.attributeDevice as Array<Record<string, any>>;   // eslint-disable-line @typescript-eslint/no-explicit-any
+    expect(gs[0]).toMatchObject({ checked: false, remove: true, lampPosition: 1 }); expect(gs[0].lamp[0]).toMatchObject({ deviceId: 'DA', checkNum: 1, lampPosition: 1 });
+    expect(gs[1].remove).toBeUndefined(); expect(gs[1].checked).toBe(true); expect(gs[1].lampPosition).toBe(2);
+  });
+  it('không gỡ bộ có LCU / bộ không tồn tại', () => {
+    expect(poleUpdateBody(raw, {}, [], 'PID', [0]).ok).toBe(false);
+    expect(poleUpdateBody(raw, {}, [], 'PID', [5]).ok).toBe(false);
+  });
   it('thiếu id → từ chối', () => expect(poleUpdateBody({}, {}).ok).toBe(false));
   it('thêm bộ mới vào cột có sẵn: nối sau các bộ cũ, vị trí tiếp theo', () => {
     const r = poleUpdateBody(raw, {}, [{ lcu: { kind: 'none' }, lamps: [{ modelId: 'ML', name: 'Đèn mới', channel: 1 }] }], 'PID');
     expect(r.ok).toBe(true); if (!r.ok) return;
     const gs = r.body.attributeDevice as Array<Record<string, any>>;   // eslint-disable-line @typescript-eslint/no-explicit-any
-    expect(gs).toHaveLength(2); expect(gs[1]).toEqual({ checked: true, lamp: [{ checked: true, deviceModelId: 'ML', deviceName: 'Đèn mới', lampPosition: 2, lampNum: 1, flag: true }], lcu: {}, solarLcu: {}, solar: {}, lampPosition: 2 });
+    expect(gs).toHaveLength(2); expect(gs[1]).toEqual({ checked: true, lamp: [{ checked: true, deviceModelId: 'ML', deviceName: 'Đèn mới', lampPosition: 2, lampNum: 1, flag: true, checkNum: 1 }], lcu: {}, solarLcu: {}, solar: {}, lampPosition: 2 });
   });
   it('bộ mới dùng lại UID LCU đã có trên cột → từ chối', () => {
     const r = poleUpdateBody(raw, {}, [{ lcu: { kind: 'existing', deviceId: 'L', uid: '000000789DDD', slots: 1 }, lamps: [{ modelId: 'ML', name: 'x', channel: 1 }] }], 'PID');

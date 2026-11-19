@@ -28,6 +28,7 @@ export default function PoleAddGroups({ pid, poleId, poleName, onClose }: { pid:
     <div style={{ position: 'fixed', inset: 0, background: '#000a', zIndex: 2500, display: 'grid', placeItems: 'center', padding: 16 }}>
       <div style={{ background: 'var(--panel)', border: '1px solid var(--line)', borderRadius: 12, padding: 20, width: 680, maxWidth: '100%', maxHeight: '92vh', overflow: 'auto' }}>
         <h2 style={{ margin: '0 0 4px', fontSize: 18 }}>Thêm bộ đèn–LCU vào "{poleName}"</h2>
+        <p className="sub" style={{ margin: '4px 0 0' }}>Đã được Fonda chấp nhận: bộ dùng <b>LCU có sẵn</b>. Bộ <b>không LCU</b> và <b>LCU mới</b> khi thêm vào cột có sẵn: chưa xác nhận — nếu lỗi, gửi thông báo lỗi.</p>
         {!cat && !err && <p className="sub">Đang tải…</p>}{err && <div className="err">{err}</div>}
         {cat && <GroupsEditor groups={groups} onChange={setGroups} catalog={cat} />}
         {reason && <div className="err" style={{ marginTop: 10 }}>{reason}</div>}
