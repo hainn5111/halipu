@@ -1,9 +1,10 @@
-import { useEffect, useMemo, useState } from 'react';
+import { lazy, Suspense, useEffect, useMemo, useState } from 'react';
 import { listDeviceTypes, listDevices, listModels, poleLinks, poleRelatedCount, previewPoleUpdate, projectIds, sendPoleDelete, sendPoleUpdate } from '../../adapters/fonda';
 import { poleIdsBody } from '../../adapters/fonda/writeBodies';
 import { WRITE_ENABLED } from '../../core/flags';
 import ConfirmWrite from '../common/ConfirmWrite';
-import PoleCreate from './PoleCreate';
+// Form thêm cột chỉ nạp khi bật ghi: bản main không chứa mã này (hằng số WRITE_ENABLED được gập lúc build).
+const PoleCreate = WRITE_ENABLED ? lazy(() => import('./PoleCreate')) : null;
 import type { DeviceItem, PoleLinks } from '../../core/types';
 
 // Cột đèn & liên kết — chỉ ĐỌC. Danh sách cột; bấm một cột để xem cái gì đang gắn trên nó:
@@ -119,7 +120,7 @@ export default function Poles() {
           </>)}
         </aside>
       )}
-      {adding && <PoleCreate pid={pids[0] ?? ''} onClose={changed => { setAdding(false); if (changed) setReload(n => n + 1); }} />}
+      {adding && PoleCreate && <Suspense fallback={null}><PoleCreate pid={pids[0] ?? ''} onClose={changed => { setAdding(false); if (changed) setReload(n => n + 1); }} /></Suspense>}
       {confirm && <ConfirmWrite {...confirm} onConfirm={confirm.run} onClose={changed => { setConfirm(null); if (changed) { setSel(null); setReload(n => n + 1); } }} />}
     </div>
   );
