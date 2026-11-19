@@ -25,7 +25,7 @@ tách nhánh từ origin/main → sửa/commit → thử ở localhost (preview-
    → pages.yml: typecheck + test (fail thì KHÔNG deploy) → build → deploy ra gốc trang
    → xoá nhánh
 ```
-Web CI (build+test+e2e chỉ đọc) chỉ chạy khi mở PR hoặc chạy tay. Không còn workflow Preview.
+Web CI (build+test+e2e chỉ đọc) chỉ chạy khi PR ở trạng thái Ready (PR Draft bị bỏ qua) hoặc chạy tay. Không còn workflow Preview.
 
 ## Kiến trúc trong 5 dòng
 
