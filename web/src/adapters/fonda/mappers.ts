@@ -171,6 +171,23 @@ export function channelRows<T extends { channel: number }>(slots: number, lamps:
   return Array.from({ length: slots }, (_, i) => ({ channel: i + 1, lamps: lamps.filter(l => l.channel === i + 1) }));
 }
 
+export interface LcuSpec { slots: number; lcuType?: number; loopType?: number; dimming?: string; currents?: number; temps?: number; flagsOn: string[]; flagsOff: string[]; functions: number[] }
+
+/**
+ * Thông số phần cứng cố định của một model LCU (deviceConfig). `slots` = lampHolderNum = số đầu đèn tối đa — LCU chỉ quản lý
+ * đúng ngần ấy đèn dù form cho khai nhiều hơn. `extensions[]` là các cờ chức năng (nhãn `label`, bật/tắt `value`).
+ */
+export function lcuSpec(config: Record<string, unknown>): LcuSpec {
+  const ext = Array.isArray(config.extensions) ? (config.extensions as Rec[]) : [];
+  const dim = config.dimmingLevel;
+  return {
+    slots: num(config.lampHolderNum) ?? 1, lcuType: num(config.lcuType), loopType: num(config.loopType), dimming: dim == null || dim === '' ? undefined : String(dim),
+    currents: num(config.currentsNum), temps: num(config.tempsNum),
+    flagsOn: ext.filter(e => e.value === true).map(e => str(e.label)), flagsOff: ext.filter(e => e.value !== true).map(e => str(e.label)),
+    functions: (Array.isArray(config.functionList) ? config.functionList : []).map(num).filter((x): x is number => x !== undefined),
+  };
+}
+
 export function toCsv(cols: string[], rows: Array<Array<unknown>>): string {
   const q = (v: unknown) => `"${String(v ?? '').replace(/"/g, '""')}"`;
   return '﻿' + [cols.map(q).join(','), ...rows.map(r => r.map(q).join(','))].join('\n');

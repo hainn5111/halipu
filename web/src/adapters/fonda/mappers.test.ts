@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { channelRows, lcuSlotCount, mapLcuLamps, mapPoleLinks, categoryOf, configEntries, mapModels, mapDeviceRow, mapDeviceTypes, mapLight, mapListRow, mapPageRow, mapTrend, mergeLcus, pickGeo, ratedPowerOf, toCsv, validGeo } from './mappers';
+import { lcuSpec, channelRows, lcuSlotCount, mapLcuLamps, mapPoleLinks, categoryOf, configEntries, mapModels, mapDeviceRow, mapDeviceTypes, mapLight, mapListRow, mapPageRow, mapTrend, mergeLcus, pickGeo, ratedPowerOf, toCsv, validGeo } from './mappers';
 
 describe('pickGeo / validGeo', () => {
   it('đọc lat/lng dạng chuỗi', () => expect(pickGeo({ lat: '20.93271', lng: '105.67026' })).toEqual({ lat: 20.93271, lng: 105.67026 }));
@@ -119,4 +119,14 @@ describe('số kênh và hàng kênh của LCU', () => {
     expect(rows.map(r => r.lamps.length)).toEqual([1, 0, 2, 0]);
     expect(rows.flatMap(r => r.lamps)).toHaveLength(lamps.length);
   });
+});
+
+describe('lcuSpec', () => {
+  it('đọc số đầu đèn và cờ chức năng (dữ liệu model LCU-RF-HAPU / LCU-D-light thật)', () => {
+    const rf = lcuSpec({ lampHolderNum: 1, lcuType: 1, loopType: 1, dimmingLevel: 20, currentsNum: 6, tempsNum: 6, functionList: [1, 2, 3], extensions: [{ label: 'lcuTask', value: true }, { label: 'lightOperated', value: false }, { label: 'poleSlant', value: false }] });
+    expect(rf).toEqual({ slots: 1, lcuType: 1, loopType: 1, dimming: '20', currents: 6, temps: 6, flagsOn: ['lcuTask'], flagsOff: ['lightOperated', 'poleSlant'], functions: [1, 2, 3] });
+    const d = lcuSpec({ lampHolderNum: 1, lcuType: null, dimmingLevel: '100', functionList: [1, 2, 3, 4], extensions: [] });
+    expect(d).toMatchObject({ slots: 1, lcuType: undefined, dimming: '100', functions: [1, 2, 3, 4], flagsOn: [] });
+  });
+  it('thiếu lampHolderNum → 1 đầu đèn', () => expect(lcuSpec({}).slots).toBe(1));
 });

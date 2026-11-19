@@ -168,6 +168,15 @@ export const sendPoleDelete = (projectId: string, poleId: string) => { assertWri
 export const previewModelClone = (projectId: string, base: { typeId: string; typeValue: number; config: Record<string, unknown> }, name: string) => modelCreateBody(base, name, projectId);
 export const sendModelCreate = (projectId: string, body: Record<string, unknown>) => { assertWrite(); return call('POST', 'deviceModel/saveNew', { projectId, body }); };
 
+/** Giao thức/phiên bản/systemConfig của các model một loại (deviceModel/getDeviceModelPage — danh sách model trả kèm các trường này). */
+export interface ModelProto { value: number; name: string; version: string; systemConfig: number }
+export async function modelProtocols(projectId: string, typeId: string): Promise<Map<string, ModelProto>> {
+  const out = new Map<string, ModelProto>();
+  const d = await call<{ records?: Array<Record<string, unknown>> }>('POST', 'deviceModel/getDeviceModelPage', { projectId, body: { projectId, current: 1, size: 100, deviceTypeId: typeId } });
+  for (const r of d.records || []) out.set(String(r.deviceModelId), { value: Number(r.protocolValue), name: String(r.protocolName ?? ''), version: String(r.protocolVersion ?? ''), systemConfig: Number(r.systemConfig) || 0 });
+  return out;
+}
+
 /** Danh mục để dựng form bộ đèn–LCU: model cột/đèn/LCU (LCU kèm giao thức) và LCU chưa gắn cột. */
 export interface LcuModel { id: string; name: string; slots: number; protocolValue: number; protocolName: string }
 export interface PoleCatalog { poleModels: DeviceModel[]; lampModels: DeviceModel[]; lcuModels: LcuModel[]; freeLcus: FreeLcu[] }
