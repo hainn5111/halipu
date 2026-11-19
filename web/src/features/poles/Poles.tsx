@@ -49,7 +49,7 @@ export default function Poles() {
   const [reload, setReload] = useState(0);
   const [edit, setEdit] = useState({ name: '', code: '' });
   const [confirm, setConfirm] = useState<null | { title: string; summary: string; method: string; path: string; body: unknown; danger?: boolean; run: () => Promise<void> }>(null);
-  const [writeMsg, setWriteMsg] = useState('');
+  const [writeMsg, setWriteMsg] = useState(''), [listMsg, setListMsg] = useState('');
   const [adding, setAdding] = useState(false), [addingGroups, setAddingGroups] = useState(false);
   const [pids, setPids] = useState<string[]>([]);
   useEffect(() => {
@@ -72,7 +72,7 @@ export default function Poles() {
   const modelSlots = useMemo(() => (id: string) => models.get(id)?.slots, [models]);
   useEffect(() => {
     if (!sel) { setLinks(null); return; }
-    setEdit({ name: sel.name, code: sel.code }); setWriteMsg('');
+    setEdit({ name: sel.name, code: sel.code }); setWriteMsg(''); setListMsg('');
     let live = true;
     setLinkBusy(true); setLinkErr(''); setLinks(null);
     poleLinks(sel.pid, sel.id, modelName, modelSlots).then(r => { if (live) setLinks(r); }).catch(e => { if (live) setLinkErr((e as Error).message); }).finally(() => { if (live) setLinkBusy(false); });
@@ -99,20 +99,21 @@ export default function Poles() {
   }
   async function askDelete() {
     if (!sel || !links) return;
-    setWriteMsg('');
-    if (links.groups.length > 0 || links.others.length > 0) { setWriteMsg('Cột còn thiết bị gắn trên đó — không xoá (chưa kiểm chứng việc xoá cột có LCU/đèn). Gỡ thiết bị trước.'); return; }
+    setListMsg('');
+    if (links.groups.length > 0 || links.others.length > 0) { setListMsg('Cột còn thiết bị gắn trên đó — không xoá (chưa kiểm chứng việc xoá cột có LCU/đèn). Gỡ thiết bị trước.'); return; }
     try {
       const n = await poleRelatedCount(sel.pid, sel.id);
-      if (n !== 0) { setWriteMsg(`Fonda báo cột còn ${n} thiết bị liên quan — không xoá.`); return; }
+      if (n !== 0) { setListMsg(`Fonda báo cột còn ${n} thiết bị liên quan — không xoá.`); return; }
       setConfirm({ title: `Xoá cột "${sel.name}"`, summary: 'Cột không có thiết bị liên quan (đã kiểm tra bằng device/checkDeviceRelated). Không hoàn tác được.', method: 'POST', path: 'poleActor/delete', body: poleIdsBody([sel.id]), danger: true, run: async () => { await sendPoleDelete(sel.pid, sel.id); } });
-    } catch (e) { setWriteMsg((e as Error).message); }
+    } catch (e) { setListMsg((e as Error).message); }
   }
 
   const lampCount = links?.groups.reduce((n, g) => n + (g.lcuLamps?.length ? g.lcuLamps.length : g.lamps.filter(l => l.checked).length), 0) ?? 0;
   return (
     <div className="lcus">
       <div className="listwrap">
-        <p className="sub">{busy ? 'Đang tải…' : `${poles.length} cột đèn`}{WRITE_ENABLED && <button style={{ marginLeft: 12 }} onClick={() => setAdding(true)}>+ Thêm cột…</button>}</p>
+        <p className="sub">{busy ? 'Đang tải…' : `${poles.length} cột đèn`}{WRITE_ENABLED && <button style={{ marginLeft: 12 }} onClick={() => setAdding(true)}>+ Thêm cột…</button>}{WRITE_ENABLED && <button className="b" style={{ marginLeft: 8 }} disabled={!sel || !links} title={sel ? '' : 'Chọn một cột trong danh sách'} onClick={() => void askDelete()}>Xoá cột đã chọn…</button>}</p>
+        {listMsg && <div className="err">{listMsg}</div>}
         {err && <div className="err">{err}</div>}
         {!busy && !err && !poles.length && <p className="sub">Dự án chưa có cột đèn.</p>}
         {poles.length > 0 && (
@@ -131,7 +132,11 @@ export default function Poles() {
           {linkBusy && <p className="sub">Đang đọc liên kết…</p>}
           {linkErr && <div className="err">{linkErr}</div>}
           {links && <>
-            <h3>Gắn trên cột ({links.groups.filter(g => g.lcu).length} LCU · {lampCount} đèn)</h3>
+            <div style={{ border: '1px solid var(--line)', borderRadius: 8, padding: '4px 12px 10px', marginTop: 14 }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
+              <h3 style={{ margin: '8px 0' }}>Gắn trên cột ({links.groups.filter(g => g.lcu).length} LCU · {lampCount} đèn)</h3>
+              {WRITE_ENABLED && PoleAddGroups && <button className="b" onClick={() => setAddingGroups(true)}>+ Thêm bộ đèn–LCU…</button>}
+            </div>
             {!links.groups.length && <p className="sub">Chưa có thiết bị nào gắn trên cột này.</p>}
             {links.groups.map((g, i) => (
               <div key={i} style={{ marginBottom: 10, paddingLeft: 8, borderLeft: `3px solid ${g.lcu ? 'var(--accent)' : 'var(--line)'}` }}>
@@ -143,15 +148,14 @@ export default function Poles() {
               </div>))}
             {links.others.length > 0 && <h3>Thiết bị khác gắn trên cột</h3>}
             {links.others.map(o => <div key={o.kind}><b>{o.kind}</b> ({o.items.length}): {o.items.map(x => x.name).join(', ')}</div>)}
+            </div>
           </>}
           {WRITE_ENABLED && sel && (<>
-            <h3>Sửa / xoá (ghi thật · chỉ bản preview)</h3>
+            <h3>Sửa cột (ghi thật · chỉ bản preview)</h3>
             <label className="sub" style={{ display: 'block' }}>Tên</label><input style={{ width: '100%' }} value={edit.name} onChange={e => setEdit(v => ({ ...v, name: e.target.value }))} />
             <label className="sub" style={{ display: 'block', marginTop: 8 }}>Mã</label><input style={{ width: '100%' }} value={edit.code} onChange={e => setEdit(v => ({ ...v, code: e.target.value }))} />
             <div style={{ display: 'flex', gap: 8, marginTop: 10 }}>
               <button disabled={!links || !edit.name.trim() || (edit.name === sel.name && edit.code === sel.code)} onClick={() => void askUpdate()}>Lưu thay đổi…</button>
-              {PoleAddGroups && <button className="b" disabled={!links} onClick={() => setAddingGroups(true)}>+ Thêm bộ đèn–LCU…</button>}
-              <button className="b" disabled={!links} onClick={() => void askDelete()}>Xoá cột…</button>
             </div>
             {writeMsg && <div className="err" style={{ marginTop: 8 }}>{writeMsg}</div>}
           </>)}
