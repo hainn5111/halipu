@@ -20,11 +20,12 @@ Dự án: web điều khiển chiếu sáng thông minh (SLCP), gọi thẳng AP
 ## Quy trình ngắn
 
 ```
-tách nhánh → push → Web CI (build+test+e2e chỉ đọc, không deploy)
-   → mở PR hoặc chạy tay workflow "Preview" → link /preview/<nhánh>/
-   → người dùng test → (khi được bảo) merge vào main → pages.yml deploy ra gốc trang
-   → xoá nhánh → preview tự dọn
+tách nhánh từ origin/main → sửa/commit → thử ở localhost (chay-local.bat, chuột phải commit trong SourceTree)
+   → typecheck + test + build ở máy → (khi được bảo) merge vào main
+   → pages.yml: typecheck + test (fail thì KHÔNG deploy) → build → deploy ra gốc trang
+   → xoá nhánh
 ```
+Web CI (build+test+e2e chỉ đọc) chỉ chạy khi mở PR hoặc chạy tay. Không còn workflow Preview.
 
 ## Kiến trúc trong 5 dòng
 
@@ -38,6 +39,7 @@ tách nhánh → push → Web CI (build+test+e2e chỉ đọc, không deploy)
 
 - Môi trường cloud **không truy cập được** Fonda (`159.138.45.45`) lẫn `github.io`. Dữ liệu thật chỉ kiểm được qua **CI** (Actions) → đọc log. Cục bộ thì giả lập API/WebSocket bằng Playwright (`page.route`, `page.routeWebSocket`).
 - Trang là https, API là http → người dùng phải bật *Insecure content → Allow* cho `hainn5111.github.io`. Hướng lâu dài: reverse proxy HTTPS (`web/deploy/nginx.conf.example`).
+- Xem thử hằng ngày: `chay-local.bat` (xem `docs/15-chay-local-sourcetree.md`), CI không tự chạy theo nhánh.
 - Trạng thái workflow qua API có thể chậm cập nhật; đừng vội kết luận "treo" hay huỷ run.
 
 ## Giao tiếp
