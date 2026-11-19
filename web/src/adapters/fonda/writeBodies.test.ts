@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { lcuModelCreateBody, modelCreateBody, poleIdsBody, poleUpdateBody } from './writeBodies';
+import { lcuModelCreateBody, lcuSaveBody, modelCreateBody, poleIdsBody, poleUpdateBody } from './writeBodies';
 
 describe('modelCreateBody', () => {
   it('khớp payload đã bắt (deviceModelId rỗng, deviceConfig là object)', () => {
@@ -101,5 +101,14 @@ describe('lcuModelCreateBody', () => {
     const cfg = { lampHolderNum: 1, lcuType: 1, functionList: [1, 2, 3, 4, 5, 6, 7], extensions: [{ label: 'lcuTask', value: true, name: 'LCU Task (RTC)' }] };
     expect(lcuModelCreateBody({ typeId: 'T2', config: cfg, protocol: { id: 'PR', value: 53, name: 'RF/F2', version: 'F2 v1.0' } }, 'LCU-test-funtion', 'PID', 'test only')).toEqual({
       deviceTypeId: 'T2', protocolId: 'PR', protocolValue: 53, useTag: null, deviceTypeValue: 2, deviceConfig: cfg, protocolName: 'RF/F2', protocolVersion: 'F2 v1.0', deviceModelName: 'LCU-test-funtion', remark: 'test only', projectId: 'PID' });
+  });
+});
+
+describe('lcuSaveBody', () => {
+  it('khớp payload lcuActor/save đã bắt', () => {
+    expect(lcuSaveBody({ projectId: 'PID', modelId: 'M', name: 'LCU test test', uid: '1234567898BC', protocolValue: 53, protocolName: 'RF/F2' })).toEqual({
+      connectId: '', deviceModelId: 'M', deviceName: 'LCU test test', deviceCode: '', uid: '1234567898BC', deviceStatus: 1, imei: '', imsi: '', sim: '', ccid: '',
+      areaId: '', roadId: '', roadDirection: '', roadLevelId: null, deviceSource: 1, remark: '', lcuTask: 1, cls: '', fcntbits: '', lwan: '', verifyEnabled: 0,
+      protocolValue: 53, protocolName: 'RF/F2', lightOperated: null, poleSlant: null, temDetection: null, diDetection: null, gps: null, remoteUpgrade: null, energyAccumulation: null, projectId: 'PID' });
   });
 });

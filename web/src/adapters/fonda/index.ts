@@ -3,7 +3,7 @@ import { call } from '../../core/api';
 import { config } from '../../core/config';
 import type { PoleLinks, DeviceItem, DeviceModel, DeviceType, LampCommand, LightStatus, Lcu, Measurement } from '../../core/types';
 import { WRITE_ENABLED } from '../../core/flags';
-import { lcuModelCreateBody, modelCreateBody, poleIdsBody, poleUpdateBody, type GroupInput } from './writeBodies';
+import { lcuModelCreateBody, lcuSaveBody, modelCreateBody, poleIdsBody, poleUpdateBody, type GroupInput } from './writeBodies';
 import { lcuSlotCount, mapLcuLamps, mapPoleLinks, mapModels, mapDeviceRow, mapDeviceTypes, mapLight, mapListRow, mapPageRow, mapTrend, mergeLcus, pickGeo, ratedPowerOf, validGeo, type LcuRow } from './mappers';
 
 const PID_KEY = 'pid';
@@ -208,3 +208,7 @@ export async function listFreeLcus(projectId: string): Promise<FreeLcu[]> {
   return (await listDevices(projectId, t.value)).filter(d => d.uid && !d.raw.poleId)
     .map(d => { const m = models.get(String(d.raw.deviceModelId ?? '')); return { id: d.id, uid: d.uid, name: d.name, model: d.model, slots: Number(m?.config.lampHolderNum) || 1 }; });
 }
+
+/** Thêm LCU riêng lẻ (lcuActor/save) — body xem trước + gửi. */
+export const previewLcuSave = (projectId: string, i: { modelId: string; name: string; uid: string; protocolValue: number; protocolName: string }) => lcuSaveBody({ projectId, ...i });
+export const sendLcuSave = (projectId: string, body: Record<string, unknown>) => { assertWrite(); return call('POST', 'lcuActor/save', { projectId, body }); };

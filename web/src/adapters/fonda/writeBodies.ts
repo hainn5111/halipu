@@ -119,3 +119,16 @@ export function poleCreateBody(i: PoleCreateInput): { ok: true; body: Rec } | { 
     solarDevice: [], deviceId: '', deviceModelId: i.poleModelId, deviceName: i.name.trim(), deviceCode: i.code.trim() || i.name.trim(),
     lat: String(i.lat).trim(), lng: String(i.lng).trim(), geographicAddress: i.address.trim(), projectId: i.projectId } };
 }
+
+/**
+ * lcuActor/save — thêm LCU RIÊNG LẺ từ một model (form Add Equipment, đã bắt 2026-11-19). `protocol*` lấy từ model.
+ * Các cờ chức năng (lightOperated, poleSlant, …) gửi null như form; `lcuTask: 1`.
+ */
+export function lcuSaveBody(i: { projectId: string; modelId: string; name: string; uid: string; protocolValue: number; protocolName: string }): Rec {
+  return {
+    connectId: '', deviceModelId: i.modelId, deviceName: i.name, deviceCode: '', uid: i.uid, deviceStatus: 1, imei: '', imsi: '', sim: '', ccid: '',
+    areaId: '', roadId: '', roadDirection: '', roadLevelId: null, deviceSource: 1, remark: '', lcuTask: 1, cls: '', fcntbits: '', lwan: '', verifyEnabled: 0,
+    protocolValue: i.protocolValue, protocolName: i.protocolName,
+    lightOperated: null, poleSlant: null, temDetection: null, diDetection: null, gps: null, remoteUpgrade: null, energyAccumulation: null, projectId: i.projectId,
+  };
+}
