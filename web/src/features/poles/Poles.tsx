@@ -5,7 +5,10 @@ import { WRITE_ENABLED } from '../../core/flags';
 import ConfirmWrite from '../common/ConfirmWrite';
 // Form thêm cột chỉ nạp khi bật ghi: bản main không chứa mã này (hằng số WRITE_ENABLED được gập lúc build).
 const PoleCreate = WRITE_ENABLED ? lazy(() => import('./PoleCreate')) : null;
-const PoleAddGroups = WRITE_ENABLED ? lazy(() => import('./PoleAddGroups')) : null;
+// Thêm bộ vào cột CÓ SẴN qua poleActor/update bị Fonda từ chối ("Parameter deviceId cannot be empty", code 1005): update dường như chỉ nhận
+// các phần tử đã có deviceId. Tắt nút cho tới khi bắt được cách web Fonda gốc thêm bộ vào cột đã có (docs/15 §7).
+const ADD_GROUP_TO_EXISTING = false;
+const PoleAddGroups = WRITE_ENABLED && ADD_GROUP_TO_EXISTING ? lazy(() => import('./PoleAddGroups')) : null;
 import type { DeviceItem, PoleLinks } from '../../core/types';
 
 // Cột đèn & liên kết — chỉ ĐỌC. Danh sách cột; bấm một cột để xem cái gì đang gắn trên nó:
@@ -115,7 +118,7 @@ export default function Poles() {
             <label className="sub" style={{ display: 'block', marginTop: 8 }}>Mã</label><input style={{ width: '100%' }} value={edit.code} onChange={e => setEdit(v => ({ ...v, code: e.target.value }))} />
             <div style={{ display: 'flex', gap: 8, marginTop: 10 }}>
               <button disabled={!links || !edit.name.trim() || (edit.name === sel.name && edit.code === sel.code)} onClick={() => void askUpdate()}>Lưu thay đổi…</button>
-              <button className="b" disabled={!links} onClick={() => setAddingGroups(true)}>+ Thêm bộ đèn–LCU…</button>
+              {PoleAddGroups && <button className="b" disabled={!links} onClick={() => setAddingGroups(true)}>+ Thêm bộ đèn–LCU…</button>}
               <button className="b" disabled={!links} onClick={() => void askDelete()}>Xoá cột…</button>
             </div>
             {writeMsg && <div className="err" style={{ marginTop: 8 }}>{writeMsg}</div>}
