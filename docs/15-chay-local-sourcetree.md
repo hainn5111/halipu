@@ -5,15 +5,15 @@ Thử nghiệm hằng ngày chạy trên máy, không tốn minute GitHub Action
 ## Cần có
 Node.js 18+ (có `npm` trong PATH) và git.
 
-## Chạy bằng SourceTree (Windows)
+## Chạy bằng SourceTree (Windows) — chọn đúng commit
 Tools → Options → Custom Actions → Add:
 - Menu caption: `Chạy thử local`
 - Script to run: đường dẫn tới `chay-local.bat` trong repo
-- Parameters: để trống (script tự tìm thư mục `web`, không lo đường dẫn có dấu cách)
+- Parameters: `$SHA` (chỉ SHA, không dùng `$REPO` vì đường dẫn có dấu cách bị tách)
 - Bỏ chọn "Run silently"
 
-Checkout nhánh cần thử, rồi Actions → Custom Actions → `Chạy thử local`. Script chạy `npm ci` (nếu chưa có `node_modules`), `npm run build`, rồi mở `http://localhost:8080`. Đóng cửa sổ console để dừng.
-Cũng có thể bấm đúp `chay-local.bat`. Sau khi đổi `package-lock.json`, xoá thư mục `web/node_modules` để cài lại.
+Dùng: **chuột phải vào commit trong danh sách log → Custom Actions → Chạy thử local**. Script không đổi nhánh/thư mục làm việc của bạn: nó tạo `git worktree` riêng ở `.local-build\<sha7>`, `npm ci` (lần đầu cho commit đó), build với `VITE_BUILD_INFO=<nhánh>@<sha7>` (hiện ở chân trang), rồi mở trình duyệt. Đóng cửa sổ console để dừng; cổng được in trong console (mặc định 8080, bận thì tự nhảy cổng kế).
+Bấm đúp `chay-local.bat` (không tham số) = chạy commit HEAD hiện tại. Dọn bản cũ: xoá thư mục `.local-build` rồi `git worktree prune`.
 
 ## Lưu ý
 - `localhost` được coi là nguồn an toàn nên không bị chặn mixed content khi gọi API http của Fonda.
