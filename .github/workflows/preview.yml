@@ -6,8 +6,7 @@ name: Preview
 #  - Đóng PR hoặc xoá nhánh: tự dọn thư mục preview.
 # Preview KHÔNG đụng tới gốc trang (chỉ main deploy ra gốc). PR từ fork bị bỏ qua (không cấp quyền ghi/secret cho mã lạ).
 on:
-  pull_request:
-    types: [opened, synchronize, reopened, closed]
+  # Đã tắt tự chạy theo PR để tiết kiệm minute; xem thử bằng chay-local.bat (docs/15-chay-local-sourcetree.md).
   workflow_dispatch:
   delete:
 
