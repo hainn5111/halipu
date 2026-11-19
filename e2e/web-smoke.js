@@ -24,7 +24,7 @@ const out = (k, v) => console.log(`[web-e2e] ${k}: ${typeof v === 'string' ? v :
     await p.click('text=Show lịch sử'); await p.waitForTimeout(6000);
     out('history rows', await p.$$eval('.drawer tbody tr', r => r.length));
     await p.screenshot({ path: 'web-gis.png' });
-    step = 'lcu tab'; await p.click('a:has-text("Danh sách LCU")'); await p.waitForSelector('#s');
+    /* nhóm điều hướng mặc định thu gọn → mở nhóm trước */ step = 'lcu tab'; await p.click('.grp:has-text("Thiết bị")'); await p.click('a:has-text("Danh sách LCU")'); await p.waitForSelector('#s');
     await p.waitForFunction(() => /\d+ LCU/.test(document.querySelector('#s').textContent), null, { timeout: 60000 }).catch(() => out('LCU', 'quá hạn chờ tải'));
     out('LCU status', await p.textContent('#s')); out('LCU rows', await p.$$eval('tr.lrow', r => r.map(x => x.innerText.replace(/\s+/g, ' ').slice(0, 90))));
     await p.screenshot({ path: 'web-lcu.png' });

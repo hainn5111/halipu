@@ -45,7 +45,7 @@ export async function login(username: string, password: string): Promise<void> {
 export interface CallOptions { body?: unknown; projectId?: string }
 
 /** Gọi API v1.0 có token. projectId (nếu có) đặt ở header như frontend Fonda. */
-export async function call<T = unknown>(method: 'GET' | 'POST', path: string, { body, projectId }: CallOptions = {}): Promise<T> {
+export async function call<T = unknown>(method: 'GET' | 'POST' | 'PUT', path: string, { body, projectId }: CallOptions = {}): Promise<T> {
   const headers: Record<string, string> = { authorization: getToken() || '', 'Content-Type': 'application/json' };
   if (projectId) headers.projectId = projectId;
   const res = await fetch(`${config().apiBase}/api/v1.0/${path}?lang=en-US`, { method, headers, body: body ? JSON.stringify(body) : undefined });

@@ -20,7 +20,7 @@ th { color: var(--muted); font-weight: 600; }
 .top { grid-column: 1 / 3; display: flex; align-items: center; gap: 12px; padding: 0 16px; background: var(--panel); border-bottom: 1px solid var(--line); }
 .top b:first-child { flex: 0; } .top small { flex: 1; color: var(--muted); font-family: monospace; font-size: 11px; }
 .nav { background: var(--panel); border-right: 1px solid var(--line); overflow: auto; padding: 8px 0; }
-.grp { padding: 10px 16px 4px; font-size: 11px; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); }
+.grp { display: block; width: 100%; text-align: left; background: none; border: 0; border-radius: 0; cursor: pointer; padding: 10px 16px 4px; font-size: 11px; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); }
 .tab { display: block; padding: 9px 16px 9px 28px; color: #cbd5e1; text-decoration: none; font-size: 14px; }
 .tab:hover { background: var(--line); } .tab.on { background: var(--bg); color: var(--accent); font-weight: 600; box-shadow: inset 3px 0 var(--accent); } .tab.soon { opacity: .45; cursor: default; }
 .main { display: flex; flex-direction: column; min-width: 0; min-height: 0; }
@@ -49,3 +49,6 @@ th { color: var(--muted); font-weight: 600; }
 
 .rt { font-size: 12px; color: var(--muted); } .rt-authed { color: var(--good); } .rt-error { color: var(--bad); } .rt-connecting, .rt-open, .rt-closed { color: var(--accent); }
 .live div { font-size: 12px; margin-top: 3px; color: var(--text); word-break: break-all; } .live .t { color: var(--muted); }
+
+/* Bảng chi tiết dạng tên trường / giá trị: cột cố định 1/3 – 2/3, giá trị dài tự xuống dòng */
+.kv { table-layout: fixed; width: 100%; } .kv td { vertical-align: top; overflow-wrap: anywhere; word-break: break-word; } .kv td:first-child { width: 33.333%; color: var(--muted); } .kv td:last-child { width: 66.667%; }

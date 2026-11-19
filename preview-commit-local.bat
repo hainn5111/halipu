@@ -35,6 +35,7 @@ if not exist "!WT!\web" (echo Commit !SHA! khong co thu muc web & pause & exit /
 cd /d "!WT!\web" || (pause & exit /b 1)
 if not exist node_modules (call npm ci || (pause & exit /b 1))
 set "VITE_BUILD_INFO=!INFO!"
+set "VITE_ENABLE_PROBE=1"
 echo Build !INFO! ...
 call npm run build || (pause & exit /b 1)
 echo Dang chay ban !INFO! - dong cua so nay de dung (cong in ra ben duoi).

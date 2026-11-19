@@ -36,3 +36,48 @@ export interface LightStatus {
 }
 
 export type LampCommand = 'turnOn' | 'turnOff' | 'dimming';
+
+/** Loại thiết bị của dự án (LCU, RTU, Gateway, Cảm biến…). */
+export interface DeviceType { id: string; value: number; name: string }
+
+/** Thiết bị bất kỳ (không phải LCU) từ API thiết bị chung. */
+export interface DeviceItem {
+  id: string;
+  uid: string;
+  name: string;
+  code: string;
+  typeValue: number;
+  model: string;
+  /** Mã trạng thái thô của Fonda (chưa rõ nghĩa từng giá trị). */
+  status?: number;
+  lat?: number;
+  lng?: number;
+  address: string;
+  /** Bản ghi gốc từ API (để xem toàn bộ thông tin đang có). */
+  raw: Record<string, unknown>;
+}
+
+/** Model thiết bị (template). `config` là deviceConfig đã parse từ chuỗi JSON. */
+export interface DeviceModel { id: string; name: string; typeId: string; config: Record<string, unknown> }
+
+/** Một dòng của bảng cấu hình: giá trị đơn, hoặc danh sách thiết bị đính kèm theo template. */
+export type ConfigEntry =
+  | { key: string; kind: 'value'; text: string }
+  | { key: string; kind: 'attached'; items: Array<{ name: string; checked: boolean; extra: string }> };
+
+/** Liên kết của một cột đèn: những gì đang gắn trên cột (LCU kèm đèn theo kênh, đèn rời không LCU, thiết bị khác). */
+export interface PoleLamp { id: string; name: string; channel: number; model: string; /** false = ô chưa chọn (checked:false trong attributeDevice) */ checked: boolean }
+export interface PoleGroup {
+  /** Có = nhóm "LCU + đèn"; không có = đèn gắn thẳng vào cột (chưa có LCU). */
+  lcu?: { id: string; uid: string; slots?: number; model: string };
+  /** Đèn theo attributeDevice của cột. */
+  lamps: PoleLamp[];
+  /** Đèn thực sự của LCU (projectLampActor/queryLampOfLcu) — nguồn chuẩn cho các kênh của LCU; chỉ có với bộ có LCU. */
+  lcuLamps?: PoleLamp[];
+}
+export interface PoleLinks {
+  pole: { id: string; name: string; code: string; model: string; address: string; lat?: number; lng?: number };
+  groups: PoleGroup[];
+  /** Thiết bị khác gắn trên cột, theo loại (camera, sensor, wifi…). */
+  others: Array<{ kind: string; items: Array<{ name: string }> }>;
+}

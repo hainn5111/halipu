@@ -1,8 +1,10 @@
 // Nguồn dữ liệu Fonda. Giao diện (features/) chỉ gọi các hàm này và nhận kiểu của mình; đổi backend = viết adapter khác cùng chữ ký.
 import { call } from '../../core/api';
 import { config } from '../../core/config';
-import type { LampCommand, LightStatus, Lcu, Measurement } from '../../core/types';
-import { mapLight, mapListRow, mapPageRow, mapTrend, mergeLcus, pickGeo, ratedPowerOf, validGeo, type LcuRow } from './mappers';
+import type { PoleLinks, DeviceItem, DeviceModel, DeviceType, LampCommand, LightStatus, Lcu, Measurement } from '../../core/types';
+import { WRITE_ENABLED } from '../../core/flags';
+import { lcuIdsBody, lcuModelCreateBody, lcuSaveBody, modelCreateBody, poleIdsBody, poleUpdateBody, type GroupInput } from './writeBodies';
+import { lcuSlotCount, mapLcuLamps, mapPoleLinks, mapModels, mapDeviceRow, mapDeviceTypes, mapLight, mapListRow, mapPageRow, mapTrend, mergeLcus, pickGeo, ratedPowerOf, validGeo, type LcuRow } from './mappers';
 
 const PID_KEY = 'pid';
 
@@ -96,3 +98,122 @@ export async function unicast(cmd: LampCommand | 'queryStatus', l: Lcu, num: num
   if (cmd === 'dimming') body.dimming = dimming;
   return call('POST', `lampControl/unicast/${cmd}`, { body });
 }
+
+/** Mọi loại thiết bị của dự án (chỉ đọc; API 'WithUid' chỉ trả vài loại nên không dùng). */
+export async function listDeviceTypes(projectId: string): Promise<DeviceType[]> {
+  return mapDeviceTypes(await call('GET', `deviceTypeController/queryAllDeviceTypeByProjectId/${projectId}`, { projectId }));
+}
+
+/** Thiết bị của một loại trong một dự án (chỉ đọc, phân trang hết). */
+export async function listDevices(projectId: string, typeValue: number): Promise<DeviceItem[]> {
+  const out: DeviceItem[] = []; let current = 1, pages = 1;
+  do {
+    const d = await call<{ records?: Array<Record<string, unknown>>; pages?: number }>('POST', 'device/queryDevicePage', { projectId, body: { projectId, current, size: 100, deviceTypeValue: typeValue } });
+    for (const r of d.records || []) { const m = mapDeviceRow(r); if (m) out.push({ ...m, typeValue: m.typeValue < 0 ? typeValue : m.typeValue }); }
+    pages = d.pages || 1; current++;
+  } while (current <= pages && current < 100);
+  return out;
+}
+
+
+/** Số thiết bị của một loại (đọc 1 bản ghi, lấy total). */
+export async function countDevices(projectId: string, typeValue: number): Promise<number> {
+  const d = await call<{ total?: number }>('POST', 'device/queryDevicePage', { projectId, body: { projectId, current: 1, size: 1, deviceTypeValue: typeValue } });
+  return Number(d?.total) || 0;
+}
+
+/** Model thiết bị + template deviceConfig của dự án (chỉ đọc). */
+export async function listModels(projectId: string): Promise<DeviceModel[]> {
+  return mapModels(await call('GET', `deviceModel/queryAllDeviceModelByProjectId/${projectId}`, { projectId }));
+}
+
+/**
+ * Liên kết của một cột: thiết bị đang gắn trên cột (chỉ đọc). `modelName`/`modelSlots` tra tên và số đầu đèn từ id model.
+ * Với mỗi bộ có LCU còn đọc đèn thực của LCU (queryLampOfLcu): số đầu đèn trong tham chiếu LCU của cột không đáng tin
+ * (đã gặp LCU nhiều đèn nhưng `lampHolderNum` ghi 1), nên các kênh vẽ theo dữ liệu của chính LCU.
+ */
+export async function poleLinks(projectId: string, poleId: string, modelName: (id: string) => string, modelSlots?: (id: string) => number | undefined): Promise<PoleLinks> {
+  const [related, attr] = await Promise.all([
+    call('GET', `poleActor/queryPoleAndRelatedById/${poleId}`, { projectId }),
+    call('GET', `poleActor/queryAttributeDeviceOfPole/${poleId}`, { projectId }).catch(() => null),   // lỗi phần phụ vẫn hiện được phần chính
+  ]);
+  const links = mapPoleLinks(related, attr, modelName, modelSlots);
+  await Promise.all(links.groups.map(async g => {
+    if (!g.lcu) return;
+    try { g.lcuLamps = mapLcuLamps(await call('GET', `projectLampActor/queryLampOfLcu/${g.lcu.id}`, { projectId }), modelName); } catch { /* giữ đèn theo attributeDevice */ }
+    if (g.lcuLamps?.length) g.lcu.slots = lcuSlotCount(g.lcu.slots, undefined, g.lcuLamps.map(l => l.channel));
+  }));
+  return links;
+}
+
+/** Chốt chặn ở tầng adapter: bản build không bật ghi thì mọi hàm gửi lệnh ghi đều từ chối. */
+const assertWrite = () => { if (!WRITE_ENABLED) throw new Error('Thao tác ghi đang tắt ở bản này'); };
+
+// ---- THAO TÁC GHI (payload đã bắt từ web Fonda gốc — docs/15 §7). UI phải xác nhận trước khi gọi. ----
+
+/** Đối tượng cột thô (để sửa). */
+export const poleRaw = (projectId: string, poleId: string) => call<Record<string, unknown>>('GET', `poleActor/queryPoleAndRelatedById/${poleId}`, { projectId });
+
+/** Body sẽ gửi khi sửa tên/mã cột (xem trước trước khi xác nhận). */
+export async function previewPoleUpdate(projectId: string, poleId: string, patch: { deviceName?: string; deviceCode?: string }, add: GroupInput[] = [], removeIdx: number[] = []) {
+  return poleUpdateBody(await poleRaw(projectId, poleId), patch, add, projectId, removeIdx);
+}
+export const sendPoleUpdate = (projectId: string, body: Record<string, unknown>) => { assertWrite(); return call('PUT', 'poleActor/update', { projectId, body }); };
+
+/** Số thiết bị liên quan của cột (0 = xoá được). */
+export const poleRelatedCount = (projectId: string, poleId: string) => call<number>('POST', 'device/checkDeviceRelated', { projectId, body: poleIdsBody([poleId]) });
+export const sendPoleDelete = (projectId: string, poleId: string) => { assertWrite(); return call('POST', 'poleActor/delete', { projectId, body: poleIdsBody([poleId]) }); };
+
+/** Body nhân bản model (xem trước) và gửi. */
+export const previewModelClone = (projectId: string, base: { typeId: string; typeValue: number; config: Record<string, unknown> }, name: string) => modelCreateBody(base, name, projectId);
+/** Body nhân bản model LCU (xem trước). */
+export const previewLcuModelClone = (projectId: string, base: { typeId: string; config: Record<string, unknown>; protocol: ModelProto }, name: string, remark = '') => lcuModelCreateBody({ typeId: base.typeId, config: base.config, protocol: base.protocol }, name, projectId, remark);
+export const sendModelCreate = (projectId: string, body: Record<string, unknown>) => { assertWrite(); return call('POST', 'deviceModel/saveNew', { projectId, body }); };
+
+/** Giao thức/phiên bản/systemConfig của các model một loại (deviceModel/getDeviceModelPage — danh sách model trả kèm các trường này). */
+export interface ModelProto { id: string; value: number; name: string; version: string; systemConfig: number }
+export async function modelProtocols(projectId: string, typeId: string): Promise<Map<string, ModelProto>> {
+  const out = new Map<string, ModelProto>();
+  const d = await call<{ records?: Array<Record<string, unknown>> }>('POST', 'deviceModel/getDeviceModelPage', { projectId, body: { projectId, current: 1, size: 100, deviceTypeId: typeId } });
+  for (const r of d.records || []) out.set(String(r.deviceModelId), { id: String(r.protocolId ?? ''), value: Number(r.protocolValue), name: String(r.protocolName ?? ''), version: String(r.protocolVersion ?? ''), systemConfig: Number(r.systemConfig) || 0 });
+  return out;
+}
+
+/** Danh mục để dựng form bộ đèn–LCU: model cột/đèn/LCU (LCU kèm giao thức) và LCU chưa gắn cột. */
+export interface LcuModel { id: string; name: string; slots: number; protocolValue: number; protocolName: string }
+export interface PoleCatalog { poleModels: DeviceModel[]; lampModels: DeviceModel[]; lcuModels: LcuModel[]; freeLcus: FreeLcu[] }
+export async function loadPoleCatalog(projectId: string): Promise<PoleCatalog> {
+  const [types, models, freeLcus] = await Promise.all([listDeviceTypes(projectId), listModels(projectId), listFreeLcus(projectId)]);
+  const idsOf = (v: number) => new Set(types.filter(t => t.value === v).map(t => t.id));
+  const lcuType = types.find(t => t.value === 2);
+  // giao thức của model LCU (protocolValue/Name) chỉ có ở deviceModel/getDeviceModelPage
+  const proto = new Map<string, { v: number; n: string }>();
+  if (lcuType) {
+    try {
+      const d = await call<{ records?: Array<Record<string, unknown>> }>('POST', 'deviceModel/getDeviceModelPage', { projectId, body: { projectId, current: 1, size: 100, deviceTypeId: lcuType.id } });
+      for (const r of d.records || []) proto.set(String(r.deviceModelId), { v: Number(r.protocolValue), n: String(r.protocolName ?? '') });
+    } catch { /* thiếu giao thức: chỉ ảnh hưởng LCU mới */ }
+  }
+  const lcuModels = models.filter(m => idsOf(2).has(m.typeId)).map(m => ({ id: m.id, name: m.name, slots: Number(m.config.lampHolderNum) || 1, protocolValue: proto.get(m.id)?.v ?? NaN, protocolName: proto.get(m.id)?.n ?? '' }));
+  return { poleModels: models.filter(m => idsOf(6).has(m.typeId)), lampModels: models.filter(m => idsOf(5).has(m.typeId)), lcuModels, freeLcus };
+}
+
+export const sendPoleCreate = (projectId: string, body: Record<string, unknown>) => { assertWrite(); return call('POST', 'poleActor/save', { projectId, body }); };
+
+/** LCU chưa gắn cột (poleId rỗng) — nguồn chọn khi tạo cột. Kèm số đầu đèn lấy từ deviceConfig của model LCU. */
+export interface FreeLcu { id: string; uid: string; name: string; model: string; slots: number }
+export async function listFreeLcus(projectId: string): Promise<FreeLcu[]> {
+  const types = await listDeviceTypes(projectId), t = types.find(x => x.value === 2); if (!t) return [];
+  const models = new Map((await listModels(projectId)).map(m => [m.id, m]));
+  return (await listDevices(projectId, t.value)).filter(d => d.uid && !d.raw.poleId)
+    .map(d => { const m = models.get(String(d.raw.deviceModelId ?? '')); return { id: d.id, uid: d.uid, name: d.name, model: d.model, slots: Number(m?.config.lampHolderNum) || 1 }; });
+}
+
+/** Thêm LCU riêng lẻ (lcuActor/save) — body xem trước + gửi. */
+export const previewLcuSave = (projectId: string, i: { modelId: string; name: string; uid: string; protocolValue: number; protocolName: string }) => lcuSaveBody({ projectId, ...i });
+export const sendLcuSave = (projectId: string, body: Record<string, unknown>) => { assertWrite(); return call('POST', 'lcuActor/save', { projectId, body }); };
+
+/** Số thiết bị liên quan của LCU (0 = xoá được). */
+export const lcuRelatedCount = (projectId: string, lcuId: string) => call<number>('POST', 'device/checkDeviceRelated', { projectId, body: lcuIdsBody([lcuId]) });
+/** Xoá LCU: lcuActor/delete với body theo quy ước của poleActor/delete — CHƯA bắt từ web gốc, có thể bị từ chối. */
+export const sendLcuDelete = (projectId: string, lcuId: string) => { assertWrite(); return call('POST', 'lcuActor/delete', { projectId, body: lcuIdsBody([lcuId]) }); };

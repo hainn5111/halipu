@@ -1,4 +1,4 @@
-import { Suspense, useEffect } from 'react';
+import { Suspense, useEffect, useState } from 'react';
 import { HashRouter, Navigate, NavLink, Route, Routes, useLocation } from 'react-router-dom';
 import { useAuth } from '../core/auth';
 import { config, FIXED_KEY, fixedSource } from '../core/config';
@@ -15,12 +15,18 @@ function RealtimeBadge() {
   return <span className={`rt rt-${status}`} title={`${message}${frames ? ` · ${frames} khung` : ''}`}>● {RT_LABEL[status]}</span>;
 }
 
+const NAV_KEY = 'nav_open';
+function loadOpen(): Record<string, boolean> { try { return JSON.parse(localStorage.getItem(NAV_KEY) || '{}'); } catch { return {}; } }
+
 function Shell() {
   const startRt = useRealtime(s => s.start), stopRt = useRealtime(s => s.stop);
   useEffect(() => { startRt(); return stopRt; }, [startRt, stopRt]);   // một kết nối WebSocket dùng chung, sống cùng phiên đăng nhập
   const { user, signOut } = useAuth();
   const loc = useLocation();
   const cur = ALL_TABS.find(t => loc.pathname === `/${t.id}`);
+  // Nhóm điều hướng xổ/thu được; nhóm chứa tab đang mở luôn xổ. Trạng thái nhớ trong localStorage.
+  const [open, setOpen] = useState<Record<string, boolean>>(loadOpen);
+  const toggle = (g: string) => setOpen(o => { const n = { ...o, [g]: !(o[g] ?? false) }; try { localStorage.setItem(NAV_KEY, JSON.stringify(n)); } catch { /* bị chặn */ } return n; });
   return (
     <div className="app">
       <header className="top"><b>SLCP</b><small>{BUILD}</small><RealtimeBadge />{fixedSource === 'scan' && (
@@ -29,14 +35,17 @@ function Shell() {
         )}
         <span>Xin chào, <b>{user}</b></span><button onClick={signOut}>Đăng xuất</button></header>
       <nav className="nav">
-        {TABS.map(g => (
-          <div key={g.group}>
-            <div className="grp">{g.group}</div>
-            {g.tabs.map(t => t.view
-              ? <NavLink key={t.id} to={`/${t.id}`} className={({ isActive }) => 'tab' + (isActive ? ' on' : '')}>{t.label}</NavLink>
-              : <span key={t.id} className="tab soon">{t.label} · sắp có</span>)}
-          </div>
-        ))}
+        {TABS.map(g => {
+          const isOpen = g.group === cur?.group || !!open[g.group];
+          return (
+            <div key={g.group}>
+              <button className="grp" aria-expanded={isOpen} onClick={() => toggle(g.group)}><span>{isOpen ? '▾' : '▸'}</span> {g.group}</button>
+              {isOpen && g.tabs.map(t => t.view
+                ? <NavLink key={t.id} to={`/${t.id}`} className={({ isActive }) => 'tab' + (isActive ? ' on' : '')}>{t.label}</NavLink>
+                : <span key={t.id} className="tab soon">{t.label} · sắp có</span>)}
+            </div>
+          );
+        })}
       </nav>
       <section className="main">
         <div className="crumb">{cur ? <>{cur.group} › <b>{cur.label}</b></> : ''}</div>
