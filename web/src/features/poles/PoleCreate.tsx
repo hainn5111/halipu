@@ -1,7 +1,9 @@
 import { useEffect, useMemo, useState } from 'react';
 import { loadPoleCatalog, sendPoleCreate, type PoleCatalog } from '../../adapters/fonda';
 import { poleCreateBody } from '../../adapters/fonda/writeBodies';
+import { useLcus } from '../../core/store';
 import ConfirmWrite from '../common/ConfirmWrite';
+import MapPicker from '../common/MapPicker';
 import GroupsEditor from './GroupsEditor';
 import { emptyGroup, toInput, type GroupForm } from './groups';
 
@@ -10,6 +12,8 @@ export default function PoleCreate({ pid, onClose }: { pid: string; onClose: (ch
   const [cat, setCat] = useState<PoleCatalog | null>(null), [err, setErr] = useState('');
   const [f, setF] = useState({ model: '', name: '', code: '', lat: '', lng: '', address: '' });
   const [groups, setGroups] = useState<GroupForm[]>([]);
+  const first = useLcus(s => s.lcus.find(l => l.lat !== undefined && l.lng !== undefined));
+  const center: [number, number] | undefined = first ? [first.lat!, first.lng!] : undefined;
   const [confirm, setConfirm] = useState<Record<string, unknown> | null>(null);
   const set = (k: keyof typeof f, v: string) => setF(x => ({ ...x, [k]: v }));
 
@@ -37,6 +41,8 @@ export default function PoleCreate({ pid, onClose }: { pid: string; onClose: (ch
             <div style={{ flex: 1 }}>{field('Vĩ độ (lat)', <input style={{ width: '100%' }} placeholder="20.93…" value={f.lat} onChange={e => set('lat', e.target.value)} />)}</div>
             <div style={{ flex: 1 }}>{field('Kinh độ (lng)', <input style={{ width: '100%' }} placeholder="105.66…" value={f.lng} onChange={e => set('lng', e.target.value)} />)}</div>
           </div>
+          <p className="sub" style={{ margin: '6px 0 0' }}>Bấm lên bản đồ để đặt vị trí cột, kéo ghim để chỉnh (hoặc nhập số ở trên).</p>
+          <MapPicker lat={f.lat} lng={f.lng} center={center} onPick={(la, ln) => setF(x => ({ ...x, lat: la, lng: ln }))} />
           {field('Địa chỉ', <input style={{ width: '100%' }} value={f.address} onChange={e => set('address', e.target.value)} />)}
           <h3>Các bộ đèn–LCU</h3>
           <GroupsEditor groups={groups} onChange={setGroups} catalog={cat} />
