@@ -51,6 +51,34 @@ export async function runProbe(pid: string, log: (line: string) => void, withLcu
   for (const [tn, ms] of Object.entries(parsed)) { say(`deviceConfig ${tn}: ${ms.length} model`); for (const s of shape((ms[0] as Rec).config)) say(`    ${s}`); }
   results.push({ name: 'model-config-by-type', ok: true, data: trim(parsed) });
 
+  // Phân bố systemConfig của model theo loại: 0 = model người dùng tự khai; khác 0 = model dựng sẵn của hệ thống (nội bộ bộ tập trung/power box…)
+  await get('device-systems', 'GET', 'deviceSystemController/queryDeviceSystemList');
+  say('=== Model theo systemConfig (0 = tự khai; ≠0 = dựng sẵn) ===');
+  for (const t of list) {
+    const mp = results.find(r => r.name === `model-page-${t.deviceTypeValue}`); if (!(Number((mp?.data as Rec | undefined)?.total) > 0)) continue;
+    try {
+      const pgm = await call<Rec>('POST', 'deviceModel/getDeviceModelPage', { body: { projectId: pid, current: 1, size: 100, deviceTypeId: t.deviceTypeId }, projectId: pid });
+      const cnt: Record<string, number> = {}; for (const r of (pgm.records || []) as Rec[]) { const k = `sys${r.systemConfig}`; cnt[k] = (cnt[k] ?? 0) + 1; }
+      say(`  ${t.deviceTypeName}: ${Object.entries(cnt).map(([k, v]) => `${k}×${v}`).join(', ')}`);
+    } catch (e) { say(`  ${t.deviceTypeName}: lỗi ${(e as Error).message}`); }
+  }
+
+  // Bảng thông số phần cứng cố định của MỌI model LCU (số đầu đèn = lampHolderNum quyết định số đèn LCU quản lý)
+  const lcuTypeRow = list.find(t => t.deviceTypeValue === 2);
+  if (lcuTypeRow) {
+    say('=== Model LCU: giao thức · systemConfig · đầu đèn · lcuType · loopType · dim · cờ bật · functionList ===');
+    try {
+      const pgm = await call<Rec>('POST', 'deviceModel/getDeviceModelPage', { body: { projectId: pid, current: 1, size: 100, deviceTypeId: lcuTypeRow.deviceTypeId }, projectId: pid });
+      const cfg = new Map<string, Rec>(); for (const m of Array.isArray(models) ? models : []) { try { cfg.set(m.deviceModelId, JSON.parse(m.deviceConfig)); } catch { /* bỏ */ } }
+      const rows = ((pgm.records || []) as Rec[]).map(r => {
+        const c = cfg.get(r.deviceModelId) || {}; const ext = Array.isArray(c.extensions) ? (c.extensions as Rec[]) : [];
+        return { model: r.deviceModelName, protocol: `${r.protocolName} ${r.protocolVersion}`, systemConfig: r.systemConfig, lampHolderNum: c.lampHolderNum, lcuType: c.lcuType, loopType: c.loopType, dimmingLevel: c.dimmingLevel, flagsOn: ext.filter(e => e.value === true).map(e => e.label), flagsTotal: ext.length, functionList: c.functionList };
+      });
+      rows.forEach(r => say(`  ${r.model}: ${r.protocol} · sys${r.systemConfig} · đầu đèn=${r.lampHolderNum} · lcuType=${r.lcuType} · loop=${r.loopType} · dim=${r.dimmingLevel} · cờ bật=[${(r.flagsOn as string[]).join(',')}]/${r.flagsTotal} · fn=[${(r.functionList as number[] | undefined)?.join(',') ?? ''}]`));
+      results.push({ name: 'lcu-model-table', ok: true, data: rows });
+    } catch (e) { say(`  lỗi: ${(e as Error).message}`); }
+  }
+
   if (withLcu) {
     // lcuActor/page có thể trả rỗng dù LCU tồn tại (đã gặp) → lấy LCU từ device/queryDevicePage loại 2 (LCU): deviceId = lcuId, có uid
     const pg = (await get('lcu-list', 'POST', 'device/queryDevicePage', { projectId: pid, current: 1, size: 20, deviceTypeValue: 2 })) as Rec | null;
