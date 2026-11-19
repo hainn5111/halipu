@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { lcuModelCreateBody, lcuSaveBody, modelCreateBody, poleIdsBody, poleUpdateBody } from './writeBodies';
+import { lcuIdsBody, lcuModelCreateBody, lcuSaveBody, modelCreateBody, poleIdsBody, poleUpdateBody } from './writeBodies';
 
 describe('modelCreateBody', () => {
   it('khớp payload đã bắt (deviceModelId rỗng, deviceConfig là object)', () => {
@@ -112,3 +112,5 @@ describe('lcuSaveBody', () => {
       protocolValue: 53, protocolName: 'RF/F2', lightOperated: null, poleSlant: null, temDetection: null, diDetection: null, gps: null, remoteUpgrade: null, energyAccumulation: null, projectId: 'PID' });
   });
 });
+
+describe('lcuIdsBody', () => { it('cùng dạng với cột, deviceTypeValue 2', () => expect(lcuIdsBody(['a'])).toEqual({ deviceIdList: ['a'], deviceTypeValue: 2 })); });

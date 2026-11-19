@@ -3,7 +3,7 @@ import { call } from '../../core/api';
 import { config } from '../../core/config';
 import type { PoleLinks, DeviceItem, DeviceModel, DeviceType, LampCommand, LightStatus, Lcu, Measurement } from '../../core/types';
 import { WRITE_ENABLED } from '../../core/flags';
-import { lcuModelCreateBody, lcuSaveBody, modelCreateBody, poleIdsBody, poleUpdateBody, type GroupInput } from './writeBodies';
+import { lcuIdsBody, lcuModelCreateBody, lcuSaveBody, modelCreateBody, poleIdsBody, poleUpdateBody, type GroupInput } from './writeBodies';
 import { lcuSlotCount, mapLcuLamps, mapPoleLinks, mapModels, mapDeviceRow, mapDeviceTypes, mapLight, mapListRow, mapPageRow, mapTrend, mergeLcus, pickGeo, ratedPowerOf, validGeo, type LcuRow } from './mappers';
 
 const PID_KEY = 'pid';
@@ -212,3 +212,8 @@ export async function listFreeLcus(projectId: string): Promise<FreeLcu[]> {
 /** Thêm LCU riêng lẻ (lcuActor/save) — body xem trước + gửi. */
 export const previewLcuSave = (projectId: string, i: { modelId: string; name: string; uid: string; protocolValue: number; protocolName: string }) => lcuSaveBody({ projectId, ...i });
 export const sendLcuSave = (projectId: string, body: Record<string, unknown>) => { assertWrite(); return call('POST', 'lcuActor/save', { projectId, body }); };
+
+/** Số thiết bị liên quan của LCU (0 = xoá được). */
+export const lcuRelatedCount = (projectId: string, lcuId: string) => call<number>('POST', 'device/checkDeviceRelated', { projectId, body: lcuIdsBody([lcuId]) });
+/** Xoá LCU: lcuActor/delete với body theo quy ước của poleActor/delete — CHƯA bắt từ web gốc, có thể bị từ chối. */
+export const sendLcuDelete = (projectId: string, lcuId: string) => { assertWrite(); return call('POST', 'lcuActor/delete', { projectId, body: lcuIdsBody([lcuId]) }); };

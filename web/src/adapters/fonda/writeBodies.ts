@@ -50,6 +50,8 @@ export function poleUpdateBody(raw: Rec, patch: { deviceName?: string; deviceCod
 
 /** device/checkDeviceRelated và poleActor/delete dùng cùng dạng body (deviceTypeValue 6 = Lamp Pole). */
 export const poleIdsBody = (ids: string[]): Rec => ({ deviceIdList: ids, deviceTypeValue: 6 });
+/** Cùng dạng body cho LCU (deviceTypeValue 2). `device/checkDeviceRelated` đã bắt với cột; xoá LCU theo cùng quy ước (CHƯA bắt). */
+export const lcuIdsBody = (ids: string[]): Rec => ({ deviceIdList: ids, deviceTypeValue: 2 });
 
 
 // ---- Bộ "đèn – LCU" (attributeDevice[]) dùng chung cho tạo cột và thêm bộ vào cột có sẵn ----
