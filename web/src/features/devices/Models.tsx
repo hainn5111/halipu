@@ -94,7 +94,7 @@ export default function Models() {
           </>)}
         </aside>
       )}
-      {confirm && <ConfirmWrite title="Tạo template mới" summary={`Nhân bản "${sel?.name}" thành "${cloneName.trim()}" (cùng loại, cùng cấu hình).`} method="POST" path="deviceModel/saveNew" body={confirm.body}
+      {WRITE_ENABLED && confirm && <ConfirmWrite title="Tạo template mới" summary={`Nhân bản "${sel?.name}" thành "${cloneName.trim()}" (cùng loại, cùng cấu hình).`} method="POST" path="deviceModel/saveNew" body={confirm.body}
         onConfirm={async () => { await sendModelCreate(confirm.pid, confirm.body); }} onClose={changed => { setConfirm(null); if (changed) { setCloneName(''); setSelId(null); setReload(n => n + 1); } }} />}
     </div>
   );
