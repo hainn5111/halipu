@@ -9,7 +9,7 @@ Node.js 18+ (có `npm` trong PATH) và git.
 Tools → Options → Custom Actions → Add:
 - Menu caption: `Chạy thử local`
 - Script to run: đường dẫn tới `chay-local.bat` trong repo
-- Parameters: `$REPO`
+- Parameters: để trống (script tự tìm thư mục `web`, không lo đường dẫn có dấu cách)
 - Bỏ chọn "Run silently"
 
 Checkout nhánh cần thử, rồi Actions → Custom Actions → `Chạy thử local`. Script chạy `npm ci` (nếu chưa có `node_modules`), `npm run build`, rồi mở `http://localhost:8080`. Đóng cửa sổ console để dừng.
