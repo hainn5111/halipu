@@ -14,7 +14,7 @@ Tài liệu cho **bất kỳ ai (hoặc session Claude nào) tiếp tục làm v
 ## 2. Vòng đời của một thay đổi
 
 ```
-tách nhánh từ main ──► sửa/commit ──► thử ở localhost (chay-local.bat, docs/15) ──► typecheck+test+build ở máy
+tách nhánh từ main ──► sửa/commit ──► thử ở localhost (preview-commit-local.bat, docs/15) ──► typecheck+test+build ở máy
                                                                    │
                   (khi người dùng bảo) merge vào main ──► pages.yml: typecheck + test (fail → dừng) ──► build ──► deploy ra GỐC trang
                                                                    │
@@ -48,7 +48,7 @@ Trước khi push luôn chạy `npm run typecheck && npm test && npm run build` 
 | `web-ci.yml` | Mở/cập nhật PR có đổi `web/`, hoặc chạy tay | typecheck → test → build → e2e chỉ đọc (cần secret) → lưu artifact (`web-dist`, ảnh chụp). Có `concurrency` huỷ run cũ | Không |
 | `pages.yml` | Push lên `main` có đổi `web/`, hoặc chạy tay | typecheck + test (fail thì dừng, không deploy) → build (đóng dấu `main@sha`) → đẩy vào `gh-pages` ở **gốc** | Có, ra gốc trang |
 
-- Workflow **Preview** (link `/preview/<nhánh>/`) đã bỏ để tiết kiệm minute Actions; xem thử bằng `chay-local.bat` (xem `docs/15-chay-local-sourcetree.md`). Cần lại thì khôi phục `preview.yml` từ lịch sử git.
+- Workflow **Preview** (link `/preview/<nhánh>/`) đã bỏ để tiết kiệm minute Actions; xem thử bằng `preview-commit-local.bat` (xem `docs/15-chay-local-sourcetree.md`). Cần lại thì khôi phục `preview.yml` từ lịch sử git.
 - PR từ **fork** bị bỏ qua có chủ đích (không cấp quyền ghi/secret cho mã lạ).
 - Người có quyền ghi vào repo thì workflow của họ **đọc được secret** → chỉ cấp quyền ghi cho người tin cậy. Khi có cộng tác viên nên đưa secret vào *Environment có duyệt*.
 
