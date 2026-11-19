@@ -143,6 +143,7 @@ Môi trường cloud của Claude **không kết nối được** tới Fonda (`
 
 - **Nhóm "Công cụ dò (chỉ preview)"** (tab Dò API…): chỉ có khi build với `VITE_ENABLE_PROBE=1` (`preview.yml` đặt; `pages.yml`/main thì không → không có tab lẫn mã trong bundle) hoặc `npm run dev`. Tab **Bắt request (API ghi)** cho đoạn script dán vào Console của web Fonda gốc để bắt body thao tác thêm/sửa/xoá/gắn (không đọc header, che khoá bí mật). Công cụ dò/đọc dữ liệu mới thêm vào nhóm này trong `src/app/tabs.ts`, mã ở `features/probe/`, hàm gọi API ở `adapters/fonda/probe.ts`. Chỉ gọi API đọc.
 - **Thao tác GHI lên Fonda** (sửa/xoá cột, nhân bản template — payload từ `docs/15` §7): chỉ bật khi `WRITE_ENABLED` (`core/flags.ts`, = bản preview/dev). Mỗi thao tác qua `features/common/ConfirmWrite` (xem body, tick xác nhận); hàm gửi ở `adapters/fonda/index.ts` có `assertWrite()`; body dựng bằng hàm thuần `writeBodies.ts` (có test). Chưa kiểm chứng trên Fonda thật → chưa bật ở main.
+- Tab **Thử tạo model LCU (ghi)** (nhóm Công cụ dò, chỉ preview): gửi `deviceModel/saveNew` cho model LCU với body JSON sửa tự do (số đầu đèn, `lcuType`…) để kiểm tra Fonda chặn ở server hay chỉ ở giao diện; hiện lỗi server nếu bị từ chối, hoặc bảng so sánh giá trị gửi/lưu nếu được nhận.
 - Điều hướng bên trái: nhóm xổ/thu được (nhớ trong localStorage `nav_open`), nhóm chứa tab đang mở luôn xổ.
 - Loại thiết bị, tab thiết bị và template model: xem `15-loai-thiet-bi-va-template.md`.
 - Các tab hiện chỉ có nhãn "sắp có": Tổng quan, Cảnh báo, Nhóm đèn, Lịch điều khiển, Báo cáo.
