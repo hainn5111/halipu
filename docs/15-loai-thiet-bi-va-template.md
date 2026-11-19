@@ -158,6 +158,14 @@ Bắt ngày 2026-11-18 khi người dùng tự thao tác trên **dữ liệu th�
 → `data` = cột (có `deviceId` mới) + `lamp[{lampId, dId, uid, num, ctype, deviceModelId, lat, lng}]` — **`uid` LCU được đệm 0 thành 12 ký tự hex** (`789DDD` → `000000789DDD`), `dId` = `deviceId` của LCU vừa tạo. LCU được **tạo mới cùng lúc** (lúc bắt, `lcuActor/queryLcuNotAssociatedWithPole` trả rỗng nên không có LCU rảnh để chọn; trường hợp chọn LCU có sẵn **chưa bắt**).
 - Cột không LCU: chưa bắt, nhưng dữ liệu đọc (mục 6) cho thấy là phần tử `attributeDevice` có `lcu:{}`.
 
+**Tạo cột + gắn LCU ĐÃ CÓ (chọn sẵn) + đèn mới — cùng `POST poleActor/save`** (bắt ngày 2026-11-19). Khác với LCU tạo mới, `lcu` chỉ là tham chiếu tối thiểu:
+```
+attributeDevice: [ { checked: true, lampPosition: 1, uid: "<uid 12 hex>", solar: {}, solarLcu: {},
+    lcu: { deviceId: "<deviceId của LCU có sẵn>", uid: "<uid 12 hex>", lampHolderNum: 1, linkMode: 2 },
+    lamp: [ { checked: true, flag: true, lampNum: 1, lampPosition: 1, deviceModelId: <model đèn>, deviceName: "<tên đèn>" } ] } ]
+```
+(phần còn lại của body như trên). `linkMode`: **1 = LCU tạo mới (khai đủ trường)**, **2 = LCU có sẵn (chỉ `deviceId`, `uid`, `lampHolderNum`)**. `data.lamp[]` trả `{lampId (mới), dId (= deviceId LCU), uid, num, ctype, deviceModelId, lat, lng}`. Đèn là **thiết bị mới tạo** gắn vào cột và LCU; LCU có sẵn giữ nguyên deviceId. Danh sách LCU chọn được: LCU chưa gắn cột (cũng suy được từ `device/queryDevicePage` loại 2 có `poleId = null`).
+
 **Danh sách LCU chưa gắn cột (để chọn khi gắn) — `POST lcuActor/queryLcuNotAssociatedWithPole`**: `{integratedQuery:"", current:1, size:100, projectId, deviceType:2, deviceId:""}` → trang `{records, total, size, current, pages}`.
 
 **Sửa cột — `PUT poleActor/update`**: body là **toàn bộ đối tượng cột** như `queryPoleAndRelatedById` trả về (kèm `deviceConfig`, `attributeDevice[]` ở dạng đọc: lamp có `deviceId, luid, lcuId, checkNum, lampPosition`; lcu có `deviceId, uid(12 hex), linkMode: 2`) + phần sửa (ví dụ `deviceCode`); thêm `solarDevice:[{checked, lamp:{…}, solar:{}, wcu:{}, dtu:{}, serialId, …}]`. `data: null`. → quy ước: **đọc đối tượng, sửa trường, gửi lại nguyên đối tượng**.

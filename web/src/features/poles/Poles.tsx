@@ -3,6 +3,7 @@ import { listDeviceTypes, listDevices, listModels, poleLinks, poleRelatedCount, 
 import { poleIdsBody } from '../../adapters/fonda/writeBodies';
 import { WRITE_ENABLED } from '../../core/flags';
 import ConfirmWrite from '../common/ConfirmWrite';
+import PoleCreate from './PoleCreate';
 import type { DeviceItem, PoleLinks } from '../../core/types';
 
 // Cột đèn & liên kết — chỉ ĐỌC. Danh sách cột; bấm một cột để xem cái gì đang gắn trên nó:
@@ -22,12 +23,15 @@ export default function Poles() {
   const [edit, setEdit] = useState({ name: '', code: '' });
   const [confirm, setConfirm] = useState<null | { title: string; summary: string; method: string; path: string; body: unknown; danger?: boolean; run: () => Promise<void> }>(null);
   const [writeMsg, setWriteMsg] = useState('');
+  const [adding, setAdding] = useState(false);
+  const [pids, setPids] = useState<string[]>([]);
   useEffect(() => {
     let live = true;
     (async () => {
       try {
         const ps: Pole[] = [], ms = new Map<string, string>();
-        for (const pid of await projectIds()) {
+        const all = await projectIds(); if (live) setPids(all);
+        for (const pid of all) {
           for (const m of await listModels(pid)) ms.set(m.id, m.name);
           for (const t of await listDeviceTypes(pid)) if (POLE_TYPE.test(t.name)) ps.push(...(await listDevices(pid, t.value)).map(d => ({ ...d, pid })));
         }
@@ -71,7 +75,7 @@ export default function Poles() {
   return (
     <div className="lcus">
       <div className="listwrap">
-        <p className="sub">{busy ? 'Đang tải…' : `${poles.length} cột đèn`}</p>
+        <p className="sub">{busy ? 'Đang tải…' : `${poles.length} cột đèn`}{WRITE_ENABLED && <button style={{ marginLeft: 12 }} onClick={() => setAdding(true)}>+ Thêm cột…</button>}</p>
         {err && <div className="err">{err}</div>}
         {!busy && !err && !poles.length && <p className="sub">Dự án chưa có cột đèn.</p>}
         {poles.length > 0 && (
@@ -115,6 +119,7 @@ export default function Poles() {
           </>)}
         </aside>
       )}
+      {adding && <PoleCreate pid={pids[0] ?? ''} onClose={changed => { setAdding(false); if (changed) setReload(n => n + 1); }} />}
       {confirm && <ConfirmWrite {...confirm} onConfirm={confirm.run} onClose={changed => { setConfirm(null); if (changed) { setSel(null); setReload(n => n + 1); } }} />}
     </div>
   );

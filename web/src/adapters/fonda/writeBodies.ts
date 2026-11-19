@@ -32,3 +32,40 @@ export function poleUpdateBody(raw: Rec, patch: { deviceName?: string; deviceCod
 
 /** device/checkDeviceRelated và poleActor/delete dùng cùng dạng body (deviceTypeValue 6 = Lamp Pole). */
 export const poleIdsBody = (ids: string[]): Rec => ({ deviceIdList: ids, deviceTypeValue: 6 });
+
+export interface PoleCreateInput {
+  projectId: string; poleModelId: string; name: string; code: string; lat: string; lng: string; address: string;
+  /** LCU CÓ SẴN (chưa gắn cột) và các đèn MỚI gắn vào các kênh của nó. */
+  lcu: { deviceId: string; uid: string; slots: number };
+  lamps: Array<{ modelId: string; name: string; channel: number }>;
+}
+
+/**
+ * poleActor/save — tạo cột + gắn LCU có sẵn (linkMode 2) + đèn mới, đúng payload đã bắt (docs/15 §7).
+ * Trả null kèm lý do nếu dữ liệu không hợp lệ.
+ */
+export function poleCreateBody(i: PoleCreateInput): { ok: true; body: Rec } | { ok: false; reason: string } {
+  const lat = Number(i.lat), lng = Number(i.lng);
+  if (!i.name.trim()) return { ok: false, reason: 'Thiếu tên cột' };
+  if (!i.poleModelId) return { ok: false, reason: 'Chưa chọn template cột' };
+  if (!Number.isFinite(lat) || lat < -90 || lat > 90 || !Number.isFinite(lng) || lng < -180 || lng > 180 || (lat === 0 && lng === 0)) return { ok: false, reason: 'Toạ độ không hợp lệ' };
+  if (!i.lcu.deviceId || !i.lcu.uid) return { ok: false, reason: 'Chưa chọn LCU' };
+  if (!i.lamps.length) return { ok: false, reason: 'Cần ít nhất một đèn (chưa bắt payload cho cột không đèn)' };
+  if (i.lamps.some(l => !l.modelId || !l.name.trim())) return { ok: false, reason: 'Mỗi đèn cần model và tên' };
+  const ch = i.lamps.map(l => l.channel);
+  if (new Set(ch).size !== ch.length || ch.some(c => !Number.isInteger(c) || c < 1 || c > i.lcu.slots)) return { ok: false, reason: `Kênh đèn phải khác nhau và trong 1..${i.lcu.slots} (số đầu đèn của LCU)` };
+  return {
+    ok: true,
+    body: {
+      areaId: '', roadId: '', roadDirection: '', deviceStatus: 1, deviceSource: 1,
+      attributeDevice: [{
+        checked: true,
+        lamp: i.lamps.map(l => ({ checked: true, deviceModelId: l.modelId, deviceName: l.name.trim(), lampPosition: 1, lampNum: l.channel, flag: true })),
+        lcu: { deviceId: i.lcu.deviceId, uid: i.lcu.uid, lampHolderNum: i.lcu.slots, linkMode: 2 },
+        solarLcu: {}, solar: {}, uid: i.lcu.uid, lampPosition: 1,
+      }],
+      solarDevice: [], deviceId: '', deviceModelId: i.poleModelId, deviceName: i.name.trim(), deviceCode: i.code.trim() || i.name.trim(),
+      lat: String(i.lat).trim(), lng: String(i.lng).trim(), geographicAddress: i.address.trim(), projectId: i.projectId,
+    },
+  };
+}

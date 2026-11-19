@@ -28,3 +28,20 @@ describe('poleUpdateBody', () => {
 });
 
 describe('poleIdsBody', () => { it('đúng dạng đã bắt', () => expect(poleIdsBody(['a'])).toEqual({ deviceIdList: ['a'], deviceTypeValue: 6 })); });
+
+import { poleCreateBody, type PoleCreateInput } from './writeBodies';
+describe('poleCreateBody', () => {
+  const base: PoleCreateInput = { projectId: 'PID', poleModelId: 'MP', name: 'Cột 3', code: 'Cột 3', lat: '20.935650049802803', lng: '105.66665674490189', address: 'WMP8+7M', lcu: { deviceId: 'LCU1', uid: '000000789DDD', slots: 1 }, lamps: [{ modelId: 'ML', name: 'Đèn test 123', channel: 1 }] };
+  it('khớp payload đã bắt (LCU có sẵn, linkMode 2)', () => {
+    const r = poleCreateBody(base); expect(r.ok).toBe(true); if (!r.ok) return;
+    expect(r.body).toEqual({
+      areaId: '', roadId: '', roadDirection: '', deviceStatus: 1, deviceSource: 1,
+      attributeDevice: [{ checked: true, lamp: [{ checked: true, deviceModelId: 'ML', deviceName: 'Đèn test 123', lampPosition: 1, lampNum: 1, flag: true }], lcu: { deviceId: 'LCU1', uid: '000000789DDD', lampHolderNum: 1, linkMode: 2 }, solarLcu: {}, solar: {}, uid: '000000789DDD', lampPosition: 1 }],
+      solarDevice: [], deviceId: '', deviceModelId: 'MP', deviceName: 'Cột 3', deviceCode: 'Cột 3', lat: '20.935650049802803', lng: '105.66665674490189', geographicAddress: 'WMP8+7M', projectId: 'PID' });
+  });
+  it('mã trống → dùng tên', () => { const r = poleCreateBody({ ...base, code: ' ' }); expect(r.ok && r.body.deviceCode).toBe('Cột 3'); });
+  it('từ chối dữ liệu sai', () => {
+    for (const bad of [{ name: ' ' }, { poleModelId: '' }, { lat: 'abc' }, { lat: '0', lng: '0' }, { lng: '200' }, { lcu: { deviceId: '', uid: '', slots: 1 } }, { lamps: [] }, { lamps: [{ modelId: '', name: 'x', channel: 1 }] }, { lamps: [{ modelId: 'ML', name: 'a', channel: 2 }] }, { lamps: [{ modelId: 'ML', name: 'a', channel: 1 }, { modelId: 'ML', name: 'b', channel: 1 }] }])
+      expect(poleCreateBody({ ...base, ...bad }).ok).toBe(false);
+  });
+});

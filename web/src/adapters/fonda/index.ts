@@ -157,3 +157,14 @@ export const sendPoleDelete = (projectId: string, poleId: string) => { assertWri
 /** Body nhân bản model (xem trước) và gửi. */
 export const previewModelClone = (projectId: string, base: { typeId: string; typeValue: number; config: Record<string, unknown> }, name: string) => modelCreateBody(base, name, projectId);
 export const sendModelCreate = (projectId: string, body: Record<string, unknown>) => { assertWrite(); return call('POST', 'deviceModel/saveNew', { projectId, body }); };
+
+export const sendPoleCreate = (projectId: string, body: Record<string, unknown>) => { assertWrite(); return call('POST', 'poleActor/save', { projectId, body }); };
+
+/** LCU chưa gắn cột (poleId rỗng) — nguồn chọn khi tạo cột. Kèm số đầu đèn lấy từ deviceConfig của model LCU. */
+export interface FreeLcu { id: string; uid: string; name: string; model: string; slots: number }
+export async function listFreeLcus(projectId: string): Promise<FreeLcu[]> {
+  const types = await listDeviceTypes(projectId), t = types.find(x => x.value === 2); if (!t) return [];
+  const models = new Map((await listModels(projectId)).map(m => [m.id, m]));
+  return (await listDevices(projectId, t.value)).filter(d => d.uid && !d.raw.poleId)
+    .map(d => { const m = models.get(String(d.raw.deviceModelId ?? '')); return { id: d.id, uid: d.uid, name: d.name, model: d.model, slots: Number(m?.config.lampHolderNum) || 1 }; });
+}
