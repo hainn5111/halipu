@@ -1,7 +1,7 @@
 name: Web CI (React)
 
 # Build + kiểm thử bản React trong web/ (typecheck, unit test, build, e2e chỉ đọc nếu có secret) khi mở PR hoặc chạy tay, không deploy.
-# Deploy: pages.yml (main → gốc trang) và preview.yml (nhánh/PR → /preview/<nhánh>/).
+# Deploy: chỉ pages.yml (main → gốc trang). Thử nghiệm hằng ngày: chay-local.bat (docs/15).
 on:
   workflow_dispatch:
   pull_request:             # chỉ chạy khi mở/cập nhật PR (tiết kiệm minute); thử nghiệm hằng ngày dùng chay-local.bat

@@ -8,9 +8,6 @@
 
 ## Triển khai và xem thử (GitHub Pages)
 Pages phục vụ nhánh `gh-pages` (Settings → Pages → Source: *Deploy from a branch* → `gh-pages` / root).
-- **`main` → gốc trang** `https://<user>.github.io/<repo>/` (`pages.yml`): typecheck, test, build rồi đẩy vào `gh-pages`. Chỉ main được ghi ra gốc.
-- **Nhánh/PR → preview** `https://<user>.github.io/<repo>/preview/<tên-nhánh>/` (`preview.yml`):
-  - mở hoặc cập nhật PR (cùng repo) → tự build, deploy và đăng link vào PR; mỗi lần push vào PR link tự cập nhật;
-  - nhánh chưa có PR → Actions → *Preview* → *Run workflow*, chọn nhánh;
-  - đóng PR hoặc xoá nhánh → tự dọn thư mục preview. PR từ fork bị bỏ qua (không cấp quyền ghi/secret cho mã lạ).
-- **Build + test mọi nhánh** (`web-ci.yml`): chạy ngay khi push, không cần PR, không deploy.
+- **`main` → gốc trang** `https://<user>.github.io/<repo>/` (`pages.yml`): typecheck, test (fail thì dừng, không deploy), build rồi đẩy vào `gh-pages`. Chỉ main được ghi ra gốc.
+- **Thử nghiệm** chạy ở localhost (`chay-local.bat`, xem `docs/15-chay-local-sourcetree.md`); không còn bản preview trên GitHub.
+- **Web CI** (`web-ci.yml`): build + test, chỉ chạy khi mở PR hoặc chạy tay, không deploy.

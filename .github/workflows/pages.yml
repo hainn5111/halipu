@@ -1,7 +1,7 @@
 name: Deploy main to GitHub Pages
 
 # Chỉ `main` deploy ra GỐC trang. Bản build được đẩy vào nhánh gh-pages (GitHub Pages phục vụ nhánh này);
-# thư mục preview/ do preview.yml quản lý và KHÔNG bị xoá khi main deploy.
+# Trước khi deploy: typecheck + test; lỗi thì dừng, KHÔNG deploy (main luôn là bản đã qua kiểm tra).
 on:
   push:
     branches: [main]
@@ -28,6 +28,7 @@ jobs:
         working-directory: web
         run: |
           npm ci
+          npm run typecheck
           npm test
           VITE_BUILD_INFO="${GITHUB_REF_NAME}@${GITHUB_SHA::7}" npm run build
       - name: Publish to gh-pages (root)
@@ -35,7 +36,5 @@ jobs:
         with:
           branch: gh-pages
           folder: web/dist
-          clean: true
-          clean-exclude: |
-            preview
+          clean: true   # xoá luôn thư mục preview/ cũ (quy trình Preview đã bỏ)
           commit-message: "deploy main@${{ github.sha }}"

@@ -14,23 +14,21 @@ Tài liệu cho **bất kỳ ai (hoặc session Claude nào) tiếp tục làm v
 ## 2. Vòng đời của một thay đổi
 
 ```
-tách nhánh từ main ──► push ──► Web CI tự chạy (build + test + e2e chỉ đọc, KHÔNG deploy)
-                          │
-                          ├─► mở PR  ──► Preview tự deploy + đăng link vào PR
-                          │   (hoặc chạy tay Preview cho nhánh chưa có PR)
-                          │
-                 test trên link preview ──► merge vào main ──► pages.yml deploy ra GỐC trang
-                                                                 │
-                                       xoá nhánh ──► Preview tự dọn thư mục preview của nhánh đó
+tách nhánh từ main ──► sửa/commit ──► thử ở localhost (chay-local.bat, docs/15) ──► typecheck+test+build ở máy
+                                                                   │
+                  (khi người dùng bảo) merge vào main ──► pages.yml: typecheck + test (fail → dừng) ──► build ──► deploy ra GỐC trang
+                                                                   │
+                                                          xoá nhánh
 ```
+Web CI (build + test + e2e chỉ đọc) chỉ chạy khi mở PR hoặc chạy tay.
 
 **Quy tắc:**
 1. **Không bao giờ làm việc trực tiếp trên `main`** cho tính năng. Tách nhánh từ `main` mới nhất (`git fetch` rồi tách từ `origin/main`).
-2. Chỉ `main` được đổi trang chính. Nhánh khác chỉ có link preview riêng.
+2. Chỉ `main` được đổi trang chính. Nhánh khác chỉ thử ở localhost (không có preview trên GitHub).
 3. Merge vào `main` **chỉ khi người dùng bảo merge**. Ưu tiên fast-forward (`git push origin HEAD:main` sau khi kiểm tra `main` là tổ tiên của nhánh). Nếu `main` đã đi xa hơn, merge `main` vào nhánh trước, giải quyết xung đột, test lại, rồi mới đẩy.
 4. Không force-push, không viết lại lịch sử `main`.
 5. Không tự mở pull request nếu người dùng chưa yêu cầu.
-6. Sau khi merge, nhánh được xoá (preview của nó tự dọn). **Phiên chạy trên cloud không xoá được nhánh remote** (HTTP 403) → đề nghị người dùng xoá bằng giao diện GitHub (trang `…/branches`).
+6. Sau khi merge, nhánh được xoá. **Phiên chạy trên cloud không xoá được nhánh remote** (HTTP 403) → đề nghị người dùng xoá bằng giao diện GitHub (trang `…/branches`).
 
 ### Lệnh nhanh
 ```bash
@@ -43,29 +41,26 @@ npm run build        # typecheck + build → dist/
 ```
 Trước khi push luôn chạy `npm run typecheck && npm test && npm run build` trong `web/`.
 
-## 3. Ba workflow (`.github/workflows/`)
+## 3. Hai workflow (`.github/workflows/`)
 
 | File | Khi nào chạy | Làm gì | Deploy? |
 |---|---|---|---|
-| `web-ci.yml` | Push lên **mọi nhánh** có đổi `web/`, hoặc chạy tay | typecheck → test → build → e2e chỉ đọc (cần secret) → lưu artifact (`web-dist`, ảnh chụp) | Không |
-| `pages.yml` | Push lên `main` có đổi `web/`, hoặc chạy tay | typecheck/test/build rồi đẩy vào nhánh `gh-pages` ở **gốc**, giữ nguyên `preview/` | Có, ra gốc trang |
-| `preview.yml` | Mở/cập nhật/đóng PR (cùng repo), chạy tay, xoá nhánh | Build rồi đẩy vào `gh-pages` ở `preview/<tên-nhánh>/`, đăng/cập nhật link trong PR; đóng PR hoặc xoá nhánh thì xoá thư mục preview | Có, ra thư mục preview |
+| `web-ci.yml` | Mở/cập nhật PR có đổi `web/`, hoặc chạy tay | typecheck → test → build → e2e chỉ đọc (cần secret) → lưu artifact (`web-dist`, ảnh chụp). Có `concurrency` huỷ run cũ | Không |
+| `pages.yml` | Push lên `main` có đổi `web/`, hoặc chạy tay | typecheck + test (fail thì dừng, không deploy) → build (đóng dấu `main@sha`) → đẩy vào `gh-pages` ở **gốc** | Có, ra gốc trang |
 
-- Link preview: `https://hainn5111.github.io/halipu/preview/<tên-nhánh>/` (tên nhánh viết thường, ký tự lạ thành `-`; `feature/abc` → `feature-abc`).
-- **Chạy tay preview cho nhánh chưa có PR:** Actions → *Preview* → *Run workflow* → chọn nhánh. (Với Claude: công cụ `run_workflow` với `ref` là tên nhánh; nhánh tách từ `main` đã có sẵn file workflow nên chạy được.)
-- `pages.yml` và `preview.yml` cùng ghi vào `gh-pages` nên dùng chung nhóm `concurrency` (xếp hàng, không song song).
+- Workflow **Preview** (link `/preview/<nhánh>/`) đã bỏ để tiết kiệm minute Actions; xem thử bằng `chay-local.bat` (xem `docs/15-chay-local-sourcetree.md`). Cần lại thì khôi phục `preview.yml` từ lịch sử git.
 - PR từ **fork** bị bỏ qua có chủ đích (không cấp quyền ghi/secret cho mã lạ).
 - Người có quyền ghi vào repo thì workflow của họ **đọc được secret** → chỉ cấp quyền ghi cho người tin cậy. Khi có cộng tác viên nên đưa secret vào *Environment có duyệt*.
 
 ### Nhánh `gh-pages`
-- **Không ai sửa tay.** Chỉ chứa kết quả build do workflow ghi: gốc = bản chính, `preview/*` = bản xem thử.
+- **Không ai sửa tay.** Chỉ chứa kết quả build do workflow ghi: chỉ có bản chính ở gốc.
 - Cài đặt Pages (đã đặt): Settings → Pages → Source = *Deploy from a branch* → `gh-pages` / root.
 - `.nojekyll` (trong `web/public/`) giữ nguyên để GitHub không xử lý Jekyll.
 
 ## 4. Cấu trúc thư mục
 
 ```
-.github/workflows/   web-ci.yml  pages.yml  preview.yml
+.github/workflows/   web-ci.yml  pages.yml
 docs/                tài liệu API Fonda (00–13) + tài liệu này (14)
 e2e/web-smoke.js     smoke test chỉ đọc (Playwright) chạy trong CI
 web/
@@ -115,7 +110,7 @@ Môi trường cloud của Claude **không kết nối được** tới Fonda (`
 
 ### Trang https gọi API http (mixed content)
 - Trang trên GitHub Pages là **https**, API Fonda là **http** → trình duyệt chặn (`Failed to fetch`, `mixed-content`).
-- Người dùng phải bật **Site settings → Insecure content → Allow** cho `hainn5111.github.io`. Cài đặt này áp dụng theo origin nên dùng chung cho cả bản chính và các preview.
+- Người dùng phải bật **Site settings → Insecure content → Allow** cho `hainn5111.github.io`. Cài đặt này áp dụng theo origin nên áp dụng cho bản chính.
 - **Cài đặt này KHÔNG áp dụng cho iframe** → vì thế không nhúng trang bằng iframe. (Đã từng thử, lỗi.)
 - `new WebSocket("ws://…")` từ trang https có thể **ném lỗi ngay** → luôn bọc `try/catch`, không để làm hỏng phần còn lại của trang (`core/realtime.ts` đã làm vậy).
 - CI/Playwright không giả lập được cài đặt này, nên không test được đăng nhập trên trang https từ CI. Test với bản chạy `http://localhost`.
