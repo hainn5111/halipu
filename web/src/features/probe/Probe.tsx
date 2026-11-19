@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { projectIds } from '../../adapters/fonda';
 import { runProbe, type ProbeOut } from '../../adapters/fonda/probe';
+import { probeFileName } from '../../adapters/fonda/probeUtil';
 
 // Dò API CHỈ ĐỌC ngay trong trình duyệt (không cần CI): bấm chạy → xem cấu trúc → tải JSON mẫu để gửi lại.
 export default function Probe() {
@@ -23,7 +24,7 @@ export default function Probe() {
   const text = lines.join('\n');
   const download = () => {
     const blob = new Blob([JSON.stringify(out?.results ?? [], null, 2)], { type: 'application/json' });
-    const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = 'device-probe.json'; a.click(); URL.revokeObjectURL(a.href);
+    const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = probeFileName(); a.click(); URL.revokeObjectURL(a.href);
   };
   return (
     <div className="lcus"><div className="listwrap">

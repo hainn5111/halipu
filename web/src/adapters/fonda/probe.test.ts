@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { linkPaths, shape, trim } from './probeUtil';
+import { linkPaths, probeFileName, shape, trim } from './probeUtil';
 
 describe('probe helpers', () => {
   it('trim giữ 3 phần tử đầu của mảng', () => expect(trim({ a: [1, 2, 3, 4], b: { c: [{ x: 1 }, 2, 3, 4] } })).toEqual({ a: [1, 2, 3], b: { c: [{ x: 1 }, 2, 3] } }));
@@ -27,5 +27,12 @@ describe('relationScan', () => {
     expect(out).toContain('  luid → LCU (1/2 bản ghi)');
     expect(out.some(l => l.startsWith('  bindLcu: 1×1, 2×1'))).toBe(true);
     expect(out.join('\n')).not.toContain('P1');
+  });
+});
+
+describe('probeFileName', () => {
+  it('định dạng device-probe-YYYYMMDD-HHMMSS.json, đệm số 0', () => {
+    expect(probeFileName(new Date(2026, 10, 19, 9, 40, 5))).toBe('device-probe-20261119-094005.json');
+    expect(probeFileName(new Date(2026, 0, 2, 15, 9, 0))).toBe('device-probe-20260102-150900.json');
   });
 });

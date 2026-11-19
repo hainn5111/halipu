@@ -65,3 +65,9 @@ export function relationScan(byType: Record<string, R[]>): string[] {
   }
   return lines;
 }
+
+/** Tên file tải về của tab Dò API: device-probe-YYYYMMDD-HHMMSS.json (giờ máy người dùng). */
+export function probeFileName(d: Date = new Date()): string {
+  const z = (n: number) => String(n).padStart(2, '0');
+  return `device-probe-${d.getFullYear()}${z(d.getMonth() + 1)}${z(d.getDate())}-${z(d.getHours())}${z(d.getMinutes())}${z(d.getSeconds())}.json`;
+}
