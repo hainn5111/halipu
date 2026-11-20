@@ -59,6 +59,8 @@ Cấu trúc `deviceConfig` đổi theo loại (mẫu model đầu tiên của t�
 `BS, ai, di, km, lcu, lux, anti, lamp, pole, surge, appeal, camera, master, router, screen, sensor, wiFiAP, …` → mỗi phần tử `{checked:boolean, modelId, modelName}`; riêng `lamp[]` thêm `lampIndex` (đèn thứ mấy), `ai/di/km[]` thêm `pathNum` (số mạch). Ở Switch and detection `pole` là **object** (không phải mảng).
 → Đây chính là "mẫu" dùng để khai **LCU/tủ đính kèm Lamp, Lamp Pole…** cùng lúc: `checked` = có gắn, `modelId` trỏ tới `deviceModelId` ở mục trên.
 
+**Loại cột (PoleType):** `POST poleType/getAllPoleTypeOfProjectList` (body `{projectId}`; nếu không được thì `getAllPoleTypeOfProjectPage` `{projectId,current,size}`) → `{poleTypeId, poleTypeName, poleTypeValue, systemConfig, remark}`. `deviceConfig.poleTypeId` của model Lamp Pole trỏ tới `poleTypeId`. Tab "Mẫu thiết bị" có chip "Loại cột — PoleType" (body chưa được xác nhận trên Fonda thật). Chip "Model LCU" luôn hiện và bổ sung model từ `getDeviceModelPage` nếu `queryAll…` không trả (khi đó chỉ có tên, không có `deviceConfig`).
+
 ## 4. Dictionary (enum)
 
 `GET dictionary/queryDictionaryByKey/{key}` → `[{dictValue, dsName, dictName, dictStairId, dictStairRemark, dictId, dictType, dictionarySecond[]}]`. Đã dò: key 3 (Lamp Type, 6 giá trị), 15 (3), 17 (Power Type, 8), 19 (2), 20 (2), 21, 55, 99, 116, 119 — bảng tên nhóm ở `05-dictionaries.md`. Các trường enum trong `deviceConfig` (`lampTypes`, `powerProtocol`, `poleArmType`, `rtuType`, `gatewayTypes`, `dimmingLevel`…) tra bằng các key này (đối chiếu key↔trường **chưa kiểm chứng đủ**).

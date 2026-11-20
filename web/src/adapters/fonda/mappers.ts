@@ -115,6 +115,18 @@ export function mapModels(d: unknown): DeviceModel[] {
   return out;
 }
 
+/** poleType/getAllPoleTypeOfProjectList (và Page.records) → loại cột; `poleTypeId` là khoá mà model Lamp Pole tham chiếu. */
+export interface PoleType { id: string; name: string; value?: number; systemConfig: number; remark: string }
+export function mapPoleTypes(d: unknown): PoleType[] {
+  const rows = Array.isArray(d) ? d : Array.isArray((d as Rec | null)?.records) ? (d as { records: unknown[] }).records : [];
+  const out: PoleType[] = [];
+  for (const r of rows as Rec[]) {
+    const id = str(r?.poleTypeId); if (!id) continue;
+    out.push({ id, name: str(r.poleTypeName), value: r.poleTypeValue == null ? undefined : Number(r.poleTypeValue), systemConfig: Number(r.systemConfig) || 0, remark: str(r.remark) });
+  }
+  return out;
+}
+
 const isAttach = (v: unknown): v is Rec => !!v && typeof v === 'object' && !Array.isArray(v) && 'modelName' in (v as Rec);
 const attachItem = (a: Rec) => ({ name: str(a.modelName) || str(a.modelId), checked: a.checked === true, extra: [a.lampIndex != null ? `đèn #${str(a.lampIndex)}` : '', a.pathNum != null ? `${str(a.pathNum)} mạch` : ''].filter(Boolean).join(', ') });
 

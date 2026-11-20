@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { lcuSpec, channelRows, lcuSlotCount, mapLcuLamps, mapPoleLinks, categoryOf, configEntries, mapModels, mapDeviceRow, mapDeviceTypes, mapLight, mapListRow, mapPageRow, mapTrend, mergeLcus, pickGeo, ratedPowerOf, toCsv, validGeo } from './mappers';
+import { lcuSpec, channelRows, lcuSlotCount, mapLcuLamps, mapPoleLinks, categoryOf, configEntries, mapModels, mapPoleTypes, mapDeviceRow, mapDeviceTypes, mapLight, mapListRow, mapPageRow, mapTrend, mergeLcus, pickGeo, ratedPowerOf, toCsv, validGeo } from './mappers';
 
 describe('pickGeo / validGeo', () => {
   it('đọc lat/lng dạng chuỗi', () => expect(pickGeo({ lat: '20.93271', lng: '105.67026' })).toEqual({ lat: 20.93271, lng: 105.67026 }));
@@ -129,4 +129,13 @@ describe('lcuSpec', () => {
     expect(d).toMatchObject({ slots: 1, lcuType: undefined, dimming: '100', functions: [1, 2, 3, 4], flagsOn: [] });
   });
   it('thiếu lampHolderNum → 1 đầu đèn', () => expect(lcuSpec({}).slots).toBe(1));
+});
+
+describe('mapPoleTypes', () => {
+  it('nhận cả mảng lẫn records, bỏ hàng thiếu id', () => {
+    const row = { poleTypeId: 'P1', poleTypeName: 'Single arm lamp', poleTypeValue: 1, systemConfig: 1, remark: 'r' };
+    expect(mapPoleTypes([row, { poleTypeName: 'x' }])).toEqual([{ id: 'P1', name: 'Single arm lamp', value: 1, systemConfig: 1, remark: 'r' }]);
+    expect(mapPoleTypes({ records: [row] })).toHaveLength(1);
+    expect(mapPoleTypes(null)).toEqual([]);
+  });
 });

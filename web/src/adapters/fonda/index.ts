@@ -4,7 +4,7 @@ import { config } from '../../core/config';
 import type { PoleLinks, DeviceItem, DeviceModel, DeviceType, LampCommand, LightStatus, Lcu, Measurement } from '../../core/types';
 import { WRITE_ENABLED } from '../../core/flags';
 import { lcuIdsBody, lcuModelCreateBody, lcuSaveBody, modelCreateBody, poleIdsBody, poleUpdateBody, type GroupInput } from './writeBodies';
-import { lcuSlotCount, mapLcuLamps, mapPoleLinks, mapModels, mapDeviceRow, mapDeviceTypes, mapLight, mapListRow, mapPageRow, mapTrend, mergeLcus, pickGeo, ratedPowerOf, validGeo, type LcuRow } from './mappers';
+import { lcuSlotCount, mapLcuLamps, mapPoleLinks, mapPoleTypes, type PoleType, mapModels, mapDeviceRow, mapDeviceTypes, mapLight, mapListRow, mapPageRow, mapTrend, mergeLcus, pickGeo, ratedPowerOf, validGeo, type LcuRow } from './mappers';
 
 const PID_KEY = 'pid';
 
@@ -123,6 +123,18 @@ export async function countDevices(projectId: string, typeValue: number): Promis
 }
 
 /** Model thiết bị + template deviceConfig của dự án (chỉ đọc). */
+/** Loại cột (PoleType): chỉ đọc. Thử API danh sách; nếu server đòi tham số khác thì thử bản phân trang. */
+export async function listPoleTypes(projectId: string): Promise<PoleType[]> {
+  try { const r = mapPoleTypes(await call('POST', 'poleType/getAllPoleTypeOfProjectList', { projectId, body: { projectId } })); if (r.length) return r; } catch { /* thử bản phân trang */ }
+  return mapPoleTypes(await call('POST', 'poleType/getAllPoleTypeOfProjectPage', { projectId, body: { projectId, current: 1, size: 100 } }));
+}
+
+/** Model của một loại theo getDeviceModelPage (không có deviceConfig) — bổ sung model mà queryAll… không trả (vd LCU dựng sẵn). */
+export async function listModelPage(projectId: string, typeId: string): Promise<DeviceModel[]> {
+  const d = await call<{ records?: Array<Record<string, unknown>> }>('POST', 'deviceModel/getDeviceModelPage', { projectId, body: { projectId, current: 1, size: 100, deviceTypeId: typeId } });
+  return (d.records || []).filter(r => r.deviceModelId).map(r => ({ id: String(r.deviceModelId), name: String(r.deviceModelName ?? ''), typeId, config: {} }));
+}
+
 export async function listModels(projectId: string): Promise<DeviceModel[]> {
   return mapModels(await call('GET', `deviceModel/queryAllDeviceModelByProjectId/${projectId}`, { projectId }));
 }
