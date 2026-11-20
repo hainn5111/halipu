@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { lazy, Suspense } from 'react';
-import { DICT_KEYS, enumFieldsOf, enumLabel, isRelevantKey, POLE_SHAPE_DICT } from './enums';
+import { DICT_KEYS, enumFieldsOf, enumLabel, fieldItems, isRelevantKey, POLE_SHAPE_DICT } from './enums';
 
 import { listDeviceTypes, listDictionary, listModels, listPoleTypes, modelProtocols, projectIds, type ModelProto } from '../../adapters/fonda';
 import { WRITE_ENABLED } from '../../core/flags';
@@ -70,7 +70,7 @@ export default function Models() {
   const enumName = (typeValue: number | undefined, key: string, text: string) => {
     if (typeValue == null) return '';
     const f = enumFieldsOf(typeValue).find(x => x.key === key); if (!f) return '';
-    const n = enumLabel(f, text, dicts[f.dict] ?? []); return n ? ` — ${n}` : '';
+    const n = enumLabel(f, text, fieldItems(f, dicts)); return n ? ` — ${n}` : '';
   };
   const sel = models.find(m => m.id === selId);
   const selType0 = types.find(t => t.id === sel?.typeId);

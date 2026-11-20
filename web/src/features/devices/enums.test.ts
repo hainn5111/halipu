@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { enumLabel, enumOptions, functionLabels, isRelevantKey, storeValue, TYPE_ENUMS } from './enums';
+import { fieldItems, enumLabel, enumOptions, functionLabels, isRelevantKey, storeValue, TYPE_ENUMS } from './enums';
 
 const dim = [{ value: '1', name: '20' }, { value: '2', name: '100' }];
 describe('enums', () => {
@@ -18,6 +18,9 @@ describe('enums', () => {
   it('enum theo dictValue (meterType)', () => {
     const f = TYPE_ENUMS[1][1], items = [{ value: '3', name: '3-Channel 1-Phase Electric Meter' }];
     expect(enumLabel(f, 3, items)).toBe('3-Channel 1-Phase Electric Meter'); expect(enumOptions(f, items)[0].value).toBe('3');
+  });
+  it('Producer của Switch là danh sách cố định', () => {
+    const f = TYPE_ENUMS[9][0]; expect(fieldItems(f, {}).map(i => i.name)).toEqual(['XY…', 'KXHL']); expect(enumLabel(f, '2', fieldItems(f, {}))).toBe('KXHL');
   });
   it('storeValue + functionLabels', () => {
     expect(storeValue('20')).toBe(20); expect(storeValue('abc')).toBe('abc'); expect(storeValue('')).toBe('');

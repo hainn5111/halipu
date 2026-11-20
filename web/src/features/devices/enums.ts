@@ -1,6 +1,6 @@
 // Enum của deviceConfig theo từng loại thiết bị → dictionary (đối chiếu dữ liệu thật 2026-11-20, docs/15 §4). Hàm thuần, có test.
 export interface DictOpt { value: string; name: string }
-export interface EnumField { key: string; label: string; dict: number; /** true: giá trị lưu là TÊN (dsName) dạng số — vd dimmingLevel 20/100 chứ không phải dictValue 1/2 */ byName?: boolean }
+export interface EnumField { key: string; label: string; dict?: number; /** danh sách cố định (không có dictionary) */ items?: DictOpt[]; /** true: giá trị lưu là TÊN (dsName) dạng số — vd dimmingLevel 20/100 chứ không phải dictValue 1/2 */ byName?: boolean }
 
 /** Trường enum đơn của từng loại (deviceTypeValue). */
 export const TYPE_ENUMS: Record<number, EnumField[]> = {
@@ -10,13 +10,14 @@ export const TYPE_ENUMS: Record<number, EnumField[]> = {
   4: [{ key: 'rtuType', label: 'Concentrator type', dict: 99 }],
   5: [{ key: 'lampTypes', label: 'Lamp type', dict: 3 }, { key: 'powerTypes', label: 'Power type', dict: 17 }],
   6: [{ key: 'poleArmType', label: 'Arm type', dict: 55 }],
-  9: [{ key: 'kmFactory', label: 'Producer', dict: 88 }],   // CHƯA RÕ nguồn danh sách (không phải dict 88 — người dùng thấy tên "XY…"); tạm để dict 88 cho tới khi dò ra
+  // Producer của Switch: danh sách cố định trên form Fonda (người dùng xác nhận 2 lựa chọn "XY…" và "KXHL"). Capture cho thấy "XY…" = "1"; mã của KXHL (="2"?) chưa kiểm chứng.
+  9: [{ key: 'kmFactory', label: 'Producer', items: [{ value: '1', name: 'XY…' }, { value: '2', name: 'KXHL' }] }],
 };
 /** Loại có ô "Function" = chọn GIAO THỨC (RF/F2, CAT1/F2, …) — LCU, Gateway, Concentrator. `functionList` (mảng số) KHÔNG sửa trong form, chỉ hiện nguyên giá trị. */
 export const FUNCTION_TYPES = [2, 3, 4];
 /** Loại có giao thức (protocol) chọn trong form. */
 export const POLE_SHAPE_DICT = 39;   // poleTypeValue = mã kiểu/hình cột có sẵn (Magnolia Lamp, High Pole Lights, …)
-export const DICT_KEYS = [...new Set([...Object.values(TYPE_ENUMS).flat().map(f => f.dict), POLE_SHAPE_DICT])];
+export const DICT_KEYS = [...new Set([...Object.values(TYPE_ENUMS).flat().map(f => f.dict).filter((d): d is number => d != null), POLE_SHAPE_DICT])];
 
 /** Khoá "thuộc về" một số loại: hiện ở loại khác là rác (server giữ lại giá trị mặc định như rtuType 0 ở LCU) → ẩn. */
 const OWNED: Record<string, number[]> = {
@@ -26,6 +27,9 @@ const OWNED: Record<string, number[]> = {
 export const isRelevantKey = (typeValue: number, key: string): boolean => !(key in OWNED) || OWNED[key].includes(typeValue);
 
 export const enumFieldsOf = (typeValue: number): EnumField[] => TYPE_ENUMS[typeValue] ?? [];
+
+/** Danh sách giá trị của trường: cố định nếu có, ngược lại từ dictionary đã tải. */
+export const fieldItems = (f: EnumField, dicts: Record<number, DictOpt[]>): DictOpt[] => f.items ?? (f.dict != null ? dicts[f.dict] ?? [] : []);
 
 /** Lựa chọn của một trường: giá trị lưu (chuỗi) + nhãn. */
 export function enumOptions(f: EnumField, items: Array<{ value: string; name: string }>): DictOpt[] {

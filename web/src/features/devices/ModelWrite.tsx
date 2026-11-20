@@ -4,7 +4,7 @@ import { modelIdsBody, modelNameError, poleTypeError, type PoleTypeIn } from '..
 import type { DictItem, PoleType } from '../../adapters/fonda/mappers';
 import type { DeviceModel, DeviceType } from '../../core/types';
 import ConfirmWrite from '../common/ConfirmWrite';
-import { enumFieldsOf, enumOptions, FUNCTION_TYPES, storeValue } from './enums';
+import { enumFieldsOf, enumOptions, fieldItems, FUNCTION_TYPES, storeValue } from './enums';
 
 // Thêm / sửa / xoá template (model) mọi loại và loại cột (PoleType) — GHI THẬT, chỉ bản preview. Payload: docs/15 §7 (bắt 2026-11-20). Luôn qua hộp xác nhận.
 type Op = { title: string; summary: string; method: string; path: string; body: unknown; danger?: boolean; run: () => Promise<unknown> };
@@ -25,7 +25,7 @@ function TemplateFields({ typeValue, cfg, setCfg, ctx, proto, setProto }: { type
       {ctx.protoOpts.map(p => <option key={p.id} value={p.id}>{p.name} {p.version}</option>)}</select>));
   }
   for (const f of enumFieldsOf(typeValue)) {
-    const items = ctx.dicts[f.dict] ?? []; const opts = enumOptions(f, items); const cur = c[f.key] == null ? '' : String(c[f.key]);
+    const items = fieldItems(f, ctx.dicts); const opts = enumOptions(f, items); const cur = c[f.key] == null ? '' : String(c[f.key]);
     rows.push(row(f.label, <select value={cur} onChange={e => set({ [f.key]: storeValue(e.target.value) })}>
       {!opts.some(o => o.value === cur) && <option value={cur}>{cur || '(chưa chọn)'}</option>}
       {opts.map(o => <option key={o.value} value={o.value}>{f.byName ? o.name : `${o.value} — ${o.name}`}</option>)}</select>));
