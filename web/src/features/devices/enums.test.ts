@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { fieldItems, enumLabel, enumOptions, functionLabels, isRelevantKey, storeValue, TYPE_ENUMS } from './enums';
+import { allowedOptions, ENUM_BY_PROTOCOL, poleShapeItems, fieldItems, enumLabel, enumOptions, functionLabels, isRelevantKey, storeValue, TYPE_ENUMS } from './enums';
 
 const dim = [{ value: '1', name: '20' }, { value: '2', name: '100' }];
 describe('enums', () => {
@@ -21,6 +21,16 @@ describe('enums', () => {
   });
   it('Producer của Switch là danh sách cố định', () => {
     const f = TYPE_ENUMS[9][0]; expect(fieldItems(f, {}).map(i => i.name)).toEqual(['XY…', 'KXHL']); expect(enumLabel(f, '2', fieldItems(f, {}))).toBe('KXHL');
+  });
+  it('poleTypeValue chỉ lấy từ loại cột hệ thống', () => {
+    const types = [{ value: 3, name: '789412', systemConfig: 0 }, { value: 8, name: 'Three-Arm Lamp', systemConfig: 1 }, { value: 1, name: 'Single arm lamp', systemConfig: 1 }, { value: 1, name: 'COT8M', systemConfig: 0 }];
+    expect(poleShapeItems(types)).toEqual([{ value: '1', name: 'Single arm lamp' }, { value: '8', name: 'Three-Arm Lamp' }]);
+  });
+  it('powerProtocol thuộc Lamps, hai lựa chọn', () => { expect(isRelevantKey(5, 'powerProtocol')).toBe(true); expect(isRelevantKey(6, 'powerProtocol')).toBe(false); expect(TYPE_ENUMS[5].find(f => f.key === 'powerProtocol')?.items).toHaveLength(2); });
+  it('allowedOptions: không có bảng thì giữ nguyên, có thì lọc', () => {
+    const o = [{ value: '1', name: 'a' }, { value: '2', name: 'b' }];
+    expect(allowedOptions(4, 1, o)).toEqual(o);
+    ENUM_BY_PROTOCOL[4] = { 1: ['2'] }; expect(allowedOptions(4, 1, o)).toEqual([o[1]]); expect(allowedOptions(4, 9, o)).toEqual(o); delete ENUM_BY_PROTOCOL[4];
   });
   it('storeValue + functionLabels', () => {
     expect(storeValue('20')).toBe(20); expect(storeValue('abc')).toBe('abc'); expect(storeValue('')).toBe('');

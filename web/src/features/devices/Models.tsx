@@ -1,8 +1,8 @@
 import { useEffect, useMemo, useState } from 'react';
 import { lazy, Suspense } from 'react';
-import { DICT_KEYS, enumFieldsOf, enumLabel, fieldItems, isRelevantKey, POLE_SHAPE_DICT } from './enums';
+import { DICT_KEYS, enumFieldsOf, enumLabel, fieldItems, isRelevantKey, poleShapeItems } from './enums';
 
-import { listDeviceTypes, listDictionary, listModels, listPoleTypes, modelProtocols, projectIds, type ModelProto } from '../../adapters/fonda';
+import { listDeviceTypes, listDictionary, listModels, listPoleTypes, listProtocols, modelProtocols, projectIds, type ModelProto } from '../../adapters/fonda';
 import { WRITE_ENABLED } from '../../core/flags';
 import { configEntries, lcuSpec, type DictItem, type PoleType } from '../../adapters/fonda/mappers';
 import type { DeviceModel, DeviceType } from '../../core/types';
@@ -23,6 +23,7 @@ export default function Models() {
   const [pid, setPid] = useState('');
   const [protos, setProtos] = useState<Map<string, ModelProto>>(new Map());
   const [err, setErr] = useState('');
+  const [allProtos, setAllProtos] = useState<Array<ModelProto & { typeId: string }>>([]);
   const [armErr, setArmErr] = useState(''), [ptSel, setPtSel] = useState<string | null>(null);
   const [dicts, setDicts] = useState<Record<number, DictItem[]>>({});
   const [poleTypes, setPoleTypes] = useState<PoleType[]>([]), [ptErr, setPtErr] = useState('');
@@ -42,7 +43,7 @@ export default function Models() {
           if (pid === ps[0]) {   // bảng enum của các trường deviceConfig (docs/15 §4)
             const dd: Record<number, DictItem[]> = {};
             for (const key of DICT_KEYS) { try { dd[key] = await listDictionary(pid, key); } catch (e) { if (key === 55) setArmErr((e as Error).message); } }
-            setDicts(dd);
+            setDicts(dd); setAllProtos(await listProtocols(pid));
           }
         }
         if (!live) return;
@@ -65,8 +66,14 @@ export default function Models() {
     let live = true; modelProtocols(pid, typeId).then(m => { if (live) setProtos(m); }).catch(() => { if (live) setProtos(new Map()); });
     return () => { live = false; };
   }, [typeId, pid, reload]);
-  const arms = dicts[55] ?? [], shapes = dicts[POLE_SHAPE_DICT] ?? [];
-  const protoOpts = useMemo(() => { const m = new Map<string, ModelProto>(); for (const p of protos.values()) if (p.id && p.value >= 0 && !m.has(p.id)) m.set(p.id, p); return [...m.values()]; }, [protos]);
+  const arms = dicts[55] ?? [], shapes = useMemo(() => poleShapeItems(poleTypes), [poleTypes]);
+  // Giao thức chọn được: toàn bộ giao thức hệ thống của loại này (protocolActor/queryList) + giao thức các model sẵn có (phòng khi API trên không trả)
+  const protoOpts = useMemo(() => {
+    const m = new Map<string, ModelProto>();
+    for (const p of allProtos) if (p.typeId === typeId && p.id && p.value >= 0) m.set(p.id, p);
+    for (const p of protos.values()) if (p.id && p.value >= 0 && !m.has(p.id)) m.set(p.id, p);
+    return [...m.values()];
+  }, [allProtos, protos, typeId]);
   const enumName = (typeValue: number | undefined, key: string, text: string) => {
     if (typeValue == null) return '';
     const f = enumFieldsOf(typeValue).find(x => x.key === key); if (!f) return '';
@@ -93,7 +100,7 @@ export default function Models() {
           {ptErr && <div className="err">{ptErr}</div>}
           {PtWrites && <Suspense fallback={null}><PtWrites mode="add" shapes={shapes} pid={pid} onChanged={() => setReload(n => n + 1)} /></Suspense>}
           <p className="sub">Model Lamp Pole tham chiếu loại cột qua <code>poleTypeId</code> trong <code>deviceConfig</code>.</p>
-          <table><thead><tr><th>#</th><th>Tên loại cột</th><th>Giá trị</th><th>Kiểu/hình (dict 39)</th><th>Hệ thống</th><th>Ghi chú</th><th>Mã</th><th>Số model cột dùng</th></tr></thead>
+          <table><thead><tr><th>#</th><th>Tên loại cột</th><th>Giá trị</th><th>Kiểu/hình (loại hệ thống 1–8)</th><th>Hệ thống</th><th>Ghi chú</th><th>Mã</th><th>Số model cột dùng</th></tr></thead>
             <tbody>{poleTypes.map((p, i) => <tr key={p.id} className={'lrow' + (p.id === ptSel ? ' sel' : '')} onClick={() => setPtSel(p.id)}><td>{i + 1}</td><td><b>{p.name}</b></td><td>{p.value ?? '–'}</td><td>{shapes.find(x => x.value === show(p.value))?.name ?? '–'}</td><td>{p.systemConfig ? 'Hệ thống' : 'Dự án'}</td><td>{p.remark}</td><td>{p.id.slice(0, 8)}</td><td>{models.filter(m => show(m.config.poleTypeId ?? '') === p.id).length}</td></tr>)}</tbody></table>
           {!poleTypes.length && !ptErr && <p className="sub">Chưa đọc được loại cột nào.</p>}
         </>)}
@@ -124,7 +131,7 @@ export default function Models() {
               <tr><td>poleTypeId</td><td>{pt.id}</td></tr><tr><td>poleTypeValue</td><td>{pt.value ?? '–'}</td></tr>
               <tr><td>systemConfig</td><td>{pt.systemConfig} {pt.systemConfig ? '(dựng sẵn của hệ thống)' : '(người dùng khai)'}</td></tr><tr><td>remark</td><td>{pt.remark || '–'}</td></tr>
             </tbody></table>
-            <p className="sub"><code>poleTypeValue</code> là mã kiểu/hình cột có sẵn (dictionary 39 "Pole Type"): <b>{shapes.find(x => x.value === show(pt.value))?.name ?? 'không có trong bảng'}</b>. Hình ảnh tương ứng do giao diện Fonda gắn theo mã này; bảng không trả địa chỉ hình.</p>
+            <p className="sub"><code>poleTypeValue</code> là mã kiểu/hình cột có sẵn (8 giá trị của loại cột hệ thống): <b>{shapes.find(x => x.value === show(pt.value))?.name ?? 'không có trong bảng'}</b>. Hình ảnh tương ứng do giao diện Fonda gắn theo mã này (chỉ có 8 mã 1–8); API không trả địa chỉ hình.</p>
             {PtWrites && <Suspense fallback={null}><PtWrites mode="edit" shapes={shapes} pid={pid} sel={pt} usedBy={used.length} onChanged={() => { setPtSel(null); setReload(n => n + 1); }} /></Suspense>}
             <h3>Model Lamp Pole dùng loại này ({used.length})</h3>
             {used.length ? <ul style={{ margin: 0, paddingLeft: 18 }}>{used.map(m => <li key={m.id}>{m.name}{m.config.poleArmType != null ? ` — tay đèn: ${arms.find(a => a.value === show(m.config.poleArmType))?.name ?? show(m.config.poleArmType)}` : ''}</li>)}</ul> : <p className="sub">Chưa có model nào.</p>}

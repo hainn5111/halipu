@@ -190,6 +190,14 @@ export const sendPoleTypeSave = (projectId: string, body: Record<string, unknown
 export const sendPoleTypeUpdate = (projectId: string, body: Record<string, unknown>) => { assertWrite(); return call('POST', 'poleType/update', { projectId, body }); };
 export const sendPoleTypeDelete = (projectId: string, ids: string[]) => { assertWrite(); return call('POST', 'poleType/delete', { projectId, body: poleTypeIdsBody(ids) }); };
 
+/** Mọi giao thức của hệ thống (GET protocolActor/queryList: {protocolId, protocolName, protocolValue, protocolVersion, protocolGroup, deviceTypeId}) — chỉ đọc; lỗi thì [] (dùng giao thức của các model sẵn có). */
+export async function listProtocols(projectId: string): Promise<Array<ModelProto & { typeId: string; group: string }>> {
+  try {
+    const d = await call<Array<Record<string, unknown>>>('GET', 'protocolActor/queryList', { projectId });
+    return (Array.isArray(d) ? d : []).filter(r => r?.protocolId).map(r => ({ id: String(r.protocolId), value: Number(r.protocolValue), name: String(r.protocolName ?? ''), version: String(r.protocolVersion ?? ''), systemConfig: 0, remark: '', typeId: String(r.deviceTypeId ?? ''), group: String(r.protocolGroup ?? '') }));
+  } catch { return []; }
+}
+
 /** Giao thức/phiên bản/systemConfig của các model một loại (deviceModel/getDeviceModelPage — danh sách model trả kèm các trường này). */
 export interface ModelProto { id: string; value: number; name: string; version: string; systemConfig: number; remark: string }
 export async function modelProtocols(projectId: string, typeId: string): Promise<Map<string, ModelProto>> {

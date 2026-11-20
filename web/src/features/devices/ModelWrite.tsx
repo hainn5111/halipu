@@ -4,7 +4,7 @@ import { modelIdsBody, modelNameError, poleTypeError, type PoleTypeIn } from '..
 import type { DictItem, PoleType } from '../../adapters/fonda/mappers';
 import type { DeviceModel, DeviceType } from '../../core/types';
 import ConfirmWrite from '../common/ConfirmWrite';
-import { enumFieldsOf, enumOptions, fieldItems, FUNCTION_TYPES, storeValue } from './enums';
+import { allowedOptions, enumFieldsOf, enumOptions, fieldItems, FUNCTION_TYPES, storeValue } from './enums';
 
 // Thêm / sửa / xoá template (model) mọi loại và loại cột (PoleType) — GHI THẬT, chỉ bản preview. Payload: docs/15 §7 (bắt 2026-11-20). Luôn qua hộp xác nhận.
 type Op = { title: string; summary: string; method: string; path: string; body: unknown; danger?: boolean; run: () => Promise<unknown> };
@@ -20,12 +20,12 @@ function TemplateFields({ typeValue, cfg, setCfg, ctx, proto, setProto }: { type
   const row = (label: string, el: JSX.Element) => <span key={label} style={{ display: 'contents' }}><span className="sub" style={{ margin: 0 }}>{label}</span>{el}</span>;
   const rows: JSX.Element[] = [];
   if (ctx.protoOpts.length && FUNCTION_TYPES.includes(typeValue)) {
-    rows.push(row('Function (protocol)', <select value={proto?.id ?? ''} onChange={e => { const p = ctx.protoOpts.find(x => x.id === e.target.value); if (p) setProto(p); }}>
+    rows.push(row('Function (protocol)', <select value={proto?.id ?? ''} onChange={e => { const p = ctx.protoOpts.find(x => x.id === e.target.value); if (!p) return; setProto(p); const fix: Record<string, unknown> = {}; for (const f of enumFieldsOf(typeValue)) { const ok = allowedOptions(typeValue, p.value, enumOptions(f, fieldItems(f, ctx.dicts))); if (ok.length && !ok.some(o => o.value === String(c![f.key] ?? ''))) fix[f.key] = storeValue(ok[0].value); } if (Object.keys(fix).length) set(fix); }}>
       {!proto && <option value="">(chọn giao thức)</option>}
       {ctx.protoOpts.map(p => <option key={p.id} value={p.id}>{p.name} {p.version}</option>)}</select>));
   }
   for (const f of enumFieldsOf(typeValue)) {
-    const items = fieldItems(f, ctx.dicts); const opts = enumOptions(f, items); const cur = c[f.key] == null ? '' : String(c[f.key]);
+    const items = fieldItems(f, ctx.dicts); const opts = allowedOptions(typeValue, proto?.value, enumOptions(f, items)); const cur = c[f.key] == null ? '' : String(c[f.key]);
     rows.push(row(f.label, <select value={cur} onChange={e => set({ [f.key]: storeValue(e.target.value) })}>
       {!opts.some(o => o.value === cur) && <option value={cur}>{cur || '(chưa chọn)'}</option>}
       {opts.map(o => <option key={o.value} value={o.value}>{f.byName ? o.name : `${o.value} — ${o.name}`}</option>)}</select>));
@@ -111,7 +111,7 @@ export function ModelEditor({ pid, model, type, proto: proto0, ctx, onChanged }:
 }
 
 /** Nút "+ Thêm loại cột…" (thanh trên) và, khi có `sel`, nút Sửa/Xoá trong drawer. */
-export function PoleTypeActions({ pid, sel, usedBy, onChanged, mode, shapes = [] }: { pid: string; sel?: PoleType; usedBy?: number; onChanged: () => void; mode: 'add' | 'edit'; shapes?: DictItem[] }) {
+export function PoleTypeActions({ pid, sel, usedBy, onChanged, mode, shapes = [] }: { pid: string; sel?: PoleType; usedBy?: number; onChanged: () => void; mode: 'add' | 'edit'; shapes?: Array<{ value: string; name: string }> }) {
   const [form, setForm] = useState<PoleTypeIn>({ name: '', value: '', remark: '' }), [open, setOpen] = useState(false), [msg, setMsg] = useState('');
   const [op, setOp] = useState<Op | null>(null);
   const builtIn = !!sel?.systemConfig;
@@ -132,7 +132,7 @@ export function PoleTypeActions({ pid, sel, usedBy, onChanged, mode, shapes = []
       <div style={{ background: 'var(--panel)', border: '1px solid var(--line)', borderRadius: 12, padding: 20, width: 440, maxWidth: '100%' }}>
         <h2 style={{ margin: '0 0 8px', fontSize: 18 }}>{mode === 'add' ? 'Thêm loại cột' : 'Sửa loại cột'}</h2>
         <label className="sub" style={{ display: 'block' }}>Tên</label><input style={{ width: '100%' }} value={form.name} onChange={e => setForm({ ...form, name: e.target.value })} />
-        <label className="sub" style={{ display: 'block', marginTop: 8 }}>Kiểu/hình cột (poleTypeValue — dictionary 39)</label>
+        <label className="sub" style={{ display: 'block', marginTop: 8 }}>Kiểu/hình cột (poleTypeValue — 8 giá trị 1–8)</label>
         {shapes.length
           ? <select style={{ width: '100%' }} value={form.value} onChange={e => setForm({ ...form, value: e.target.value })}>{!shapes.some(x => x.value === form.value) && <option value={form.value}>{form.value || '(chưa chọn)'}</option>}{shapes.map(x => <option key={x.value} value={x.value}>{x.value} — {x.name}</option>)}</select>
           : <input style={{ width: '100%' }} value={form.value} onChange={e => setForm({ ...form, value: e.target.value })} />}

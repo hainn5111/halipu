@@ -92,12 +92,12 @@ Cấu trúc `deviceConfig` đổi theo loại (mẫu model đầu tiên của t�
 | Electric Meter (1) | `currentP` → 15 (Current Rate: 30=150/5, 40=200/5, 50=250/5), `meterType` → 21 | lưu `dictValue` |
 | LCU (2) | `dimmingLevel` → 20 (Dimming Level: tên 20 / 100), **Function = giao thức** (RF/F2, CAT1/F2…) | `dimmingLevel` lưu theo **tên** (20, 100), không phải `dictValue` 1/2 |
 | Gateway (3) | `gatewayTypes` → 119, **Function = giao thức** | |
-| Concentrator (4) | `rtuType` → 99, **Function = giao thức** | |
-| Lamps (5) | `lampTypes` → 3, `powerTypes` → 17 | |
+| Concentrator (4) | `rtuType` → 99, **Function = giao thức (có 3 giao thức)** | giao thức quyết định danh sách Concentrator type — bảng quan hệ chưa có (`ENUM_BY_PROTOCOL` rỗng); danh sách giao thức lấy từ `GET protocolActor/queryList` (`{protocolId, protocolName, protocolValue, protocolVersion, protocolGroup, deviceTypeId}`, chưa kiểm chứng) |
+| Lamps (5) | `lampTypes` → 3, `powerTypes` → 17, `powerProtocol` (2 lựa chọn 0/1, tên chưa rõ) | |
 | Lamp Pole (6) | `poleArmType` → 55; `poleTypeId` = loại cột khai ở PoleType, kèm `poleType` = `poleTypeValue` của loại đó | |
 | Switch and detection (9) | `kmFactory` (Producer) — **danh sách cố định trên form Fonda: "XY…" và "KXHL"** (không có trong dictionary 1–130); **đã xác nhận bằng capture: "XY…" lưu `kmFactory: "1"`, KXHL lưu `kmFactory: "2"`** (cùng `pathNum`, `di`, `ai`); tên đầy đủ của "XY…" chưa rõ | |
 - Ô **Function** trên form Fonda của LCU/Gateway/Concentrator thực chất là chọn **giao thức** (người dùng xác nhận: RF/F2, CAT1/F2…); `functionList` (mảng số trong `deviceConfig`) không có nhãn đã biết — web chỉ hiện nguyên giá trị, không sửa.
-- `poleTypeValue` = mã kiểu/hình cột có sẵn = dictionary **39 "Pole Type"** (1 Magnolia Lamp, 2 High Pole Lights, 3 Hibiscus Lamp, … 10 New Leaf Single Pick Light); loại hệ thống dùng 1–8, loại tự khai dùng lại. Bản ghi dictionary không có địa chỉ hình — hình do giao diện Fonda gắn theo mã.
+- `poleTypeValue` chỉ có **đúng 8 giá trị 1–8** = các loại cột HỆ THỐNG (`systemConfig` 1: 1 Single arm lamp, 2 Double arm lamp, 3 Garden lights, 4 Lantern, 5 Smart light pole, 6 Solar lamp pole, 7 Tunnel lights, 8 Three-Arm Lamp); loại tự khai chọn 1 trong 8 mã này (gắn hình có sẵn của Fonda). **Dictionary 39 "Pole Type" có 10 mục khác tên → KHÔNG dùng** (đối chiếu trước đó sai). API không trả địa chỉ hình.
 - Khoá của loại khác (server vẫn trả giá trị mặc định, vd `rtuType` 0 ở LCU, `gatewayTypes` ngoài Gateway) bị **ẩn** ở drawer (`isRelevantKey`).
 
 **Enum trong `deviceConfig` ↔ dictionary** (đối chiếu giá trị; ✔ = khớp rõ ràng):

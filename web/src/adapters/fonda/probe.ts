@@ -33,6 +33,12 @@ export async function runProbe(pid: string, log: (line: string) => void, withLcu
   const types = (await get('types-all-by-project', 'GET', `deviceTypeController/queryAllDeviceTypeByProjectId/${pid}`)) as Rec[] | null;
   const models = (await get('models-by-project', 'GET', `deviceModel/queryAllDeviceModelByProjectId/${pid}`)) as Rec[] | null;
   for (const k of DICTS) await get(`dict-${k}`, 'GET', `dictionary/queryDictionaryByKey/${k}`);
+  // Giao thức theo loại thiết bị + chức năng theo giao thức (Concentrator có 3 giao thức; giao thức quyết định danh sách Concentrator type)
+  await get('protocol-list', 'GET', 'protocolActor/queryList');
+  const typeList = Array.isArray(types) ? (types as Rec[]) : [];
+  for (const t of typeList.filter(x => [2, 3, 4].includes(Number(x.deviceTypeValue)))) await get(`protocol-by-device-${t.deviceTypeValue}`, 'POST', 'deviceTypeController/queryProtocolByDeviceId', { deviceTypeId: t.deviceTypeId, projectId: pid });
+  const pl = (results.find(r => r.name === 'protocol-list') as { data?: unknown } | undefined)?.data;
+  for (const pr of (Array.isArray(pl) ? (pl as Rec[]) : []).slice(0, 40)) await get(`protocol-function-${String(pr.protocolValue)}-${String(pr.protocolName ?? '').replace(/[^A-Za-z0-9]+/g, '_')}`, 'POST', 'protocolActor/queryProtocolFunction', { protocolId: pr.protocolId, protocolValue: pr.protocolValue, projectId: pid });
   await get('factory-list', 'GET', 'factoryController/queryFactoryList');   // nhà sản xuất (producer) — tìm tên "XY…" của Switch (kmFactory)
   await get('factory-page', 'POST', 'factoryController/queryAllFactoriesPage', { current: 1, size: 100 });
   await get('pole-types', 'POST', 'poleType/getAllPoleTypeOfProjectList', { projectId: pid });
