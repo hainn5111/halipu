@@ -225,6 +225,14 @@ attributeDevice: [ { checked: true, lampPosition: 1, uid: "<uid 12 hex>", solar:
 
 **Chưa bắt (cần bắt thêm):** sửa/xoá/copy model (`updateNew`, `delete`, `copyDeviceModel`); tạo model LCU/Lamps/tổ hợp (template có `lcuAndLamp`); gắn LCU **có sẵn** vào cột (`lcuActor/bindPole`?); thêm/bớt đèn của cột đã tồn tại; cột chỉ có đèn không LCU; xoá cột có gắn LCU (xem LCU/đèn còn không); `device/save` (tạo LCU/gateway riêng).
 
+**Bắt 2026-11-20 — thêm/sửa template mọi loại và PoleType** (file `fonda-capture-2026-11-20T07-14-10`, dữ liệu thử):
+
+- **`deviceModel/saveNew` dùng chung cho mọi loại**, cùng khung: `{deviceModelId:"", projectId, deviceTypeId, deviceTypeValue, deviceModelName, remark, protocolId, protocolValue, useTag:null, deviceConfig}`; Gateway/Concentrator (loại có giao thức) thêm `protocolName`, `protocolVersion`. Loại không giao thức: `protocolId:""`, `protocolValue:-1`, không gửi `protocolName/Version`. Giao thức chọn trong form: Gateway = `Gateway/FEMS` (value 1, FEMS v1.0), Concentrator = `RTU/FEMS` (value 1, FEMS v1.0), LCU = RF/F2 (53) hoặc CAT1/F2 (4).
+- **`deviceConfig` gửi lên luôn là bộ khoá phẳng ĐẦY ĐỦ** (`gatewayTypes, lampLifetime, nominalPower, lampPower, ratedApparentPower, nominalCurrent, ratedCurrent, ratedVoltage, ratedPowerFactor, factoryId, voltageP, productId, smartBoxType, di, ai, power, waterTankCapacity, hasTaskNum, taskNum, coverTypes, dimmingLevel, lampHolderNum, heig, wide, tempsNum, currentsNum, lcuType, cameraType, radarType, rtuType, powerProtocol, loopType, totalChargingPorts, poleType` + khoá riêng của loại); **server tự giữ lại chỉ các khoá thuộc loại** (đọc lại `data.deviceConfig`). Khoá riêng: Gateway `gatewayTypes, extensions[2], functionList`; Concentrator `rtuType, functionList`; Lamps `lampTypes, powerTypes`; Electric Meter `meterType, currentP, voltageP`; Switch and detection `pathNum, kmFactory, di, ai`; LCU `lampHolderNum, lcuType, loopType, extensions[7], functionList…`. → Template loại thường KHÔNG phải danh sách đính kèm (khác mô tả §3b: đó là template dựng sẵn).
+- **`deviceModel/updateNew` (sửa template)** — body = nguyên đối tượng model như `saveNew` trả về (`deviceModelId` đã có, `deviceTypeName, url, systemConfig, protocolName, protocolVersion, deviceModelRemark, fileId`) + `remark`, `oldFileId:""`, `newFileId:""`, `deviceConfig` đã sửa (đã bắt với LCU và Lamps) → `data:null`, code 200.
+- **PoleType:** `POST poleType/save` `{poleTypeName, poleTypeValue, projectId, remark, poleTypeId:""}` → `data` = bản ghi mới; `POST poleType/update` = nguyên bản ghi (đổi `poleTypeValue/Name/remark`) → `data:null`; `POST poleType/delete` `{poleTypeId:[<id>…]}` (**mảng**) → `data:null`.
+- **Chưa bắt: `deviceModel/delete`** (xoá template) — theo mẫu poleType nhiều khả năng `{deviceModelId:[…]}`; cần bắt hoặc dò tên tham số bằng body rỗng.
+
 ## 8. Việc còn mở
 
 - Tìm tham số đúng của `deviceModel/queryDeviceModelByDeviceTypeAndProject` (bắt request từ web gốc).
