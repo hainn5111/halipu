@@ -14,10 +14,16 @@ const Writes = WRITE_ENABLED ? lazy(() => import('./ModelWrite').then(m => ({ de
 const Toolbar = WRITE_ENABLED ? lazy(() => import('./ModelWrite').then(m => ({ default: m.ModelToolbar }))) : null;
 const PtWrites = WRITE_ENABLED ? lazy(() => import('./ModelWrite').then(m => ({ default: m.PoleTypeActions }))) : null;
 const POLE_TYPES = '__poleTypes', ARM_TYPES = '__armTypes';
-export default function Models() {
+/** Ba màn hình của nhóm "Mẫu thiết bị": template theo loại thiết bị / loại cột (PoleType) / kiểu tay đèn (poleArmType). */
+type Mode = 'models' | 'poletype' | 'arm';
+export default function Models() { return <ModelsView mode="models" />; }
+export function PoleTypes() { return <ModelsView mode="poletype" />; }
+export function ArmTypes() { return <ModelsView mode="arm" />; }
+
+function ModelsView({ mode }: { mode: Mode }) {
   const [types, setTypes] = useState<DeviceType[]>([]);
   const [models, setModels] = useState<DeviceModel[]>([]);
-  const [typeId, setTypeId] = useState<string | null>(null);
+  const [typeId, setTypeId] = useState<string | null>(mode === 'poletype' ? POLE_TYPES : mode === 'arm' ? ARM_TYPES : null);
   const [selId, setSelId] = useState<string | null>(null);
   const [busy, setBusy] = useState(true);
   const [pid, setPid] = useState('');
@@ -48,7 +54,7 @@ export default function Models() {
         }
         if (!live) return;
         setPoleTypes(pts);
-        setTypes(ts); setModels(ms); setTypeId(t => t ?? ms[0]?.typeId ?? null); setPid(ps[0] ?? '');
+        setTypes(ts); setModels(ms); setTypeId(t => t ?? (mode === 'models' ? ms[0]?.typeId : undefined) ?? null); setPid(ps[0] ?? '');
       } catch (e) { if (live) setErr((e as Error).message); } finally { if (live) setBusy(false); }
     })();
     return () => { live = false; };
@@ -93,12 +99,10 @@ export default function Models() {
   return (
     <div className="lcus">
       <div className="listwrap">
-        <p className="sub">{busy ? 'Đang tải…' : `${models.length} model · ${withModels.length} loại thiết bị`}</p>
+        <p className="sub">{busy ? 'Đang tải…' : mode === 'models' ? `${models.length} template · ${withModels.length} loại thiết bị` : mode === 'poletype' ? `${poleTypes.length} loại cột` : `${arms.length} kiểu tay đèn`}</p>
         {err && <div className="err">{err}</div>}
-        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginBottom: 12 }}>
+        <div style={{ display: mode === 'models' ? 'flex' : 'none', flexWrap: 'wrap', gap: 8, marginBottom: 12 }}>
           {withModels.map(({ t, n }) => <button key={t.id} className={t.id === typeId ? '' : 'b'} onClick={() => { setTypeId(t.id); setSelId(null); }}>{t.name} ({n})</button>)}
-          <button className={typeId === POLE_TYPES ? '' : 'b'} onClick={() => { setTypeId(POLE_TYPES); setSelId(null); setPtSel(null); }}>Loại cột — PoleType ({poleTypes.length})</button>
-          <button className={typeId === ARM_TYPES ? '' : 'b'} onClick={() => { setTypeId(ARM_TYPES); setSelId(null); }}>Kiểu tay đèn — poleArmType ({arms.length})</button>
         </div>
         {Toolbar && typeId && typeId !== POLE_TYPES && typeId !== ARM_TYPES && <div style={{ marginBottom: 10 }}><Suspense fallback={null}><Toolbar pid={pid} type={curType} models={list} sel={sel} protos={protos} ctx={{ pid, dicts, poleTypes, protoOpts }} onChanged={() => { setSelId(null); setReload(n => n + 1); }} /></Suspense></div>}
         {typeId === POLE_TYPES && (<>

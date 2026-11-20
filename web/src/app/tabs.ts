@@ -31,8 +31,12 @@ export const TABS: GroupDef[] = [
     { id: 'meter', label: 'Công tơ', view: lazy(() => import('../features/devices/tabs').then(m => ({ default: m.Meter }))) },
     { id: 'camera', label: 'Camera', view: lazy(() => import('../features/devices/tabs').then(m => ({ default: m.Camera }))) },
     { id: 'devices', label: 'Thiết bị khác', view: lazy(() => import('../features/devices/tabs').then(m => ({ default: m.Other }))) },
-    { id: 'models', label: 'Mẫu thiết bị', view: lazy(() => import('../features/devices/Models')) },
     { id: 'groups', label: 'Nhóm đèn' },
+  ] },
+  { group: 'Mẫu thiết bị', tabs: [
+    { id: 'models', label: 'Template theo loại', view: lazy(() => import('../features/devices/Models')) },
+    { id: 'poletypes', label: 'Loại cột (PoleType)', view: lazy(() => import('../features/devices/Models').then(m => ({ default: m.PoleTypes }))) },
+    { id: 'arms', label: 'Kiểu tay đèn', view: lazy(() => import('../features/devices/Models').then(m => ({ default: m.ArmTypes }))) },
   ] },
   { group: 'Vận hành', tabs: [
     { id: 'schedule', label: 'Lịch điều khiển' },
