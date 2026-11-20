@@ -71,15 +71,16 @@ export function scanForms(win: any): Promise<any> {
         // `rules:{` gần nhất phía trước (cùng component)
         const r = t.lastIndexOf('rules:{', i); if (r >= 0 && i - r < 20000) form.rules = balanced(t, r + 6);
         const around = t.slice(Math.max(0, i - 25000), i + 120000);
-        // các ô nhập: mỗi `expression:"dataForm.…"` kèm 900 ký tự trước (điều kiện hiện theo loại + nhãn + prop) và 160 sau
-        const fields: Record<string, any> = {}; const re = /expression:"(dataForm\.[A-Za-z0-9_.]+)"/g; let m: RegExpExecArray | null;
-        while ((m = re.exec(around))) {
+        // CÁC Ô NHẬP CỦA FORM TEMPLATE nằm ở module render riêng (có thể xa `dataForm`): quét TOÀN FILE mọi `expression:"dataForm.deviceConfig.…"`
+        // (và protocol/deviceTypeId/deviceModelName/remark) kèm 1300 ký tự trước (điều kiện hiện theo loại + nhãn + prop) và 200 sau.
+        const fields: Record<string, any> = {}; const re = /expression:"(dataForm\.(?:deviceConfig\.|protocol|deviceType|deviceModelName|remark|deviceSystem)[A-Za-z0-9_.]*)"/g; let m: RegExpExecArray | null;
+        while ((m = re.exec(t)) && Object.keys(fields).length < 400) {
           const f = m[1];
-          if (!fields[f]) fields[f] = { before: around.slice(Math.max(0, m.index - 900), m.index).replace(/\s+/g, ' '), after: around.slice(m.index, m.index + 160) };
+          if (!fields[f]) fields[f] = { before: t.slice(Math.max(0, m.index - 1300), m.index).replace(/\s+/g, ' '), after: t.slice(m.index, m.index + 200) };
         }
         form.fields = fields;
         // điều kiện theo loại thiết bị xuất hiện trong form
-        form.typeConditions = Array.from(new Set(around.match(/(\[[\d,]+\]\.includes\(e\.dataForm\.deviceTypeValue\)|\d+===e\.dataForm\.deviceTypeValue|e\.dataForm\.deviceTypeValue===\d+)/g) || []));
+        form.typeConditions = Array.from(new Set(t.match(/(\[[\d,]+\]\.includes\(e\.dataForm\.deviceTypeValue\)|\d+===e\.dataForm\.deviceTypeValue|e\.dataForm\.deviceTypeValue===\d+)/g) || [])).slice(0, 200);
         // hàm lưu/kiểm tra trước khi gửi (có thể chặn theo loại)
         const sv = around.indexOf('save:function(e){'); if (sv >= 0) form.save = around.slice(sv, sv + 3500);
         const cf = around.indexOf('confirm:function(e){'); if (cf >= 0) form.confirm = around.slice(cf, cf + 2500);

@@ -5,6 +5,7 @@ import { modelIdsBody, modelNameError, poleTypeError, type PoleTypeIn } from '..
 import type { DictItem, PoleType } from '../../adapters/fonda/mappers';
 import type { DeviceModel, DeviceType } from '../../core/types';
 import ConfirmWrite from '../common/ConfirmWrite';
+import { configErrors } from './configRules';
 import { allowedOptions, enumFieldsOf, enumOptions, fieldItems, FIXED_FUNCTIONS, FUNCTION_HINTS, FUNCTION_TYPES, storeValue } from './enums';
 
 // Thêm / sửa / xoá template (model) mọi loại và loại cột (PoleType) — GHI THẬT, chỉ bản preview. Payload: docs/15 §7 (bắt 2026-11-20). Luôn qua hộp xác nhận.
@@ -66,6 +67,7 @@ export function ModelToolbar({ pid, type, models, sel, protos, ctx, onChanged }:
   function start() { if (!base) return; setMsg(''); setName(`${base.name} (bản sao)`); setRemark(baseProto0?.remark ?? ''); setProtoSel(undefined); setCfg(JSON.stringify(base.config, null, 2)); setOpen(true); }
   function ask() {
     const c = parseCfg(cfg), e = modelNameError(name, c); if (e || !c || !type || !base) { setMsg(e ?? 'deviceConfig không hợp lệ'); return; }
+    const ce = configErrors(typeValue, name, c); if (ce.length) { setMsg(ce.join('\n')); return; }
     const body = modelCloneBody({ typeId: type.id, typeValue, config: c, protocol: toProto(baseProto) }, name.trim(), pid, remark.trim());
     setOp({ title: `Thêm template "${name.trim()}"`, summary: `Mẫu gốc "${base.name}" (loại ${type.name}). Server tự giữ lại các khoá deviceConfig thuộc loại này.`, method: 'POST', path: 'deviceModel/saveNew', body, run: () => sendModelCreate(pid, body) });
   }
@@ -84,7 +86,7 @@ export function ModelToolbar({ pid, type, models, sel, protos, ctx, onChanged }:
         {type && <TemplateFields typeValue={typeValue} cfg={cfg} setCfg={setCfg} ctx={ctx} proto={baseProto} setProto={setProtoSel} />}
         <details style={{ marginTop: 8 }}><summary className="sub" style={{ cursor: 'pointer' }}>deviceConfig (JSON — sửa tay nếu cần)</summary>
           <textarea value={cfg} onChange={e => setCfg(e.target.value)} style={{ width: '100%', height: 220, fontFamily: 'monospace', fontSize: 12 }} /></details>
-        {msg && <div className="err" style={{ marginTop: 8 }}>{msg}</div>}
+        {msg && <div className="err" style={{ marginTop: 8, whiteSpace: 'pre-line' }}>{msg}</div>}
         <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', marginTop: 12 }}><button onClick={ask}>Xem trước & xác nhận…</button><button className="b" onClick={() => setOpen(false)}>Đóng</button></div>
       </div>
     </div>);
@@ -107,6 +109,7 @@ export function ModelEditor({ pid, model, type, proto: proto0, ctx, onChanged }:
   useEffect(() => { setName(model.name); setRemark(proto0?.remark ?? ''); setCfg(JSON.stringify(model.config, null, 2)); setMsg(''); setProtoSel(undefined); }, [model.id, model.name, model.config, proto0?.remark]);
   function ask() {
     setMsg(''); const c = parseCfg(cfg), e = modelNameError(name, c); if (e || !c || !type) { setMsg(e ?? 'deviceConfig không hợp lệ'); return; }
+    const ce = configErrors(typeValue, name, c); if (ce.length) { setMsg(ce.join('\n')); return; }
     const body = modelUpdateBody({ id: model.id, typeId: type.id, typeValue, typeName: type.name, name: name.trim(), remark: remark.trim(), config: c, protocol: toProto(proto) }, pid);
     setOp({ title: `Sửa template "${model.name}"`, summary: 'Gửi lại toàn bộ model với phần đã sửa (tên, ghi chú, deviceConfig).', method: 'POST', path: 'deviceModel/updateNew', body, run: () => sendModelUpdate(pid, body) });
   }
@@ -119,7 +122,7 @@ export function ModelEditor({ pid, model, type, proto: proto0, ctx, onChanged }:
     <details style={{ marginTop: 8 }}><summary className="sub" style={{ cursor: 'pointer' }}>deviceConfig (JSON — sửa tay nếu cần)</summary>
       <textarea value={cfg} disabled={builtIn} onChange={e => setCfg(e.target.value)} style={{ width: '100%', height: 220, fontFamily: 'monospace', fontSize: 12 }} /></details>
     <div style={{ marginTop: 10 }}><button disabled={!ready || builtIn} onClick={ask}>Lưu thay đổi…</button></div>
-    {msg && <div className="err" style={{ marginTop: 8 }}>{msg}</div>}
+    {msg && <div className="err" style={{ marginTop: 8, whiteSpace: 'pre-line' }}>{msg}</div>}
     {op && <ConfirmWrite {...op} onConfirm={async () => { await op.run(); }} onClose={changed => { setOp(null); if (changed) onChanged(); }} />}
   </>);
 }
@@ -151,7 +154,7 @@ export function PoleTypeActions({ pid, sel, usedBy, onChanged, mode, shapes = []
           ? <select style={{ width: '100%' }} value={form.value} onChange={e => setForm({ ...form, value: e.target.value })}>{!shapes.some(x => x.value === form.value) && <option value={form.value}>{form.value || '(chưa chọn)'}</option>}{shapes.map(x => <option key={x.value} value={x.value}>{x.value} — {x.name}</option>)}</select>
           : <input style={{ width: '100%' }} value={form.value} onChange={e => setForm({ ...form, value: e.target.value })} />}
         <label className="sub" style={{ display: 'block', marginTop: 8 }}>Ghi chú</label><input style={{ width: '100%' }} value={form.remark} onChange={e => setForm({ ...form, remark: e.target.value })} />
-        {msg && <div className="err" style={{ marginTop: 8 }}>{msg}</div>}
+        {msg && <div className="err" style={{ marginTop: 8, whiteSpace: 'pre-line' }}>{msg}</div>}
         <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', marginTop: 12 }}><button onClick={ask}>Xem trước & xác nhận…</button><button className="b" onClick={() => setOpen(false)}>Đóng</button></div>
       </div>
     </div>);
