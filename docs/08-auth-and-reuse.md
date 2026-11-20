@@ -57,9 +57,9 @@ Lưu ý khi dán vào PowerShell: các lệnh nhiều dòng dễ bị dính thà
 |---|---|---|
 | Header token | Tên `authorization` (chữ thường trong code frontend) | Chắc chắn |
 | Header khác frontend đặt | `clientType`, `userAccount`, `projectId`, `timeZone`, `offset`, `summerTimeStartLong`, `summerTimeEndLong`, `Content-Type` — không bắt buộc cho lệnh dimming | Chắc chắn (tên, từ bundle), Chắc chắn (không bắt buộc với dimming) |
-| Phiên theo tab | Tab mới mở cùng trình duyệt bị đẩy về `#/login` dù `localStorage` vẫn có `pid`, `userId` → token có thể lưu trong sessionStorage/bộ nhớ của tab | Suy luận |
+| Phiên theo tab | Tab mới mở cùng trình duyệt bị đẩy về `#/login` dù `localStorage` vẫn có `pid`, `userId`. Token lưu ở **sessionStorage** (theo `SmartLightingPlatform_TLTK/02`) nên mỗi tab một phiên | Chắc chắn theo TLTK, nên kiểm lại trong F12 → Application |
 | Luồng login | Endpoint login, nguồn RSA public key (jsencrypt), field chứa token trong response | Chưa biết |
-| Hạn token / refresh | | Chưa biết |
+| Hạn token / refresh | Token là JWT; trong mẫu ở TLTK/02, `exp` − `currentTimeMillis` = **3.600 giây → token sống ~1 giờ**. Cơ chế refresh vẫn chưa biết | Suy luận (từ 1 mẫu token) — kiểm: để tab rảnh >1 giờ rồi gọi API |
 | CORS | Có preflight `OPTIONS` trả 200 cho `unicast/dimming`. Origin được phép chưa kiểm | Chắc chắn (preflight), Chưa biết (origin) |
 
 **Cách lấp chỗ thiếu:** đọc bundle quanh `jsencrypt`/hàm login và quan sát Network lúc người dùng tự đăng nhập (chỉ ghi tên trường); để tab mở lâu và ghi lại thời điểm API trả lỗi xác thực.

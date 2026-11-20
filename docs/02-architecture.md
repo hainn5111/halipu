@@ -14,6 +14,10 @@
 
 - **Frontend**: Vue SPA (Vue CLI build), router dạng hash (`#/...`), ~408 route khai báo, 43 hiển thị trong menu tài khoản HTest. Thư viện: Baidu Maps (bản đồ), Hikvision h5player/jsWebControl (camera), Luckysheet (báo cáo bảng), jsencrypt (RSA mã hoá lúc đăng nhập).
 - **Backend**: REST API riêng tại cổng **18080**, version `v1.0`, bật CORS (có preflight `OPTIONS`). **Không TLS**.
+  - *Suy luận (nguồn `SmartLightingPlatform_TLTK/02`):* nền **Java Spring Boot** (body lỗi dạng `{timestamp, status, error, path}` chuẩn Spring) + **Apache Shiro** (cookie `rememberMe=deleteMe`, `JSESSIONID`). Token là **JWT HS256**, payload có `exp, clientType, currentTimeMillis, jwt_claim_agencyId, userGroup, account`. Kiểm: giải mã token của mình trên jwt.io (không dán token thật vào tài liệu).
+  - Backend chia controller theo loại thiết bị: `lcuActor, rtuActor, luxActor, cameraActor, smartBoxActor, solarActor, solarLcuActor, dtuActor, wcuActor, meterActor` (Chắc chắn — có trong danh mục API doc 04).
+- **Frontend (chi tiết thêm)**: Vue 2 + **Element UI** + **Vuex** (module gồm `alarm, app, device, energy, errorLog, map, media, permission, router, settings, statusBar, tagsView, user, websocket`). Token giữ trong **sessionStorage** (cùng `language, logoData, mapModel`) — giải thích việc tab mới bị đẩy về login (doc 08). Nguồn TLTK/02, đọc từ store trình duyệt; mức tin cậy: Chắc chắn theo TLTK, nên kiểm lại 1 lần trong F12 → Application.
+- **Loa SPON** gọi qua PHP trên cổng 81: `POST /php/getsetzonedata.php` (vùng phát), `POST /php/getmediadata.php` (danh sách media). Chắc chắn theo TLTK/03.
 - **Kênh realtime**: WebSocket `ws://159.138.45.45:81/clesws` (cùng host frontend). Lệnh điều khiển đi HTTP, trạng thái/đo lường/cảnh báo thiết bị về qua WS. Chi tiết frame ở `11-api-probe-and-security.md` mục 2.
 
 ```

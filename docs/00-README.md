@@ -39,6 +39,12 @@ Bộ tài liệu này mô tả cách tổ chức dữ liệu của hệ thống,
 |---|---|
 | `datasheets/00-INDEX.md` | Chỉ mục datasheet Fonda trên Google Drive (DS-01…DS-06): link, tóm tắt, 4 phương án truyền thông, bảng thông số theo model LCU/RTU |
 
+## Tài liệu tham khảo bên ngoài (chưa kiểm)
+
+| File | Nội dung |
+|---|---|
+| `SmartLightingPlatform_TLTK/` | Bộ ghi chép Obsidian (00–05) từ một lần khảo sát SLCP ngày 2026-11-19. Phần **chắc chắn hoặc có cơ sở** đã được gộp vào doc 02, 06, 08, 10, 11 (ghi rõ nguồn "TLTK" và mức tin cậy). Phần **không** gộp: file 05 (mạch LCU là *thiết kế đề xuất*, không phải mạch thật của Fonda), nhận định "LCU16LD là RF Mesh" (datasheet DS-02 không nói), danh sách header "bắt buộc" (doc 08 đã test: chỉ cần `authorization`). Lưu ý: file 02/03 của bộ này có chứa `projectId`/tài khoản thật |
+
 ## Cách tạo ra
 
 Dùng Claude điều khiển trình duyệt (phiên đăng nhập của người dùng), duyệt các màn hình, trích 2.320 endpoint từ webpack module của frontend, và **gọi trực tiếp nhóm API đọc** để lấy cấu trúc field (chỉ giữ tên trường + kiểu, không giữ giá trị thật của người/thiết bị). File 00–07, 11 và 12 không thực hiện thao tác ghi/sửa/xoá/điều khiển nào. File 08 có gửi lệnh dimming thật xuống một đèn, do người dùng tự thực hiện và đồng ý. File 09 dùng nguồn công khai. File 10 tổng hợp từ test thủ công của người dùng trên thiết bị thật. File 13 là doc đề xuất thiết kế, dựa trên doc 01–12, datasheet và nguồn công khai về chuẩn ngành; không thao tác trên hệ thống Fonda.

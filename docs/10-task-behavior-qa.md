@@ -117,6 +117,21 @@ Bảng lịch sử chạy nằm ở **mục 9**.
 - **Giả thuyết 🔶:** import chạy bất đồng bộ (`isImportRun`), có thể lỗi im lặng.
 ---
  
+### Ghi chú API: tạo/xoá Task template (bổ sung từ `SmartLightingPlatform_TLTK/03`, đã chạy thử 2026-11-19)
+
+- **Chắc chắn (đã test tạo rồi xoá):** `POST /v1.0/task/save` trả `data = taskId` mới; `POST /v1.0/task/delete` body `{projectId, taskId, taskType}` trả `data: null`.
+- Body `task/save` đã dùng (Dim 55 % lúc 12:00):
+  ```json
+  { "projectId": "<projectId>", "taskType": 2, "taskName": "<tên>", "executeModel": 1, "executeType": 1,
+    "operation": 5, "dimValue": 55, "executeHour": 12, "executeMinute": 0,
+    "loopType": 1, "loopTime": "127", "lux": 1,
+    "sunExecuteWay": 0, "sunExecuteOffset": 0, "sunDimValue": 0 }
+  ```
+- **Suy luận (cần kiểm):**
+  - `loopTime` là mặt nạ bit 7 ngày (`127` = 1+2+…+64 = cả tuần). Chưa biết bit 1 là Thứ 2 hay Chủ nhật → tạo task chỉ chọn 1 ngày rồi đọc lại `task/page`.
+  - `taskType: 2` = LCU Self-Running Task; `operation: 5` = Dimming. Kiểm bằng từ điển `dictionary/queryDictionaryByKey/10` (Task Type) và `/5` (Operation Type) — doc 05.
+  - `executeType: 1` = chạy theo giờ cố định (khác sunrise/sunset); `sunExecuteWay/Offset` dùng khi chạy theo mặt trời.
+
 ## 3. Distribute & trạng thái group
  
 ### TC-DIS-01 — Không distribute thì task không chạy

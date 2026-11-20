@@ -45,6 +45,24 @@ Frontend là Vue + Webpack. Thay vì bắt từng request, lấy thẳng **regis
 
 Các field này là **nguồn dữ liệu realtime** quan trọng khi tự xây CMS: `lampControl/data` chính là bản ghi đo điện của đèn; `push/alarm` là luồng cảnh báo.
 
+**Ý nghĩa & đơn vị field** (bổ sung từ `SmartLightingPlatform_TLTK/04`, quan sát 2026-11-19; mục nào ghi *Suy luận* cần đối chiếu lại với màn hình GIS/đồng hồ đo):
+
+| Field | Ý nghĩa | Tin cậy |
+|---|---|---|
+| `lampStatus[].num` | Kênh đèn (1 = tay đèn 1) | Chắc chắn (khớp `num` của lệnh `unicast/dimming`, doc 08) |
+| `lampStatus[].dimming` | Mức sáng 0–100 % | Chắc chắn |
+| `lampStatus[].ls` | Trạng thái đèn: `1` = sáng, `2` = tắt | Suy luận — mới thấy giá trị `1`; cần bắt frame lúc tắt đèn để xác nhận `2` |
+| `lcuData[].voltage` / `current` / `power` / `powerFactor` | V / A / W / 0..1 | Chắc chắn về ý nghĩa (giá trị mẫu ~230 V); đơn vị A, W là Suy luận theo độ lớn |
+| `lcuData[].energy` | Điện năng cộng dồn, đơn vị **Wh** | Suy luận — cần so với số kWh trên màn Reports/Energy |
+| `lcuData[].life` | Tổng thời gian chạy, đơn vị **giây** | Suy luận — mẫu 15.777.765 ≈ 183 ngày, hợp lý |
+| `lcuData[].angle` | Góc nghiêng cột (độ), cảm biến tilt | Chắc chắn về ý nghĩa (khớp TC-GIS-04 doc 10); đơn vị Suy luận |
+| `lcuData[].devicent` | **Field mới, trước chưa ghi.** Có thể là nhiệt độ bên trong LCU (°C) | Suy luận — chỉ dựa tên field + giá trị mẫu 32,58 |
+| `lcuData[].leakageCurrent` | Dòng rò, có thể đơn vị mA | Suy luận |
+| `rtu/status.signals` | Cường độ tín hiệu (mẫu: 90) | Suy luận (thang đo chưa rõ) |
+| `push/alarm.alarmRealValue` | **Chuỗi JSON** (phải parse lần 2) chứa số đo lúc báo: `p, u, i, pf, lv, lc, te, angle, time` | Chắc chắn về dạng chuỗi JSON; ý nghĩa `p`=công suất, `u`=áp, `i`=dòng, `pf`=hệ số công suất là Suy luận, `te`/`lv`/`lc` Chưa biết |
+| `push/alarm` có thêm `deviceTypeValue, color, errorBelong` (vd `LAMP1`) | `errorBelong` = lỗi thuộc kênh đèn nào | Chắc chắn (tên field); ý nghĩa Suy luận |
+| Envelope frame | `{code, type, message, data:{cmd, ctrl, projectId, data}}`, `message` tiếng Trung `操作成功!` | Chắc chắn |
+
 ---
 
 ## 3. Luồng đăng nhập (lấp mục 3 của doc 08)

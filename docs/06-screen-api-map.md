@@ -176,7 +176,7 @@ Khi mở mỗi màn hình, frontend gọi các API sau (ghi nhận thực tế k
 - `POST /v1.0/task/queryTaskGroupList`
 
 ## `#/workorderStatistics/index`
-- `POST /v1.0/abnormalRecord/queryAbnormalRecordPage`
+- `POST /v1.0/abnormalRecord/queryAbnormalRecordPage` — ⚠️ trả **500 Internal Server Error** khi mở Alarms → Event Management (quan sát 2026-11-19, nguồn `SmartLightingPlatform_TLTK/00`); lỗi phía server Fonda
 - `POST /v1.0/workOrderStatistics/getStatisticsMap`
 - `POST /v1.0/workOrderStatistics/getTodayWorkOrderData`
 - `POST /v1.0/workOrderStatistics/getWorkOrderSourceMap`
