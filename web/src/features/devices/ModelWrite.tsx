@@ -6,6 +6,7 @@ import type { DictItem, PoleType } from '../../adapters/fonda/mappers';
 import type { DeviceModel, DeviceType } from '../../core/types';
 import ConfirmWrite from '../common/ConfirmWrite';
 import { configErrors } from './configRules';
+import { requiredErrors, visibleFields } from './templateSchema';
 import { allowedOptions, enumFieldsOf, enumOptions, fieldItems, FIXED_FUNCTIONS, FUNCTION_HINTS, FUNCTION_TYPES, storeValue } from './enums';
 
 // Thêm / sửa / xoá template (model) mọi loại và loại cột (PoleType) — GHI THẬT, chỉ bản preview. Payload: docs/15 §7 (bắt 2026-11-20). Luôn qua hộp xác nhận.
@@ -24,6 +25,8 @@ function TemplateFields({ typeValue, cfg, setCfg, ctx, proto, setProto }: { type
   const set = (patch: Record<string, unknown>) => setCfg(JSON.stringify({ ...c, ...patch }, null, 2));
   const row = (label: string, el: JSX.Element) => <span key={label} style={{ display: 'contents' }}><span className="sub" style={{ margin: 0 }}>{label}</span>{el}</span>;
   const rows: JSX.Element[] = [];
+  const vis = visibleFields({ type: typeValue, protocol: proto?.value, lcuCtype: c.lcuCtype });
+  const star = (key: string) => (vis.find(f => f.key === key)?.required ? ' *' : '');
   if (ctx.protoOpts.length && FUNCTION_TYPES.includes(typeValue)) {
     rows.push(row('Function (protocol)', <select value={proto?.id ?? ''} onChange={e => { const p = ctx.protoOpts.find(x => x.id === e.target.value); if (!p) return; setProto(p);
       const fix: Record<string, unknown> = {}; for (const f of enumFieldsOf(typeValue)) { const ok = allowedOptions(typeValue, p.value, enumOptions(f, fieldItems(f, ctx.dicts))); if (ok.length && !ok.some(o => o.value === String(c![f.key] ?? ''))) fix[f.key] = storeValue(ok[0].value); }
@@ -34,13 +37,13 @@ function TemplateFields({ typeValue, cfg, setCfg, ctx, proto, setProto }: { type
   }
   for (const f of enumFieldsOf(typeValue)) {
     const items = fieldItems(f, ctx.dicts); const opts = allowedOptions(typeValue, proto?.value, enumOptions(f, items)); const cur = c[f.key] == null ? '' : String(c[f.key]);
-    rows.push(row(f.label, <select value={cur} onChange={e => set({ [f.key]: storeValue(e.target.value) })}>
+    rows.push(row(f.label + star(f.key), <select value={cur} onChange={e => set({ [f.key]: storeValue(e.target.value) })}>
       {!opts.some(o => o.value === cur) && <option value={cur}>{cur || '(chưa chọn)'}</option>}
       {opts.map(o => <option key={o.value} value={o.value}>{f.byName ? o.name : `${o.value} — ${o.name}`}</option>)}</select>));
   }
   if (typeValue === 6) {
     const id = String(c.poleTypeId ?? '');
-    rows.push(row('Pole type (loại cột)', <select value={id} onChange={e => { const t = ctx.poleTypes.find(x => x.id === e.target.value); set({ poleTypeId: e.target.value, ...(t?.value != null ? { poleType: t.value } : {}) }); }}>
+    rows.push(row('Pole type (loại cột)' + star('poleTypeId'), <select value={id} onChange={e => { const t = ctx.poleTypes.find(x => x.id === e.target.value); set({ poleTypeId: e.target.value, ...(t?.value != null ? { poleType: t.value } : {}) }); }}>
       {!ctx.poleTypes.some(t => t.id === id) && <option value={id}>{id ? `(không rõ ${id.slice(0, 8)}…)` : '(chưa chọn)'}</option>}
       {ctx.poleTypes.map(t => <option key={t.id} value={t.id}>{t.name}{t.systemConfig ? ' · hệ thống' : ''}</option>)}</select>));
   }
@@ -51,10 +54,25 @@ function TemplateFields({ typeValue, cfg, setCfg, ctx, proto, setProto }: { type
         return <label key={n} title={fixed ? 'Luôn bật (Fonda khoá chức năng 1–4)' : supported ? '' : 'Giao thức này không hỗ trợ'} style={{ fontSize: 13, opacity: supported ? 1 : .5 }}>
           <input type="checkbox" checked={fixed || cur.includes(n)} disabled={fixed || !supported} onChange={e => set({ functionList: (e.target.checked ? [...cur, n] : cur.filter(x => x !== n)).sort((a, b) => a - b) })} /> #{n}{FUNCTION_HINTS[n] ? ` (${FUNCTION_HINTS[n]})` : ''}</label>; })}</span>));
   }
+  // Thông số khác của loại (ô nhập tự do): chỉ ô ĐANG HIỆN theo loại/giao thức trong popup Fonda; dấu * = bắt buộc
+  const handled = new Set([...enumFieldsOf(typeValue).map(f => f.key), 'poleTypeId']);
+  for (const f of vis) {
+    if (handled.has(f.key)) continue;
+    const textual = STRING_KEYS.includes(f.key), cur = c[f.key] == null ? '' : String(c[f.key]);
+    rows.push(row(f.label + (f.required ? ' *' : ''), <input style={{ width: '100%' }} value={cur} placeholder={f.hint ?? ''} onChange={e => set({ [f.key]: textual ? e.target.value : storeValue(e.target.value) })} />));
+  }
   if (!rows.length) return null;
   return <div style={{ display: 'grid', gridTemplateColumns: 'auto 1fr', gap: '8px 10px', alignItems: 'center', marginTop: 8 }}>{rows}</div>;
 }
 
+/** Kiểm tra như form Fonda: khoảng giá trị + trường bắt buộc đang hiện + đã chọn giao thức (loại có giao thức). Có thể BỎ QUA bằng ô tick (gửi nguyên JSON). */
+function checks(typeValue: number, name: string, c: Record<string, unknown>, proto: ModelProto | undefined, ctx: Ctx): string[] {
+  const errs = [...configErrors(typeValue, name, c), ...requiredErrors({ type: typeValue, protocol: proto?.value, lcuCtype: c.lcuCtype }, c)];
+  if (ctx.protoOpts.length && FUNCTION_TYPES.includes(typeValue) && !(proto && proto.value >= 0)) errs.push('Giao thức (Function): bắt buộc');
+  return errs;
+}
+const SKIP_LABEL = 'Bỏ qua kiểm tra của form — gửi nguyên JSON (để thử vượt các ràng buộc, kể cả khoá của giao diện)';
+const STRING_KEYS = ['productId', 'bandName', 'hnVersion'];
 const parseCfg = (t: string): Record<string, unknown> | null => { try { const v = JSON.parse(t); return v && typeof v === 'object' && !Array.isArray(v) ? v : null; } catch { return null; } };
 const isBuiltIn = (p?: ModelProto) => (p?.systemConfig ?? 0) > 0;   // model dựng sẵn của hệ thống: không sửa/xoá
 
@@ -62,12 +80,12 @@ const isBuiltIn = (p?: ModelProto) => (p?.systemConfig ?? 0) > 0;   // model d�
 export function ModelToolbar({ pid, type, models, sel, protos, ctx, onChanged }: { pid: string; type?: DeviceType; models: DeviceModel[]; sel?: DeviceModel; protos: Map<string, ModelProto>; ctx: Ctx; onChanged: () => void }) {
   const base = sel ?? models[0], baseProto0 = base ? protos.get(base.id) : undefined, [protoSel, setProtoSel] = useState<ModelProto | undefined>(undefined), baseProto = protoSel ?? baseProto0;
   const [open, setOpen] = useState(false), [name, setName] = useState(''), [remark, setRemark] = useState(''), [cfg, setCfg] = useState(''), [msg, setMsg] = useState('');
-  const [op, setOp] = useState<Op | null>(null);
+  const [op, setOp] = useState<Op | null>(null), [skip, setSkip] = useState(false);
   const typeValue = type?.value ?? NaN, ready = !!type && Number.isFinite(typeValue);
   function start() { if (!base) return; setMsg(''); setName(`${base.name} (bản sao)`); setRemark(baseProto0?.remark ?? ''); setProtoSel(undefined); setCfg(JSON.stringify(base.config, null, 2)); setOpen(true); }
   function ask() {
     const c = parseCfg(cfg), e = modelNameError(name, c); if (e || !c || !type || !base) { setMsg(e ?? 'deviceConfig không hợp lệ'); return; }
-    const ce = configErrors(typeValue, name, c); if (ce.length) { setMsg(ce.join('\n')); return; }
+    const ce = skip ? [] : checks(typeValue, name, c, baseProto, ctx); if (ce.length) { setMsg(ce.join('\n')); return; }
     const body = modelCloneBody({ typeId: type.id, typeValue, config: c, protocol: toProto(baseProto) }, name.trim(), pid, remark.trim());
     setOp({ title: `Thêm template "${name.trim()}"`, summary: `Mẫu gốc "${base.name}" (loại ${type.name}). Server tự giữ lại các khoá deviceConfig thuộc loại này.`, method: 'POST', path: 'deviceModel/saveNew', body, run: () => sendModelCreate(pid, body) });
   }
@@ -86,6 +104,7 @@ export function ModelToolbar({ pid, type, models, sel, protos, ctx, onChanged }:
         {type && <TemplateFields typeValue={typeValue} cfg={cfg} setCfg={setCfg} ctx={ctx} proto={baseProto} setProto={setProtoSel} />}
         <details style={{ marginTop: 8 }}><summary className="sub" style={{ cursor: 'pointer' }}>deviceConfig (JSON — sửa tay nếu cần)</summary>
           <textarea value={cfg} onChange={e => setCfg(e.target.value)} style={{ width: '100%', height: 220, fontFamily: 'monospace', fontSize: 12 }} /></details>
+        <label className="sub" style={{ display: 'block', marginTop: 10 }}><input type="checkbox" checked={skip} onChange={e => setSkip(e.target.checked)} /> {SKIP_LABEL}</label>
         {msg && <div className="err" style={{ marginTop: 8, whiteSpace: 'pre-line' }}>{msg}</div>}
         <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', marginTop: 12 }}><button onClick={ask}>Xem trước & xác nhận…</button><button className="b" onClick={() => setOpen(false)}>Đóng</button></div>
       </div>
@@ -101,7 +120,7 @@ export function ModelToolbar({ pid, type, models, sel, protos, ctx, onChanged }:
 
 /** Trong drawer: chỉ SỬA template đang chọn (tên, ghi chú, thông số). */
 export function ModelEditor({ pid, model, type, proto: proto0, ctx, onChanged }: { pid: string; model: DeviceModel; type?: DeviceType; proto?: ModelProto; ctx: Ctx; onChanged: () => void }) {
-  const [protoSel, setProtoSel] = useState<ModelProto | undefined>(undefined);
+  const [protoSel, setProtoSel] = useState<ModelProto | undefined>(undefined), [skip, setSkip] = useState(false);
   const proto = protoSel ?? proto0;
   const [name, setName] = useState(''), [remark, setRemark] = useState(''), [cfg, setCfg] = useState(''), [msg, setMsg] = useState('');
   const [op, setOp] = useState<Op | null>(null);
@@ -109,7 +128,7 @@ export function ModelEditor({ pid, model, type, proto: proto0, ctx, onChanged }:
   useEffect(() => { setName(model.name); setRemark(proto0?.remark ?? ''); setCfg(JSON.stringify(model.config, null, 2)); setMsg(''); setProtoSel(undefined); }, [model.id, model.name, model.config, proto0?.remark]);
   function ask() {
     setMsg(''); const c = parseCfg(cfg), e = modelNameError(name, c); if (e || !c || !type) { setMsg(e ?? 'deviceConfig không hợp lệ'); return; }
-    const ce = configErrors(typeValue, name, c); if (ce.length) { setMsg(ce.join('\n')); return; }
+    const ce = skip ? [] : checks(typeValue, name, c, proto, ctx); if (ce.length) { setMsg(ce.join('\n')); return; }
     const body = modelUpdateBody({ id: model.id, typeId: type.id, typeValue, typeName: type.name, name: name.trim(), remark: remark.trim(), config: c, protocol: toProto(proto) }, pid);
     setOp({ title: `Sửa template "${model.name}"`, summary: 'Gửi lại toàn bộ model với phần đã sửa (tên, ghi chú, deviceConfig).', method: 'POST', path: 'deviceModel/updateNew', body, run: () => sendModelUpdate(pid, body) });
   }
@@ -121,6 +140,7 @@ export function ModelEditor({ pid, model, type, proto: proto0, ctx, onChanged }:
     {!builtIn && type && <TemplateFields typeValue={typeValue} cfg={cfg} setCfg={setCfg} ctx={ctx} proto={proto} setProto={setProtoSel} />}
     <details style={{ marginTop: 8 }}><summary className="sub" style={{ cursor: 'pointer' }}>deviceConfig (JSON — sửa tay nếu cần)</summary>
       <textarea value={cfg} disabled={builtIn} onChange={e => setCfg(e.target.value)} style={{ width: '100%', height: 220, fontFamily: 'monospace', fontSize: 12 }} /></details>
+    <label className="sub" style={{ display: 'block', marginTop: 10 }}><input type="checkbox" checked={skip} onChange={e => setSkip(e.target.checked)} /> {SKIP_LABEL}</label>
     <div style={{ marginTop: 10 }}><button disabled={!ready || builtIn} onClick={ask}>Lưu thay đổi…</button></div>
     {msg && <div className="err" style={{ marginTop: 8, whiteSpace: 'pre-line' }}>{msg}</div>}
     {op && <ConfirmWrite {...op} onConfirm={async () => { await op.run(); }} onClose={changed => { setOp(null); if (changed) onChanged(); }} />}
