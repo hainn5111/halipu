@@ -13,6 +13,12 @@ import { show } from '../common/show';
 const Writes = WRITE_ENABLED ? lazy(() => import('./ModelWrite').then(m => ({ default: m.ModelEditor }))) : null;
 const Toolbar = WRITE_ENABLED ? lazy(() => import('./ModelWrite').then(m => ({ default: m.ModelToolbar }))) : null;
 const PtWrites = WRITE_ENABLED ? lazy(() => import('./ModelWrite').then(m => ({ default: m.PoleTypeActions }))) : null;
+// Cache đọc 60 giây (chuyển qua lại giữa 3 tab không phải tải lại); xoá sau khi ghi.
+const memo = new Map<string, { t: number; p: Promise<unknown> }>();
+function memoCall<T>(key: string, fn: () => Promise<T>): Promise<T> {
+  const hit = memo.get(key); if (hit && Date.now() - hit.t < 60_000) return hit.p as Promise<T>;
+  const p = fn(); memo.set(key, { t: Date.now(), p }); p.catch(() => memo.delete(key)); return p;
+}
 const POLE_TYPES = '__poleTypes', ARM_TYPES = '__armTypes';
 /** Ba màn hình của nhóm "Mẫu thiết bị": template theo loại thiết bị / loại cột (PoleType) / kiểu tay đèn (poleArmType). */
 type Mode = 'models' | 'poletype' | 'arm';
@@ -37,24 +43,29 @@ function ModelsView({ mode }: { mode: Mode }) {
 
   useEffect(() => {
     let live = true;
+    if (reload > 0) memo.clear();   // sau khi ghi: bỏ cache để đọc lại
     (async () => {
       try {
-        const ts: DeviceType[] = [], ms: DeviceModel[] = [];
-        const ps = await projectIds();
-        const pts: PoleType[] = [];
-        for (const pid of ps) {
-          const tt = await listDeviceTypes(pid), mm = await listModels(pid);
-          ts.push(...tt); ms.push(...mm);
-          try { pts.push(...await listPoleTypes(pid)); } catch (e) { setPtErr((e as Error).message); }
-          if (pid === ps[0]) {   // bảng enum của các trường deviceConfig (docs/15 §4)
-            const dd: Record<number, DictItem[]> = {};
-            for (const key of DICT_KEYS) { try { dd[key] = await listDictionary(pid, key); } catch (e) { if (key === 55) setArmErr((e as Error).message); } }
-            setDicts(dd);
-          }
+        const ps = await memoCall('pids', projectIds), p0 = ps[0] ?? '';
+        if (live) setPid(p0);
+        // Chỉ nạp cái màn hình cần, các yêu cầu chạy SONG SONG và hiện dần (không chờ tất cả)
+        const wantDicts = mode === 'models' ? DICT_KEYS : mode === 'arm' ? [55] : [];
+        const jobs: Array<Promise<void>> = [];
+        const ts: DeviceType[] = [], ms: DeviceModel[] = [], pts: PoleType[] = [];
+        for (const id of ps) {
+          jobs.push(memoCall(`types:${id}`, () => listDeviceTypes(id)).then(r => { ts.push(...r); }));
+          jobs.push(memoCall(`models:${id}`, () => listModels(id)).then(r => { ms.push(...r); }));
+          if (mode !== 'arm') jobs.push(memoCall(`poletypes:${id}`, () => listPoleTypes(id)).then(r => { pts.push(...r); }).catch(e => { if (live) setPtErr((e as Error).message); }));
         }
+        if (p0) {
+          const dd: Record<number, DictItem[]> = {};
+          for (const key of wantDicts) jobs.push(memoCall(`dict:${p0}:${key}`, () => listDictionary(p0, key)).then(r => { dd[key] = r; }).catch(e => { if (key === 55 && live) setArmErr((e as Error).message); }));
+          await Promise.all(jobs);
+          if (live) setDicts(dd);
+        } else await Promise.all(jobs);
         if (!live) return;
-        setPoleTypes(pts);
-        setTypes(ts); setModels(ms); setTypeId(t => t ?? (mode === 'models' ? ms[0]?.typeId : undefined) ?? null); setPid(ps[0] ?? '');
+        setPoleTypes(pts); setTypes(ts); setModels(ms);
+        setTypeId(t => t ?? (mode === 'models' ? ms[0]?.typeId : undefined) ?? null);
       } catch (e) { if (live) setErr((e as Error).message); } finally { if (live) setBusy(false); }
     })();
     return () => { live = false; };
