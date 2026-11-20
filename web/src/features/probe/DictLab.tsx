@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { projectIds, rawDictionary, rawDictionaryByName, rawDictionaryPage, sendDictionary } from '../../adapters/fonda';
+import { deleteDictionary, projectDictRecords, projectIds, rawDictionary, rawDictionaryByName, rawDictionaryPage, sendDictionary } from '../../adapters/fonda';
 import { WRITE_ENABLED } from '../../core/flags';
 import ConfirmWrite from '../common/ConfirmWrite';
 import { buildDictBody, type DictShape, dictBodyError, findInDicts, nextDictValue } from './dictLabUtil';
@@ -14,7 +14,7 @@ export default function DictLab() {
   const [srcIdx, setSrcIdx] = useState(0), [name, setName] = useState('Test arm'), [text, setText] = useState('');
   const [op, setOp] = useState<'save' | 'update'>('save');
   const [confirm, setConfirm] = useState<Rec | null>(null), [after, setAfter] = useState<Rec[] | null>(null);
-  const [page, setPage] = useState<string>(''), [keepId, setKeepId] = useState(true), [keepStair, setKeepStair] = useState(false), [found, setFound] = useState(''), [shape, setShape] = useState<DictShape>('item');
+  const [page, setPage] = useState<string>(''), [keepId, setKeepId] = useState(true), [keepStair, setKeepStair] = useState(false), [found, setFound] = useState(''), [shape, setShape] = useState<DictShape>('item'), [mine, setMine] = useState<Rec[]>([]), [delRec, setDelRec] = useState<Rec | null>(null);
 
   async function load(k = key) {
     setBusy(true); setErr(''); setAfter(null);
@@ -27,6 +27,7 @@ export default function DictLab() {
   const parsed = useMemo(() => (text ? dictBodyError(text) : null), [text]);
   const fill = () => { if (items[srcIdx]) setText(JSON.stringify(buildDictBody(shape, items[srcIdx], { name, value: next, dictKey: key.trim(), keepDictId: keepId, keepStairId: keepStair }), null, 2)); };
 
+  const loadMine = async () => { try { setMine(await projectDictRecords(pid, key.trim())); } catch (e) { setErr((e as Error).message); } };
   if (!WRITE_ENABLED) return <div className="lcus"><div className="listwrap"><p className="sub">Công cụ này chỉ có ở bản preview.</p></div></div>;
   return (
     <div className="lcus"><div className="listwrap" style={{ maxWidth: 920 }}>
@@ -64,9 +65,17 @@ export default function DictLab() {
           }}>Tìm "{name}" trong mọi dictionary</button>{found && <span className="sub" style={{ margin: 0 }}>{found}</span>}</div>
         <div style={{ marginTop: 10 }}><button disabled={!parsed?.ok} onClick={() => parsed?.ok && setConfirm(parsed.body)}>Gửi thử lên server…</button></div>
       </>)}
+      <h3 style={{ marginTop: 16 }}>Bản ghi do dự án tạo (queryDictionaryPage, key {key})</h3>
+      <p className="sub">Mục gửi bằng <code>dictionary/save</code> nằm ở đây (có <code>dictValue</code> nhưng chưa có tên <code>dsName</code>, nên <code>queryDictionaryByKey</code> không liệt kê). Bấm “Nạp để cập nhật tên” để sinh body <b>dictionary/update</b> gắn tên; “Xoá…” dùng <code>dictionary/deleteById</code> (chỉ cho bản ghi ở đây, không đụng bản dựng sẵn).</p>
+      <button className="b" disabled={!pid} onClick={() => void loadMine()}>Đọc danh sách</button>
+      {mine.length > 0 && <table style={{ marginTop: 8 }}><thead><tr><th>dictValue</th><th>dictName</th><th>dictId</th><th>Tạo lúc</th><th></th></tr></thead>
+        <tbody>{mine.map((r, i) => <tr key={i}><td>{show(r.dictValue)}</td><td>{show(r.dictName)}</td><td>{show(r.dictId).slice(0, 10)}…</td><td>{show(r.createTime)}</td>
+          <td><button className="b" onClick={() => { setOp('update'); setText(JSON.stringify({ ...r, dsName: name, dictStairRemark: '' }, null, 2)); }}>Nạp để cập nhật tên</button> <button className="b" onClick={() => setDelRec(r)}>Xoá…</button></td></tr>)}</tbody></table>}
+      {delRec && <ConfirmWrite title="Xoá bản ghi dictionary do dự án tạo" summary={`dictKey ${show(delRec.dictKey)} · dictValue ${show(delRec.dictValue)} · dictId ${show(delRec.dictId)}. Không hoàn tác được.`} method="GET" path={`dictionary/deleteById/${show(delRec.dictId)}`} body={{}} danger
+        onConfirm={async () => { await deleteDictionary(pid, show(delRec.dictId)); await loadMine(); const r = await rawDictionary(pid, key); setItems(Array.isArray(r) ? r : []); }} onClose={() => setDelRec(null)} />}
       {after && <div style={{ marginTop: 14 }}><h3>Đọc lại sau khi gửi ({after.length} mục)</h3><p className="sub">{after.map(r => `${show(r.dictValue)}=${show(r.dsName ?? '')}`).join(' · ')}</p></div>}
       {confirm && <ConfirmWrite title={`Thử ${op === 'save' ? 'thêm' : 'sửa'} giá trị dictionary ${key}`} summary="Gửi nguyên body bên dưới. Server từ chối thì lỗi hiện ở đây; nhận thì bên dưới sẽ đọc lại dictionary để xem mục mới." method="POST" path={`dictionary/${op}`} body={confirm}
-        onConfirm={async () => { await sendDictionary(pid, op, confirm); const r = await rawDictionary(pid, key); setAfter(Array.isArray(r) ? r : []); setItems(Array.isArray(r) ? r : []); }} onClose={() => setConfirm(null)} />}
+        onConfirm={async () => { await sendDictionary(pid, op, confirm); await loadMine(); const r = await rawDictionary(pid, key); setAfter(Array.isArray(r) ? r : []); setItems(Array.isArray(r) ? r : []); }} onClose={() => setConfirm(null)} />}
     </div></div>
   );
 }

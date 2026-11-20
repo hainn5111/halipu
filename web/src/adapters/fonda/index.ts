@@ -132,6 +132,14 @@ export async function listDictionary(projectId: string, key: number | string): P
 export const rawDictionary = (projectId: string, key: number | string) => call<Array<Record<string, unknown>>>('GET', `dictionary/queryDictionaryByKey/${key}`, { projectId });
 /** THỬ NGHIỆM ghi dictionary (body chưa bắt từ web gốc) — chỉ dictionary/save | update, qua công cụ thử ở nhóm preview. */
 export const sendDictionary = (projectId: string, op: 'save' | 'update', body: Record<string, unknown>) => { assertWrite(); return call('POST', `dictionary/${op}`, { projectId, body }); };
+/** Bản ghi dictionary do DỰ ÁN tạo (queryDictionaryPage, lọc theo dictKey) — bản dựng sẵn của hệ thống không nằm ở đây. */
+export async function projectDictRecords(projectId: string, key: string): Promise<Array<Record<string, unknown>>> {
+  const d = await call<{ records?: Array<Record<string, unknown>> }>('POST', 'dictionary/queryDictionaryPage', { projectId, body: { current: 1, size: 100, dictKey: key } });
+  return d.records ?? [];
+}
+/** Xoá một bản ghi dictionary theo dictId (GET dictionary/deleteById/{id}, theo danh mục API; chưa bắt từ web gốc). Chỉ dùng cho bản ghi từ projectDictRecords. */
+export const deleteDictionary = (projectId: string, dictId: string) => { assertWrite(); return call('GET', `dictionary/deleteById/${encodeURIComponent(dictId)}`, { projectId }); };
+
 /** Đọc thô dictionary/queryDictionaryByName/{name} (công cụ thử). */
 export const rawDictionaryByName = (projectId: string, name: string) => call('GET', `dictionary/queryDictionaryByName/${encodeURIComponent(name)}`, { projectId });
 /** Đọc thô dictionary/queryDictionaryPage (đoán body) để xem hình dạng bản ghi. */
