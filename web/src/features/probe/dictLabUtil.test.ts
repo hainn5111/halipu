@@ -16,7 +16,7 @@ describe('dictLab', () => {
     const k = cloneDictBody(r2, { name: 'T', value: 3, keepDictId: true }); expect(k.dictId).toBe('D1'); expect(k).not.toHaveProperty('dictStairId');
     expect(cloneDictBody(r2, { name: 'T', value: 3, keepStairId: true }).dictStairId).toBe('S1');
   });
-  it('findInDicts', () => { expect(findInDicts({ '55': [{ dsName: 'Test arm' }], '9': [{ dsName: 'x' }] }, 'test')).toEqual(['55']); expect(findInDicts({}, '')).toEqual([]); });
+  it('findInDicts', () => { expect(findInDicts({ '55': [{ dsName: 'Test arm' }], '9': [{ dsName: 'x' }] }, 'test')).toEqual(['55']); expect(findInDicts({}, '')).toEqual([]); expect(findInDicts({ '7': [{ dsName: 'a', dictionarySecond: [{ dsName: 'Test arm' }] }] }, 'test arm')).toEqual(['7']); });
   it('dictBodyError', () => {
     expect(dictBodyError('x').ok).toBe(false); expect(dictBodyError('[]').ok).toBe(false);
     expect(dictBodyError('{"dictValue":1}').ok).toBe(false); expect(dictBodyError('{"dsName":"a","dictValue":1}').ok).toBe(true);

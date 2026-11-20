@@ -5,7 +5,8 @@ const DROP = ['dictId', 'createTime', 'createUserId', 'updateTime', 'updateUserI
 /** Các key dictionary (1..max) có chứa `needle` trong dsName/dictName — để tìm xem mục vừa thêm nằm ở đâu. */
 export function findInDicts(all: Record<string, Rec[]>, needle: string): string[] {
   const n = needle.trim().toLowerCase(); if (!n) return [];
-  return Object.entries(all).filter(([, items]) => items.some(r => `${String(r.dsName ?? '')} ${String(r.dictName ?? '')}`.toLowerCase().includes(n))).map(([k]) => k);
+  const has = (r: Rec): boolean => `${String(r.dsName ?? '')} ${String(r.dictName ?? '')}`.toLowerCase().includes(n) || (Array.isArray(r.dictionarySecond) && (r.dictionarySecond as Rec[]).some(c => !!c && typeof c === 'object' && has(c)));   // cả mục con (dictionarySecond)
+  return Object.entries(all).filter(([, items]) => items.some(has)).map(([k]) => k);
 }
 
 /** Giá trị số kế tiếp (lớn nhất + 1) trong các bản ghi thô; không có số thì 1. */

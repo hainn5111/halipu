@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { projectIds, rawDictionary, rawDictionaryPage, sendDictionary } from '../../adapters/fonda';
+import { projectIds, rawDictionary, rawDictionaryByName, rawDictionaryPage, sendDictionary } from '../../adapters/fonda';
 import { WRITE_ENABLED } from '../../core/flags';
 import ConfirmWrite from '../common/ConfirmWrite';
 import { cloneDictBody, dictBodyError, findInDicts, nextDictValue } from './dictLabUtil';
@@ -34,7 +34,8 @@ export default function DictLab() {
       <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
         <label className="sub" style={{ margin: 0 }}>Dictionary key <input style={{ width: 70 }} value={key} onChange={e => setKey(e.target.value)} /></label>
         <button className="b" disabled={busy} onClick={() => void load()}>Đọc</button>
-        <button className="b" disabled={busy || !pid} onClick={async () => { setPage('đang đọc…'); try { setPage(JSON.stringify(await rawDictionaryPage(pid, { current: 1, size: 5 }), null, 2)); } catch (e) { setPage('Lỗi: ' + (e as Error).message); } }}>Đọc thử queryDictionaryPage</button>
+        <button className="b" disabled={busy || !pid} onClick={async () => { setPage('đang đọc…'); try { setPage(JSON.stringify(await rawDictionaryPage(pid, { current: 1, size: 50, dictKey: key.trim() }), null, 2)); } catch (e) { setPage('Lỗi: ' + (e as Error).message); } }}>Đọc thử queryDictionaryPage (dictKey)</button>
+        <button className="b" disabled={busy || !pid || !name.trim()} onClick={async () => { setPage('đang đọc…'); try { setPage(JSON.stringify(await rawDictionaryByName(pid, name.trim()), null, 2)); } catch (e) { setPage('Lỗi: ' + (e as Error).message); } }}>Đọc thử queryDictionaryByName (tên mới)</button>
       </div>
       {err && <div className="err">{err}</div>}
       {page && <pre style={{ maxHeight: 200, overflow: 'auto', fontSize: 12 }}>{page}</pre>}
@@ -52,9 +53,13 @@ export default function DictLab() {
         <textarea value={text} onChange={e => setText(e.target.value)} placeholder="Chọn một dòng làm mẫu rồi bấm “Nạp body”, hoặc dán JSON body." style={{ width: '100%', height: 240, fontFamily: 'monospace', fontSize: 12 }} />
         {parsed && !parsed.ok && <div className="err">{parsed.reason}</div>}
         <div style={{ marginTop: 10, display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}><button className="b" disabled={busy || !pid || !name.trim()} onClick={async () => {
-            setFound('đang quét key 1..200…'); const all: Record<string, Rec[]> = {};
-            for (let k = 1; k <= 200; k++) { try { const r = await rawDictionary(pid, k); if (Array.isArray(r) && r.length) all[String(k)] = r; } catch { /* bỏ qua */ } }
-            const hit = findInDicts(all, name); setFound(hit.length ? `"${name}" có ở key: ${hit.join(', ')}` : `Không thấy "${name}" ở key 1..200 (${Object.keys(all).length} key có dữ liệu)`);
+            setBusy(true); const all: Record<string, Rec[]> = {};
+            for (let k0 = 1; k0 <= 200; k0 += 10) {   // 10 key một lượt cho nhanh
+              setFound(`Đang quét… ${Math.min(k0 - 1, 200)}/200`);
+              await Promise.all(Array.from({ length: 10 }, (_, i) => k0 + i).map(async k => { try { const r = await rawDictionary(pid, k); if (Array.isArray(r) && r.length) all[String(k)] = r; } catch { /* bỏ qua */ } }));
+            }
+            const hit = findInDicts(all, name); setBusy(false);
+            setFound(`XONG 200/200 — ` + (hit.length ? `"${name}" có ở key: ${hit.join(', ')}` : `không thấy "${name}" ở key nào (${Object.keys(all).length} key có dữ liệu)`));
           }}>Tìm "{name}" trong mọi dictionary</button>{found && <span className="sub" style={{ margin: 0 }}>{found}</span>}</div>
         <div style={{ marginTop: 10 }}><button disabled={!parsed?.ok} onClick={() => parsed?.ok && setConfirm(parsed.body)}>Gửi thử lên server…</button></div>
       </>)}

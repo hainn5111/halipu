@@ -132,6 +132,8 @@ export async function listDictionary(projectId: string, key: number | string): P
 export const rawDictionary = (projectId: string, key: number | string) => call<Array<Record<string, unknown>>>('GET', `dictionary/queryDictionaryByKey/${key}`, { projectId });
 /** THỬ NGHIỆM ghi dictionary (body chưa bắt từ web gốc) — chỉ dictionary/save | update, qua công cụ thử ở nhóm preview. */
 export const sendDictionary = (projectId: string, op: 'save' | 'update', body: Record<string, unknown>) => { assertWrite(); return call('POST', `dictionary/${op}`, { projectId, body }); };
+/** Đọc thô dictionary/queryDictionaryByName/{name} (công cụ thử). */
+export const rawDictionaryByName = (projectId: string, name: string) => call('GET', `dictionary/queryDictionaryByName/${encodeURIComponent(name)}`, { projectId });
 /** Đọc thô dictionary/queryDictionaryPage (đoán body) để xem hình dạng bản ghi. */
 export const rawDictionaryPage = (projectId: string, body: Record<string, unknown>) => call('POST', 'dictionary/queryDictionaryPage', { projectId, body });
 
