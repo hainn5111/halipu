@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { buildDictBody, cloneDictBody, findInDicts, dictBodyError, nextDictValue } from './dictLabUtil';
+import { buildDictBody, buildUpdateBody, cloneDictBody, findInDicts, dictBodyError, nextDictValue } from './dictLabUtil';
 
 const rec = { dictId: 'D1', dictValue: 2, dsName: 'Willow leaf', dictName: 'Ordinary pole lamp arm type', dictType: '55', createTime: 1, dictionarySecond: [{ x: 1 }] };
 describe('dictLab', () => {
@@ -24,6 +24,12 @@ describe('dictLab', () => {
     const g = buildDictBody('group', { ...rec, dictId: 'G1' }, o);
     expect(g).toMatchObject({ dictKey: '55', dictId: 'G1', dictName: 'Ordinary pole lamp arm type' }); expect((g.dictionarySecond as unknown[])[0]).toMatchObject({ dsName: 'T', dictValue: 3 });
     expect(dictBodyError(JSON.stringify(g)).ok).toBe(true);
+  });
+  it('buildUpdateBody', () => {
+    const r = { dictId: 'D', dictKey: '55', dictValue: '3', dictName: 'N', createTime: 't', remark: null };
+    expect(buildUpdateBody('min', r, 'T')).toEqual({ dictId: 'D', dictKey: '55', dictValue: '3', dictName: 'N', dsName: 'T' });
+    expect(buildUpdateBody('full', r, 'T')).toMatchObject({ createTime: 't', dsName: 'T' });
+    expect((buildUpdateBody('second', r, 'T').dictionarySecond as unknown[])[0]).toMatchObject({ dsName: 'T', dictValue: '3' });
   });
   it('dictBodyError', () => {
     expect(dictBodyError('x').ok).toBe(false); expect(dictBodyError('[]').ok).toBe(false);

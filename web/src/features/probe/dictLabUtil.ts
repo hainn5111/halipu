@@ -40,6 +40,15 @@ export function buildDictBody(shape: DictShape, src: Rec, o: Parameters<typeof c
   return g;
 }
 
+export type UpdateShape = 'min' | 'full' | 'second';
+/** Body `dictionary/update` đoán từ bản ghi trong queryDictionaryPage (server trả 500 với dạng `full` — nên thử dạng khác). */
+export function buildUpdateBody(shape: UpdateShape, rec: Rec, name: string, remark = ''): Rec {
+  const base: Rec = { dictId: rec.dictId, dictKey: rec.dictKey, dictValue: rec.dictValue, dictName: rec.dictName };
+  if (shape === 'min') return { ...base, dsName: name };
+  if (shape === 'second') return { ...base, dictionarySecond: [{ dsName: name, dictValue: rec.dictValue, dictStairRemark: remark }] };
+  return { ...rec, dsName: name, dictStairRemark: remark };
+}
+
 /** Kiểm tra body trước khi gửi: JSON object, có dsName và dictValue. */
 export function dictBodyError(text: string): { ok: true; body: Rec } | { ok: false; reason: string } {
   let v: unknown; try { v = JSON.parse(text); } catch { return { ok: false, reason: 'JSON không hợp lệ' }; }
