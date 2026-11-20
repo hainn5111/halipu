@@ -17,7 +17,7 @@ export default function Models() {
   const [pid, setPid] = useState('');
   const [protos, setProtos] = useState<Map<string, ModelProto>>(new Map());
   const [err, setErr] = useState('');
-  const [arms, setArms] = useState<DictItem[]>([]), [armErr, setArmErr] = useState(''), [ptSel, setPtSel] = useState<string | null>(null);
+  const [shapes, setShapes] = useState<DictItem[]>([]), [arms, setArms] = useState<DictItem[]>([]), [armErr, setArmErr] = useState(''), [ptSel, setPtSel] = useState<string | null>(null);
   const [poleTypes, setPoleTypes] = useState<PoleType[]>([]), [ptErr, setPtErr] = useState('');
   const [reload, setReload] = useState(0);
   const [cloneName, setCloneName] = useState('');
@@ -34,6 +34,7 @@ export default function Models() {
           const tt = await listDeviceTypes(pid), mm = await listModels(pid);
           ts.push(...tt); ms.push(...mm);
           try { pts.push(...await listPoleTypes(pid)); } catch (e) { setPtErr((e as Error).message); }
+          try { setShapes(await listDictionary(pid, 39)); } catch { /* ứng viên, bỏ qua */ }
           try { setArms(await listDictionary(pid, 55)); } catch (e) { setArmErr((e as Error).message); }
         }
         if (!live) return;
@@ -77,7 +78,7 @@ export default function Models() {
           {ptErr && <div className="err">{ptErr}</div>}
           <p className="sub">Model Lamp Pole tham chiếu loại cột qua <code>poleTypeId</code> trong <code>deviceConfig</code>.</p>
           <table><thead><tr><th>#</th><th>Tên loại cột</th><th>Giá trị</th><th>Hệ thống</th><th>Ghi chú</th><th>Mã</th><th>Số model cột dùng</th></tr></thead>
-            <tbody>{poleTypes.map((p, i) => <tr key={p.id} className={'lrow' + (p.id === ptSel ? ' sel' : '')} onClick={() => setPtSel(p.id)}><td>{i + 1}</td><td><b>{p.name}</b></td><td>{p.value ?? '–'}</td><td>{p.systemConfig || '–'}</td><td>{p.remark}</td><td>{p.id.slice(0, 8)}</td><td>{models.filter(m => show(m.config.poleTypeId ?? '') === p.id).length}</td></tr>)}</tbody></table>
+            <tbody>{poleTypes.map((p, i) => <tr key={p.id} className={'lrow' + (p.id === ptSel ? ' sel' : '')} onClick={() => setPtSel(p.id)}><td>{i + 1}</td><td><b>{p.name}</b></td><td>{p.value ?? '–'}</td><td>{p.systemConfig ? 'Hệ thống' : 'Dự án'}</td><td>{p.remark}</td><td>{p.id.slice(0, 8)}</td><td>{models.filter(m => show(m.config.poleTypeId ?? '') === p.id).length}</td></tr>)}</tbody></table>
           {!poleTypes.length && !ptErr && <p className="sub">Chưa đọc được loại cột nào.</p>}
         </>)}
         {typeId === ARM_TYPES && (<>
@@ -107,7 +108,7 @@ export default function Models() {
               <tr><td>poleTypeId</td><td>{pt.id}</td></tr><tr><td>poleTypeValue</td><td>{pt.value ?? '–'}</td></tr>
               <tr><td>systemConfig</td><td>{pt.systemConfig} {pt.systemConfig ? '(dựng sẵn của hệ thống)' : '(người dùng khai)'}</td></tr><tr><td>remark</td><td>{pt.remark || '–'}</td></tr>
             </tbody></table>
-            <p className="sub">Giá trị <code>poleTypeValue</code> là mã enum của loại cột; bảng tra tên chưa tìm được — chạy tab Dò API (mục "Quét dictionary") để tìm key khớp.</p>
+            <p className="sub"><code>poleTypeValue</code> là số thứ tự trong dự án (loại hệ thống 1–8, loại tự khai dùng lại các số này nên không duy nhất). Ứng viên bảng tra: dictionary 39 "Pole Type" → <b>{shapes.find(x => x.value === show(pt.value))?.name ?? 'không có'}</b> (chưa kiểm chứng; tên khác với tên loại cột nên có thể là kiểu biểu tượng/hình dáng).</p>
             <h3>Model Lamp Pole dùng loại này ({used.length})</h3>
             {used.length ? <ul style={{ margin: 0, paddingLeft: 18 }}>{used.map(m => <li key={m.id}>{m.name}{m.config.poleArmType != null ? ` — tay đèn: ${arms.find(a => a.value === show(m.config.poleArmType))?.name ?? show(m.config.poleArmType)}` : ''}</li>)}</ul> : <p className="sub">Chưa có model nào.</p>}
           </aside>);
