@@ -3,7 +3,7 @@ import { call } from '../../core/api';
 import { config } from '../../core/config';
 import type { PoleLinks, DeviceItem, DeviceModel, DeviceType, LampCommand, LightStatus, Lcu, Measurement } from '../../core/types';
 import { WRITE_ENABLED } from '../../core/flags';
-import { lcuIdsBody, lcuModelCreateBody, lcuSaveBody, modelCreateBody, poleIdsBody, poleUpdateBody, type GroupInput } from './writeBodies';
+import { modelCloneBody, modelUpdateBody, modelIdsBody, poleTypeSaveBody, poleTypeUpdateBody, poleTypeIdsBody, type PoleTypeIn, type ProtoIn, lcuIdsBody, lcuModelCreateBody, lcuSaveBody, modelCreateBody, poleIdsBody, poleUpdateBody, type GroupInput } from './writeBodies';
 import { lcuSlotCount, mapLcuLamps, mapPoleLinks, mapPoleTypes, mapDictionary, type DictItem, type PoleType, mapModels, mapDeviceRow, mapDeviceTypes, mapLight, mapListRow, mapPageRow, mapTrend, mergeLcus, pickGeo, ratedPowerOf, validGeo, type LcuRow } from './mappers';
 
 const PID_KEY = 'pid';
@@ -181,12 +181,21 @@ export const previewModelClone = (projectId: string, base: { typeId: string; typ
 export const previewLcuModelClone = (projectId: string, base: { typeId: string; config: Record<string, unknown>; protocol: ModelProto }, name: string, remark = '') => lcuModelCreateBody({ typeId: base.typeId, config: base.config, protocol: base.protocol }, name, projectId, remark);
 export const sendModelCreate = (projectId: string, body: Record<string, unknown>) => { assertWrite(); return call('POST', 'deviceModel/saveNew', { projectId, body }); };
 
+// Template mọi loại + loại cột (payload bắt 2026-11-20, docs/15 §7)
+export { modelCloneBody, modelUpdateBody, modelIdsBody, poleTypeSaveBody, poleTypeUpdateBody, poleTypeIdsBody };
+export type { PoleTypeIn, ProtoIn };
+export const sendModelUpdate = (projectId: string, body: Record<string, unknown>) => { assertWrite(); return call('POST', 'deviceModel/updateNew', { projectId, body }); };
+export const sendModelDelete = (projectId: string, ids: string[]) => { assertWrite(); return call('POST', 'deviceModel/delete', { projectId, body: modelIdsBody(ids) }); };
+export const sendPoleTypeSave = (projectId: string, body: Record<string, unknown>) => { assertWrite(); return call('POST', 'poleType/save', { projectId, body }); };
+export const sendPoleTypeUpdate = (projectId: string, body: Record<string, unknown>) => { assertWrite(); return call('POST', 'poleType/update', { projectId, body }); };
+export const sendPoleTypeDelete = (projectId: string, ids: string[]) => { assertWrite(); return call('POST', 'poleType/delete', { projectId, body: poleTypeIdsBody(ids) }); };
+
 /** Giao thức/phiên bản/systemConfig của các model một loại (deviceModel/getDeviceModelPage — danh sách model trả kèm các trường này). */
-export interface ModelProto { id: string; value: number; name: string; version: string; systemConfig: number }
+export interface ModelProto { id: string; value: number; name: string; version: string; systemConfig: number; remark: string }
 export async function modelProtocols(projectId: string, typeId: string): Promise<Map<string, ModelProto>> {
   const out = new Map<string, ModelProto>();
   const d = await call<{ records?: Array<Record<string, unknown>> }>('POST', 'deviceModel/getDeviceModelPage', { projectId, body: { projectId, current: 1, size: 100, deviceTypeId: typeId } });
-  for (const r of d.records || []) out.set(String(r.deviceModelId), { id: String(r.protocolId ?? ''), value: Number(r.protocolValue), name: String(r.protocolName ?? ''), version: String(r.protocolVersion ?? ''), systemConfig: Number(r.systemConfig) || 0 });
+  for (const r of d.records || []) out.set(String(r.deviceModelId), { id: String(r.protocolId ?? ''), value: Number(r.protocolValue), name: String(r.protocolName ?? ''), version: String(r.protocolVersion ?? ''), systemConfig: Number(r.systemConfig) || 0, remark: String(r.remark ?? r.deviceModelRemark ?? '') });
   return out;
 }
 

@@ -1,12 +1,15 @@
 import { useEffect, useMemo, useState } from 'react';
-import { listDeviceTypes, listDictionary, listModels, listPoleTypes, modelProtocols, previewLcuModelClone, previewModelClone, projectIds, sendModelCreate, type ModelProto } from '../../adapters/fonda';
+import { lazy, Suspense } from 'react';
+import { listDeviceTypes, listDictionary, listModels, listPoleTypes, modelProtocols, projectIds, type ModelProto } from '../../adapters/fonda';
 import { WRITE_ENABLED } from '../../core/flags';
-import ConfirmWrite from '../common/ConfirmWrite';
 import { configEntries, lcuSpec, type DictItem, type PoleType } from '../../adapters/fonda/mappers';
 import type { DeviceModel, DeviceType } from '../../core/types';
 import { show } from '../common/show';
 
 // Mẫu thiết bị (template deviceConfig) — chỉ ĐỌC. Model nhóm theo loại thiết bị; bấm model để xem cấu hình / thiết bị đính kèm.
+// Thêm/sửa/xoá chỉ nạp khi bật ghi: bản main không chứa mã này (WRITE_ENABLED được gập lúc build).
+const Writes = WRITE_ENABLED ? lazy(() => import('./ModelWrite').then(m => ({ default: m.ModelActions }))) : null;
+const PtWrites = WRITE_ENABLED ? lazy(() => import('./ModelWrite').then(m => ({ default: m.PoleTypeActions }))) : null;
 const POLE_TYPES = '__poleTypes', ARM_TYPES = '__armTypes';
 export default function Models() {
   const [types, setTypes] = useState<DeviceType[]>([]);
@@ -20,8 +23,6 @@ export default function Models() {
   const [shapes, setShapes] = useState<DictItem[]>([]), [arms, setArms] = useState<DictItem[]>([]), [armErr, setArmErr] = useState(''), [ptSel, setPtSel] = useState<string | null>(null);
   const [poleTypes, setPoleTypes] = useState<PoleType[]>([]), [ptErr, setPtErr] = useState('');
   const [reload, setReload] = useState(0);
-  const [cloneName, setCloneName] = useState('');
-  const [confirm, setConfirm] = useState<null | { pid: string; body: Record<string, unknown> }>(null);
 
   useEffect(() => {
     let live = true;
@@ -53,17 +54,15 @@ export default function Models() {
   const curType = types.find(t => t.id === typeId);
   const isLcu = curType?.value === 2;   // LCU: số đầu đèn/thông số phần cứng cố định theo model → hiện bảng so sánh
   useEffect(() => {
-    if (!isLcu || !typeId || !pid) return;
+    if (!typeId || typeId === POLE_TYPES || typeId === ARM_TYPES || !pid) return;
     let live = true; modelProtocols(pid, typeId).then(m => { if (live) setProtos(m); }).catch(() => { if (live) setProtos(new Map()); });
     return () => { live = false; };
-  }, [isLcu, typeId, pid]);
+  }, [typeId, pid, reload]);
   const sel = models.find(m => m.id === selId);
   const entries = useMemo(() => (sel ? configEntries(sel.config) : []), [sel]);
 
   const selType = types.find(t => t.id === sel?.typeId);
   const selProto = sel ? protos.get(sel.id) : undefined;
-  // Chỉ loại đã bắt payload (docs/15 §7): Lamp Pole (6) và LCU (2, cần giao thức của model gốc)
-  const canClone = WRITE_ENABLED && !!sel && (selType?.value === 6 || (selType?.value === 2 && !!selProto));
   return (
     <div className="lcus">
       <div className="listwrap">
@@ -76,6 +75,7 @@ export default function Models() {
         </div>
         {typeId === POLE_TYPES && (<>
           {ptErr && <div className="err">{ptErr}</div>}
+          {PtWrites && <Suspense fallback={null}><PtWrites mode="add" pid={pid} onChanged={() => setReload(n => n + 1)} /></Suspense>}
           <p className="sub">Model Lamp Pole tham chiếu loại cột qua <code>poleTypeId</code> trong <code>deviceConfig</code>.</p>
           <table><thead><tr><th>#</th><th>Tên loại cột</th><th>Giá trị</th><th>Hệ thống</th><th>Ghi chú</th><th>Mã</th><th>Số model cột dùng</th></tr></thead>
             <tbody>{poleTypes.map((p, i) => <tr key={p.id} className={'lrow' + (p.id === ptSel ? ' sel' : '')} onClick={() => setPtSel(p.id)}><td>{i + 1}</td><td><b>{p.name}</b></td><td>{p.value ?? '–'}</td><td>{p.systemConfig ? 'Hệ thống' : 'Dự án'}</td><td>{p.remark}</td><td>{p.id.slice(0, 8)}</td><td>{models.filter(m => show(m.config.poleTypeId ?? '') === p.id).length}</td></tr>)}</tbody></table>
@@ -109,6 +109,7 @@ export default function Models() {
               <tr><td>systemConfig</td><td>{pt.systemConfig} {pt.systemConfig ? '(dựng sẵn của hệ thống)' : '(người dùng khai)'}</td></tr><tr><td>remark</td><td>{pt.remark || '–'}</td></tr>
             </tbody></table>
             <p className="sub"><code>poleTypeValue</code> là số thứ tự trong dự án (loại hệ thống 1–8, loại tự khai dùng lại các số này nên không duy nhất). Ứng viên bảng tra: dictionary 39 "Pole Type" → <b>{shapes.find(x => x.value === show(pt.value))?.name ?? 'không có'}</b> (chưa kiểm chứng; tên khác với tên loại cột nên có thể là kiểu biểu tượng/hình dáng).</p>
+            {PtWrites && <Suspense fallback={null}><PtWrites mode="edit" pid={pid} sel={pt} usedBy={used.length} onChanged={() => { setPtSel(null); setReload(n => n + 1); }} /></Suspense>}
             <h3>Model Lamp Pole dùng loại này ({used.length})</h3>
             {used.length ? <ul style={{ margin: 0, paddingLeft: 18 }}>{used.map(m => <li key={m.id}>{m.name}{m.config.poleArmType != null ? ` — tay đèn: ${arms.find(a => a.value === show(m.config.poleArmType))?.name ?? show(m.config.poleArmType)}` : ''}</li>)}</ul> : <p className="sub">Chưa có model nào.</p>}
           </aside>);
@@ -131,17 +132,9 @@ export default function Models() {
               <ul style={{ margin: '4px 0 0', paddingLeft: 18 }}>{e.items.map((it, i) => (
                 <li key={i} style={{ opacity: it.checked ? 1 : .55 }}>{it.checked ? '✔' : '○'} {it.name}{it.extra ? ` (${it.extra})` : ''}</li>))}</ul>
             </div>))}
-          {WRITE_ENABLED && sel && (<>
-            <h3>Nhân bản template (ghi thật · chỉ bản preview)</h3>
-            {canClone ? (<>
-              <input style={{ width: '100%' }} placeholder="Tên template mới" value={cloneName} onChange={e => setCloneName(e.target.value)} />
-              <button style={{ marginTop: 8 }} disabled={!cloneName.trim()} onClick={() => setConfirm({ pid, body: selType?.value === 2 && selProto ? previewLcuModelClone(pid, { typeId: sel.typeId, config: sel.config, protocol: selProto }, cloneName.trim(), 'Nhân bản từ ' + sel.name) : previewModelClone(pid, { typeId: sel.typeId, typeValue: 6, config: sel.config }, cloneName.trim()) })}>Tạo bản sao…</button>
-            </>) : <p className="sub">Chỉ hỗ trợ template cột đèn (Lamp Pole) và LCU — các loại khác chưa bắt được payload.</p>}
-          </>)}
+          {Writes && sel && <Suspense fallback={null}><Writes pid={pid} model={sel} type={selType} proto={selProto} onChanged={() => { setSelId(null); setReload(n => n + 1); }} /></Suspense>}
         </aside>
       )}
-      {WRITE_ENABLED && confirm && <ConfirmWrite title="Tạo template mới" summary={`Nhân bản "${sel?.name}" thành "${cloneName.trim()}" (cùng loại, cùng cấu hình).`} method="POST" path="deviceModel/saveNew" body={confirm.body}
-        onConfirm={async () => { await sendModelCreate(confirm.pid, confirm.body); }} onClose={changed => { setConfirm(null); if (changed) { setCloneName(''); setSelId(null); setReload(n => n + 1); } }} />}
     </div>
   );
 }

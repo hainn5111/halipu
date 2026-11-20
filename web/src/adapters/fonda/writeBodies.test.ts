@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { lcuIdsBody, lcuModelCreateBody, lcuSaveBody, modelCreateBody, poleIdsBody, poleUpdateBody } from './writeBodies';
+import { modelCloneBody, modelUpdateBody, modelIdsBody, modelNameError, poleTypeError, poleTypeSaveBody, poleTypeUpdateBody, poleTypeIdsBody, lcuIdsBody, lcuModelCreateBody, lcuSaveBody, modelCreateBody, poleIdsBody, poleUpdateBody } from './writeBodies';
 
 describe('modelCreateBody', () => {
   it('khớp payload đã bắt (deviceModelId rỗng, deviceConfig là object)', () => {
@@ -114,3 +114,27 @@ describe('lcuSaveBody', () => {
 });
 
 describe('lcuIdsBody', () => { it('cùng dạng với cột, deviceTypeValue 2', () => expect(lcuIdsBody(['a'])).toEqual({ deviceIdList: ['a'], deviceTypeValue: 2 })); });
+
+describe('template mọi loại + loại cột (bắt 2026-11-20)', () => {
+  const proto = { id: 'P1', value: 1, name: 'Gateway/FEMS', version: 'FEMS v1.0' };
+  it('modelCloneBody: loại không giao thức → -1, không protocolName', () => {
+    const b = modelCloneBody({ typeId: 'T5', typeValue: 5, config: { lampTypes: 3 } }, 'TEST', 'PID', 'r');
+    expect(b).toEqual({ deviceModelId: '', projectId: 'PID', deviceTypeId: 'T5', deviceTypeValue: 5, deviceModelName: 'TEST', remark: 'r', protocolId: '', protocolValue: -1, useTag: null, deviceConfig: { lampTypes: 3 } });
+  });
+  it('modelCloneBody: loại có giao thức → kèm protocolName/Version', () => {
+    const b = modelCloneBody({ typeId: 'T3', typeValue: 3, config: {}, protocol: proto }, 'G', 'PID');
+    expect(b).toMatchObject({ protocolId: 'P1', protocolValue: 1, protocolName: 'Gateway/FEMS', protocolVersion: 'FEMS v1.0' });
+  });
+  it('modelUpdateBody giống mẫu updateNew', () => {
+    const b = modelUpdateBody({ id: 'M', typeId: 'T5', typeValue: 5, typeName: 'Lamps', name: 'TEST', remark: 'Test only', config: { a: 1 } }, 'PID');
+    expect(b).toMatchObject({ deviceModelId: 'M', deviceTypeName: 'Lamps', protocolValue: -1, protocolId: '', protocolName: null, protocolVersion: null, systemConfig: 0, deviceModelRemark: 'Test only', remark: 'Test only', oldFileId: '', newFileId: '', fileId: null, url: null, projectId: 'PID' });
+    expect(modelUpdateBody({ id: 'M', typeId: 'T', typeValue: 2, typeName: 'LCU', name: 'n', remark: '', config: {}, protocol: { id: 'P', value: 53, name: 'RF/F2', version: 'F2 v1.0' } }, 'PID')).toMatchObject({ protocolValue: 53, protocolName: 'RF/F2' });
+  });
+  it('xoá template/loại cột dùng mảng id', () => { expect(modelIdsBody(['a'])).toEqual({ deviceModelId: ['a'] }); expect(poleTypeIdsBody(['p'])).toEqual({ poleTypeId: ['p'] }); });
+  it('poleType save/update/validate', () => {
+    expect(poleTypeSaveBody({ name: ' TEST ', value: '1', remark: ' r ' }, 'PID')).toEqual({ poleTypeName: 'TEST', poleTypeValue: 1, projectId: 'PID', remark: 'r', poleTypeId: '' });
+    expect(poleTypeUpdateBody('ID', { name: 'T', value: '6', remark: '' }, 'PID')).toEqual({ poleTypeValue: 6, poleTypeName: 'T', systemConfig: 0, remark: '', poleTypeId: 'ID', projectId: 'PID' });
+    expect(poleTypeError({ name: '', value: '1', remark: '' })).toBeTruthy(); expect(poleTypeError({ name: 'a', value: 'x', remark: '' })).toBeTruthy(); expect(poleTypeError({ name: 'a', value: '2', remark: '' })).toBeNull();
+    expect(modelNameError('', {})).toBeTruthy(); expect(modelNameError('a', [])).toBeTruthy(); expect(modelNameError('a', {})).toBeNull();
+  });
+});

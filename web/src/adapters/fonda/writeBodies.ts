@@ -17,6 +17,48 @@ export function lcuModelCreateBody(base: { typeId: string; config: Rec; protocol
     protocolName: base.protocol.name, protocolVersion: base.protocol.version, deviceModelName: name, remark, projectId };
 }
 
+// ---- Template (model) mọi loại + loại cột — bắt 2026-11-20 (docs/15 §7) ----
+export interface ProtoIn { id: string; value: number; name: string; version: string }
+const hasProto = (p?: ProtoIn): p is ProtoIn => !!p && !!p.id && Number.isFinite(p.value) && p.value >= 0;
+
+/** deviceModel/saveNew cho MỌI loại: nhân bản `config` (server tự giữ khoá thuộc loại). Loại có giao thức (Gateway, Concentrator, LCU) gửi thêm protocolName/Version. */
+export function modelCloneBody(base: { typeId: string; typeValue: number; config: Rec; protocol?: ProtoIn }, name: string, projectId: string, remark = ''): Rec {
+  const p = base.protocol;
+  return { deviceModelId: '', projectId, deviceTypeId: base.typeId, deviceTypeValue: base.typeValue, deviceModelName: name, remark,
+    protocolId: hasProto(p) ? p.id : '', protocolValue: hasProto(p) ? p.value : -1, useTag: null, deviceConfig: base.config,
+    ...(hasProto(p) ? { protocolName: p.name, protocolVersion: p.version } : {}) };
+}
+
+/** deviceModel/updateNew: nguyên đối tượng model (như saveNew trả về) + remark/oldFileId/newFileId. */
+export function modelUpdateBody(m: { id: string; typeId: string; typeValue: number; typeName: string; name: string; remark: string; config: Rec; protocol?: ProtoIn }, projectId: string): Rec {
+  const p = m.protocol, has = hasProto(p);
+  return { deviceConfig: m.config, deviceTypeId: m.typeId, deviceTypeValue: m.typeValue, deviceModelName: m.name, deviceTypeName: m.typeName, url: null,
+    protocolValue: has ? p!.value : -1, protocolId: has ? p!.id : '', protocolName: has ? p!.name : null, deviceModelId: m.id, systemConfig: 0,
+    protocolVersion: has ? p!.version : null, deviceModelRemark: m.remark, projectId, fileId: null, remark: m.remark, oldFileId: '', newFileId: '' };
+}
+
+/** deviceModel/delete: `deviceModelId` là MẢNG. Server trả code 1018 "[tên] is in use, cannot be deleted." nếu template còn được dùng. */
+export const modelIdsBody = (ids: string[]): Rec => ({ deviceModelId: ids });
+
+export function modelNameError(name: string, config: unknown): string | null {
+  if (!name.trim()) return 'Thiếu tên template';
+  if (!config || typeof config !== 'object' || Array.isArray(config)) return 'deviceConfig phải là một object JSON';
+  return null;
+}
+
+export interface PoleTypeIn { name: string; value: string; remark: string }
+export function poleTypeError(i: PoleTypeIn): string | null {
+  if (!i.name.trim()) return 'Thiếu tên loại cột';
+  const v = Number(i.value); if (i.value.trim() === '' || !Number.isInteger(v) || v < 0) return 'Giá trị (poleTypeValue) phải là số nguyên ≥ 0';
+  return null;
+}
+/** poleType/save (`poleTypeId:""`) */
+export const poleTypeSaveBody = (i: PoleTypeIn, projectId: string): Rec => ({ poleTypeName: i.name.trim(), poleTypeValue: Number(i.value), projectId, remark: i.remark.trim(), poleTypeId: '' });
+/** poleType/update — nguyên bản ghi với phần sửa */
+export const poleTypeUpdateBody = (id: string, i: PoleTypeIn, projectId: string): Rec => ({ poleTypeValue: Number(i.value), poleTypeName: i.name.trim(), systemConfig: 0, remark: i.remark.trim(), poleTypeId: id, projectId });
+/** poleType/delete — `poleTypeId` là MẢNG */
+export const poleTypeIdsBody = (ids: string[]): Rec => ({ poleTypeId: ids });
+
 export type PoleUpdate = { ok: true; body: Rec } | { ok: false; reason: string };
 
 /**
