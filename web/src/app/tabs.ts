@@ -40,6 +40,7 @@ export const TABS: GroupDef[] = [
   ] },
   ...(PROBE_TOOLS ? [{ group: 'Công cụ dò (chỉ preview)', tabs: [
     { id: 'probe', label: 'Dò API (chỉ đọc)', view: lazy(() => import('../features/probe/Probe')) },
+    { id: 'dict-lab', label: 'Thử thêm Dictionary (ghi)', view: lazy(() => import('../features/probe/DictLab')) },
     { id: 'lcu-lab', label: 'Thử tạo model LCU (ghi)', view: lazy(() => import('../features/probe/LcuLab')) },
     { id: 'capture', label: 'Bắt request (API ghi)', view: lazy(() => import('../features/probe/Capture')) },
   ] }] : []),

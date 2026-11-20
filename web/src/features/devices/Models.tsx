@@ -81,7 +81,7 @@ export default function Models() {
         </>)}
         {typeId === ARM_TYPES && (<>
           {armErr && <div className="err">{armErr}</div>}
-          <p className="sub">Giá trị <code>poleArmType</code> trong <code>deviceConfig</code> của model Lamp Pole tra theo dictionary key 55. Hiện chỉ đọc — thêm/bớt kiểu tay đèn cần bắt request từ web Fonda gốc (<code>dictionary/save|update|deleteById</code>).</p>
+          <p className="sub">Giá trị <code>poleArmType</code> trong <code>deviceConfig</code> của model Lamp Pole tra theo dictionary key 55. Hiện chỉ đọc — thêm/bớt kiểu tay đèn cần bắt request từ web Fonda gốc.</p>
           <table><thead><tr><th>#</th><th>Giá trị</th><th>Tên</th><th>Ghi chú</th><th>Số model cột dùng</th></tr></thead>
             <tbody>{arms.map((a, i) => <tr key={a.value}><td>{i + 1}</td><td>{a.value}</td><td><b>{a.name}</b></td><td>{a.remark}</td><td>{models.filter(m => String(m.config.poleArmType ?? '') === a.value).length}</td></tr>)}</tbody></table>
           {!arms.length && !armErr && <p className="sub">Chưa đọc được kiểu tay đèn nào.</p>}
