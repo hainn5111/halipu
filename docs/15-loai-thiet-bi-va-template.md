@@ -95,7 +95,7 @@ Cấu trúc `deviceConfig` đổi theo loại (mẫu model đầu tiên của t�
 | Concentrator (4) | `rtuType` → 99, **Function = giao thức** | |
 | Lamps (5) | `lampTypes` → 3, `powerTypes` → 17 | |
 | Lamp Pole (6) | `poleArmType` → 55; `poleTypeId` = loại cột khai ở PoleType, kèm `poleType` = `poleTypeValue` của loại đó | |
-| Switch and detection (9) | `kmFactory` (Producer) — **danh sách cố định trên form Fonda: "XY…" và "KXHL"** (không có trong dictionary 1–130); capture: "XY…" lưu `"1"`, mã của KXHL chưa kiểm chứng (đang giả định `"2"`); tên đầy đủ của "XY…" chưa rõ | |
+| Switch and detection (9) | `kmFactory` (Producer) — **danh sách cố định trên form Fonda: "XY…" và "KXHL"** (không có trong dictionary 1–130); **đã xác nhận bằng capture: "XY…" lưu `kmFactory: "1"`, KXHL lưu `kmFactory: "2"`** (cùng `pathNum`, `di`, `ai`); tên đầy đủ của "XY…" chưa rõ | |
 - Ô **Function** trên form Fonda của LCU/Gateway/Concentrator thực chất là chọn **giao thức** (người dùng xác nhận: RF/F2, CAT1/F2…); `functionList` (mảng số trong `deviceConfig`) không có nhãn đã biết — web chỉ hiện nguyên giá trị, không sửa.
 - `poleTypeValue` = mã kiểu/hình cột có sẵn = dictionary **39 "Pole Type"** (1 Magnolia Lamp, 2 High Pole Lights, 3 Hibiscus Lamp, … 10 New Leaf Single Pick Light); loại hệ thống dùng 1–8, loại tự khai dùng lại. Bản ghi dictionary không có địa chỉ hình — hình do giao diện Fonda gắn theo mã.
 - Khoá của loại khác (server vẫn trả giá trị mặc định, vd `rtuType` 0 ở LCU, `gatewayTypes` ngoài Gateway) bị **ẩn** ở drawer (`isRelevantKey`).

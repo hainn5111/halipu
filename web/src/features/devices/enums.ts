@@ -10,7 +10,7 @@ export const TYPE_ENUMS: Record<number, EnumField[]> = {
   4: [{ key: 'rtuType', label: 'Concentrator type', dict: 99 }],
   5: [{ key: 'lampTypes', label: 'Lamp type', dict: 3 }, { key: 'powerTypes', label: 'Power type', dict: 17 }],
   6: [{ key: 'poleArmType', label: 'Arm type', dict: 55 }],
-  // Producer của Switch: danh sách cố định trên form Fonda (người dùng xác nhận 2 lựa chọn "XY…" và "KXHL"). Capture cho thấy "XY…" = "1"; mã của KXHL (="2"?) chưa kiểm chứng.
+  // Producer của Switch: danh sách cố định trên form Fonda (người dùng xác nhận 2 lựa chọn "XY…" và "KXHL"). Đã xác nhận bằng capture: "XY…" = "1", KXHL = "2".
   9: [{ key: 'kmFactory', label: 'Producer', items: [{ value: '1', name: 'XY…' }, { value: '2', name: 'KXHL' }] }],
 };
 /** Loại có ô "Function" = chọn GIAO THỨC (RF/F2, CAT1/F2, …) — LCU, Gateway, Concentrator. `functionList` (mảng số) KHÔNG sửa trong form, chỉ hiện nguyên giá trị. */
