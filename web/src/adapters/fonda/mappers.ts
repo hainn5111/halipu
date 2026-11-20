@@ -127,6 +127,13 @@ export function mapPoleTypes(d: unknown): PoleType[] {
   return out;
 }
 
+/** dictionary/queryDictionaryByKey → danh sách giá trị enum {value, name, remark}. */
+export interface DictItem { value: string; name: string; remark: string }
+export function mapDictionary(d: unknown): DictItem[] {
+  if (!Array.isArray(d)) return [];
+  return (d as Rec[]).filter(r => r && (r.dictValue != null || r.dictName != null)).map(r => ({ value: str(r.dictValue), name: str(r.dictName) || str(r.dsName), remark: str(r.dictStairRemark) }));
+}
+
 const isAttach = (v: unknown): v is Rec => !!v && typeof v === 'object' && !Array.isArray(v) && 'modelName' in (v as Rec);
 const attachItem = (a: Rec) => ({ name: str(a.modelName) || str(a.modelId), checked: a.checked === true, extra: [a.lampIndex != null ? `đèn #${str(a.lampIndex)}` : '', a.pathNum != null ? `${str(a.pathNum)} mạch` : ''].filter(Boolean).join(', ') });
 

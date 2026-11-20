@@ -4,7 +4,7 @@ import { config } from '../../core/config';
 import type { PoleLinks, DeviceItem, DeviceModel, DeviceType, LampCommand, LightStatus, Lcu, Measurement } from '../../core/types';
 import { WRITE_ENABLED } from '../../core/flags';
 import { lcuIdsBody, lcuModelCreateBody, lcuSaveBody, modelCreateBody, poleIdsBody, poleUpdateBody, type GroupInput } from './writeBodies';
-import { lcuSlotCount, mapLcuLamps, mapPoleLinks, mapPoleTypes, type PoleType, mapModels, mapDeviceRow, mapDeviceTypes, mapLight, mapListRow, mapPageRow, mapTrend, mergeLcus, pickGeo, ratedPowerOf, validGeo, type LcuRow } from './mappers';
+import { lcuSlotCount, mapLcuLamps, mapPoleLinks, mapPoleTypes, mapDictionary, type DictItem, type PoleType, mapModels, mapDeviceRow, mapDeviceTypes, mapLight, mapListRow, mapPageRow, mapTrend, mergeLcus, pickGeo, ratedPowerOf, validGeo, type LcuRow } from './mappers';
 
 const PID_KEY = 'pid';
 
@@ -123,6 +123,11 @@ export async function countDevices(projectId: string, typeValue: number): Promis
 }
 
 /** Model thiết bị + template deviceConfig của dự án (chỉ đọc). */
+/** Giá trị enum của một dictionary (chỉ đọc). */
+export async function listDictionary(projectId: string, key: number | string): Promise<DictItem[]> {
+  return mapDictionary(await call('GET', `dictionary/queryDictionaryByKey/${key}`, { projectId }));
+}
+
 /** Loại cột (PoleType): chỉ đọc. Thử API danh sách; nếu server đòi tham số khác thì thử bản phân trang. */
 export async function listPoleTypes(projectId: string): Promise<PoleType[]> {
   try { const r = mapPoleTypes(await call('POST', 'poleType/getAllPoleTypeOfProjectList', { projectId, body: { projectId } })); if (r.length) return r; } catch { /* thử bản phân trang */ }

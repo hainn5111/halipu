@@ -33,6 +33,14 @@ export async function runProbe(pid: string, log: (line: string) => void, withLcu
   const types = (await get('types-all-by-project', 'GET', `deviceTypeController/queryAllDeviceTypeByProjectId/${pid}`)) as Rec[] | null;
   const models = (await get('models-by-project', 'GET', `deviceModel/queryAllDeviceModelByProjectId/${pid}`)) as Rec[] | null;
   for (const k of DICTS) await get(`dict-${k}`, 'GET', `dictionary/queryDictionaryByKey/${k}`);
+  await get('pole-types', 'POST', 'poleType/getAllPoleTypeOfProjectList', { projectId: pid });
+  await get('pole-types-page', 'POST', 'poleType/getAllPoleTypeOfProjectPage', { projectId: pid, current: 1, size: 100 });
+  await get('dictionary-page', 'POST', 'dictionary/queryDictionaryPage', { current: 1, size: 100 });
+  // Quét dictionary key 1..130 (im lặng khi lỗi) để tìm enum của poleTypeValue/poleArmType
+  say('Quét dictionary key 1..130…');
+  const dictAll: Record<string, unknown> = {};
+  for (let k = 1; k <= 130; k++) { if (DICTS.includes(k)) continue; try { const d = await call('GET', `dictionary/queryDictionaryByKey/${k}`, { projectId: pid }); if (Array.isArray(d) && d.length) dictAll[String(k)] = d; } catch { /* bỏ qua */ } }
+  results.push({ name: 'dict-scan', ok: true, data: dictAll }); say(`✔ dict-scan: ${Object.keys(dictAll).length} key có dữ liệu (${Object.keys(dictAll).join(', ')})`);
   const list = Array.isArray(types) ? types : [];
   say(`Loại thiết bị: ${list.map(t => `${t.deviceTypeValue}=${t.deviceTypeName}`).join(', ')}`);
   for (const t of list) {

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { lcuSpec, channelRows, lcuSlotCount, mapLcuLamps, mapPoleLinks, categoryOf, configEntries, mapModels, mapPoleTypes, mapDeviceRow, mapDeviceTypes, mapLight, mapListRow, mapPageRow, mapTrend, mergeLcus, pickGeo, ratedPowerOf, toCsv, validGeo } from './mappers';
+import { lcuSpec, channelRows, lcuSlotCount, mapLcuLamps, mapPoleLinks, categoryOf, configEntries, mapModels, mapPoleTypes, mapDictionary, mapDeviceRow, mapDeviceTypes, mapLight, mapListRow, mapPageRow, mapTrend, mergeLcus, pickGeo, ratedPowerOf, toCsv, validGeo } from './mappers';
 
 describe('pickGeo / validGeo', () => {
   it('đọc lat/lng dạng chuỗi', () => expect(pickGeo({ lat: '20.93271', lng: '105.67026' })).toEqual({ lat: 20.93271, lng: 105.67026 }));
@@ -137,5 +137,12 @@ describe('mapPoleTypes', () => {
     expect(mapPoleTypes([row, { poleTypeName: 'x' }])).toEqual([{ id: 'P1', name: 'Single arm lamp', value: 1, systemConfig: 1, remark: 'r' }]);
     expect(mapPoleTypes({ records: [row] })).toHaveLength(1);
     expect(mapPoleTypes(null)).toEqual([]);
+  });
+});
+
+describe('mapDictionary', () => {
+  it('lấy giá trị/tên, rỗng thì []', () => {
+    expect(mapDictionary([{ dictValue: 1, dictName: 'Willow leaf', dictStairRemark: 'r' }, { dictValue: 2, dsName: 'Khác' }, null])).toEqual([{ value: '1', name: 'Willow leaf', remark: 'r' }, { value: '2', name: 'Khác', remark: '' }]);
+    expect(mapDictionary(null)).toEqual([]);
   });
 });

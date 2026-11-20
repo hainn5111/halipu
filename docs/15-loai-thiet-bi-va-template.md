@@ -59,7 +59,9 @@ Cấu trúc `deviceConfig` đổi theo loại (mẫu model đầu tiên của t�
 `BS, ai, di, km, lcu, lux, anti, lamp, pole, surge, appeal, camera, master, router, screen, sensor, wiFiAP, …` → mỗi phần tử `{checked:boolean, modelId, modelName}`; riêng `lamp[]` thêm `lampIndex` (đèn thứ mấy), `ai/di/km[]` thêm `pathNum` (số mạch). Ở Switch and detection `pole` là **object** (không phải mảng).
 → Đây chính là "mẫu" dùng để khai **LCU/tủ đính kèm Lamp, Lamp Pole…** cùng lúc: `checked` = có gắn, `modelId` trỏ tới `deviceModelId` ở mục trên.
 
-**Loại cột (PoleType):** `POST poleType/getAllPoleTypeOfProjectList` (body `{projectId}`; nếu không được thì `getAllPoleTypeOfProjectPage` `{projectId,current,size}`) → `{poleTypeId, poleTypeName, poleTypeValue, systemConfig, remark}`. `deviceConfig.poleTypeId` của model Lamp Pole trỏ tới `poleTypeId`. Tab "Mẫu thiết bị" có chip "Loại cột — PoleType" (dữ liệu khớp Fonda, đã xác nhận).
+**Loại cột (PoleType):** `POST poleType/getAllPoleTypeOfProjectList` (body `{projectId}`; nếu không được thì `getAllPoleTypeOfProjectPage` `{projectId,current,size}`) → `{poleTypeId, poleTypeName, poleTypeValue, systemConfig, remark}`. `deviceConfig.poleTypeId` của model Lamp Pole trỏ tới `poleTypeId`. Tab "Mẫu thiết bị" có chip "Loại cột — PoleType" (dữ liệu khớp Fonda, đã xác nhận); bấm một loại cột → drawer bên phải (mã, `poleTypeValue`, `systemConfig`, model cột đang dùng). `poleTypeValue` là mã enum nhưng **bảng tra tên chưa tìm được** — tab Dò API có mục "Quét dictionary key 1..130" (`dict-scan`) + `pole-types`/`dictionary-page` để tìm key khớp.
+
+**Kiểu tay đèn (`poleArmType`):** `deviceConfig.poleArmType` của model Lamp Pole = `dictValue` của dictionary key 55 (`GET dictionary/queryDictionaryByKey/55`). Tab Mẫu thiết bị có chip "Kiểu tay đèn" (chỉ đọc) và drawer model cột hiện tên. Dictionary có `queryDictionaryPage`, `save`, `update`, `deleteById` nhưng **body chưa bắt** → chưa thêm/bớt được; cần bắt từ web Fonda gốc (tab Bắt request).
 
 ## 4. Dictionary (enum)
 
