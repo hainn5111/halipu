@@ -20,7 +20,7 @@ describe('enums', () => {
     expect(enumLabel(f, 3, items)).toBe('3-Channel 1-Phase Electric Meter'); expect(enumOptions(f, items)[0].value).toBe('3');
   });
   it('Producer của Switch là danh sách cố định', () => {
-    const f = TYPE_ENUMS[9][0]; expect(fieldItems(f, {}).map(i => i.name)).toEqual(['XY…', 'KXHL']); expect(enumLabel(f, '2', fieldItems(f, {}))).toBe('KXHL');
+    const f = TYPE_ENUMS[9][0]; expect(fieldItems(f, {}).map(i => i.name)).toEqual(['XY', 'KXHL']); expect(enumLabel(f, '2', fieldItems(f, {}))).toBe('KXHL');
   });
   it('poleTypeValue chỉ lấy từ loại cột hệ thống', () => {
     const types = [{ value: 3, name: '789412', systemConfig: 0 }, { value: 8, name: 'Three-Arm Lamp', systemConfig: 1 }, { value: 1, name: 'Single arm lamp', systemConfig: 1 }, { value: 1, name: 'COT8M', systemConfig: 0 }];

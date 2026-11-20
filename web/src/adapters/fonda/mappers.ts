@@ -143,6 +143,15 @@ export function mapDictionary(d: unknown): DictItem[] {
   return (d as Rec[]).filter(r => r && (r.dictValue != null || r.dictName != null)).map(r => ({ value: str(r.dictValue), name: str(r.dsName) || str(r.dictName), remark: str(r.dictStairRemark) }));
 }
 
+/** deviceTypeController/queryProtocolByDeviceId → giao thức chọn được của MỘT loại thiết bị (đã dò: LCU nhiều giao thức, Gateway 2, Concentrator 3). */
+export interface TypeProtocol { id: string; value: number; name: string; version: string; enable: boolean }
+export function mapTypeProtocols(d: unknown): TypeProtocol[] {
+  if (!Array.isArray(d)) return [];
+  return (d as Rec[]).filter(r => r && r.protocolId).map(r => ({ id: str(r.protocolId), value: Number(r.protocolValue), name: str(r.protocolName), version: str(r.protocolVersion), enable: r.enable === 1 || r.enable === true }));
+}
+/** protocolActor/queryProtocolFunction → mảng số chức năng của giao thức (đây chính là `deviceConfig.functionList`). */
+export function mapFunctions(d: unknown): number[] { return Array.isArray(d) ? (d as unknown[]).map(Number).filter(Number.isFinite) : []; }
+
 const isAttach = (v: unknown): v is Rec => !!v && typeof v === 'object' && !Array.isArray(v) && 'modelName' in (v as Rec);
 const attachItem = (a: Rec) => ({ name: str(a.modelName) || str(a.modelId), checked: a.checked === true, extra: [a.lampIndex != null ? `đèn #${str(a.lampIndex)}` : '', a.pathNum != null ? `${str(a.pathNum)} mạch` : ''].filter(Boolean).join(', ') });
 

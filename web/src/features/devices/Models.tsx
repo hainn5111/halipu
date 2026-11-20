@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { lazy, Suspense } from 'react';
 import { DICT_KEYS, enumFieldsOf, enumLabel, fieldItems, isRelevantKey, poleShapeItems } from './enums';
 
-import { listDeviceTypes, listDictionary, listModels, listPoleTypes, listProtocols, modelProtocols, projectIds, type ModelProto } from '../../adapters/fonda';
+import { listDeviceTypes, listDictionary, listModels, listPoleTypes, listTypeProtocols, modelProtocols, projectIds, type ModelProto } from '../../adapters/fonda';
 import { WRITE_ENABLED } from '../../core/flags';
 import { configEntries, lcuSpec, type DictItem, type PoleType } from '../../adapters/fonda/mappers';
 import type { DeviceModel, DeviceType } from '../../core/types';
@@ -23,7 +23,7 @@ export default function Models() {
   const [pid, setPid] = useState('');
   const [protos, setProtos] = useState<Map<string, ModelProto>>(new Map());
   const [err, setErr] = useState('');
-  const [allProtos, setAllProtos] = useState<Array<ModelProto & { typeId: string }>>([]);
+  const [typeProtos, setTypeProtos] = useState<Map<string, ModelProto[]>>(new Map());
   const [armErr, setArmErr] = useState(''), [ptSel, setPtSel] = useState<string | null>(null);
   const [dicts, setDicts] = useState<Record<number, DictItem[]>>({});
   const [poleTypes, setPoleTypes] = useState<PoleType[]>([]), [ptErr, setPtErr] = useState('');
@@ -43,7 +43,7 @@ export default function Models() {
           if (pid === ps[0]) {   // bảng enum của các trường deviceConfig (docs/15 §4)
             const dd: Record<number, DictItem[]> = {};
             for (const key of DICT_KEYS) { try { dd[key] = await listDictionary(pid, key); } catch (e) { if (key === 55) setArmErr((e as Error).message); } }
-            setDicts(dd); setAllProtos(await listProtocols(pid));
+            setDicts(dd);
           }
         }
         if (!live) return;
@@ -67,13 +67,18 @@ export default function Models() {
     return () => { live = false; };
   }, [typeId, pid, reload]);
   const arms = dicts[55] ?? [], shapes = useMemo(() => poleShapeItems(poleTypes), [poleTypes]);
-  // Giao thức chọn được: toàn bộ giao thức hệ thống của loại này (protocolActor/queryList) + giao thức các model sẵn có (phòng khi API trên không trả)
+  // Giao thức chọn được = giao thức hệ thống của loại (queryProtocolByDeviceId, nạp khi chọn loại) + giao thức các model sẵn có (phòng khi API lỗi)
+  useEffect(() => {
+    if (!typeId || typeId === POLE_TYPES || typeId === ARM_TYPES || !pid || typeProtos.has(typeId)) return;
+    let live = true; listTypeProtocols(pid, typeId).then(r => { if (live) setTypeProtos(m => new Map(m).set(typeId, r)); });
+    return () => { live = false; };
+  }, [typeId, pid, typeProtos]);
   const protoOpts = useMemo(() => {
     const m = new Map<string, ModelProto>();
-    for (const p of allProtos) if (p.typeId === typeId && p.id && p.value >= 0) m.set(p.id, p);
+    for (const p of typeProtos.get(typeId ?? '') ?? []) m.set(p.id, p);
     for (const p of protos.values()) if (p.id && p.value >= 0 && !m.has(p.id)) m.set(p.id, p);
     return [...m.values()];
-  }, [allProtos, protos, typeId]);
+  }, [typeProtos, protos, typeId]);
   const enumName = (typeValue: number | undefined, key: string, text: string) => {
     if (typeValue == null) return '';
     const f = enumFieldsOf(typeValue).find(x => x.key === key); if (!f) return '';
@@ -95,7 +100,7 @@ export default function Models() {
           <button className={typeId === POLE_TYPES ? '' : 'b'} onClick={() => { setTypeId(POLE_TYPES); setSelId(null); setPtSel(null); }}>Loại cột — PoleType ({poleTypes.length})</button>
           <button className={typeId === ARM_TYPES ? '' : 'b'} onClick={() => { setTypeId(ARM_TYPES); setSelId(null); }}>Kiểu tay đèn — poleArmType ({arms.length})</button>
         </div>
-        {Toolbar && typeId && typeId !== POLE_TYPES && typeId !== ARM_TYPES && <div style={{ marginBottom: 10 }}><Suspense fallback={null}><Toolbar pid={pid} type={curType} models={list} sel={sel} protos={protos} ctx={{ dicts, poleTypes, protoOpts }} onChanged={() => { setSelId(null); setReload(n => n + 1); }} /></Suspense></div>}
+        {Toolbar && typeId && typeId !== POLE_TYPES && typeId !== ARM_TYPES && <div style={{ marginBottom: 10 }}><Suspense fallback={null}><Toolbar pid={pid} type={curType} models={list} sel={sel} protos={protos} ctx={{ pid, dicts, poleTypes, protoOpts }} onChanged={() => { setSelId(null); setReload(n => n + 1); }} /></Suspense></div>}
         {typeId === POLE_TYPES && (<>
           {ptErr && <div className="err">{ptErr}</div>}
           {PtWrites && <Suspense fallback={null}><PtWrites mode="add" shapes={shapes} pid={pid} onChanged={() => setReload(n => n + 1)} /></Suspense>}
@@ -156,7 +161,7 @@ export default function Models() {
               <ul style={{ margin: '4px 0 0', paddingLeft: 18 }}>{e.items.map((it, i) => (
                 <li key={i} style={{ opacity: it.checked ? 1 : .55 }}>{it.checked ? '✔' : '○'} {it.name}{it.extra ? ` (${it.extra})` : ''}</li>))}</ul>
             </div>))}
-          {Writes && sel && <Suspense fallback={null}><Writes pid={pid} model={sel} type={selType} proto={selProto} ctx={{ dicts, poleTypes, protoOpts }} onChanged={() => { setSelId(null); setReload(n => n + 1); }} /></Suspense>}
+          {Writes && sel && <Suspense fallback={null}><Writes pid={pid} model={sel} type={selType} proto={selProto} ctx={{ pid, dicts, poleTypes, protoOpts }} onChanged={() => { setSelId(null); setReload(n => n + 1); }} /></Suspense>}
         </aside>
       )}
     </div>

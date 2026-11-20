@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { protocolFunctions } from '../../adapters/fonda';
 import { modelCloneBody, modelUpdateBody, sendModelCreate, sendModelDelete, sendModelUpdate, sendPoleTypeDelete, sendPoleTypeSave, sendPoleTypeUpdate, poleTypeSaveBody, poleTypeUpdateBody, poleTypeIdsBody, type ModelProto } from '../../adapters/fonda';
 import { modelIdsBody, modelNameError, poleTypeError, type PoleTypeIn } from '../../adapters/fonda/writeBodies';
 import type { DictItem, PoleType } from '../../adapters/fonda/mappers';
@@ -10,17 +11,23 @@ import { allowedOptions, enumFieldsOf, enumOptions, fieldItems, FUNCTION_TYPES, 
 type Op = { title: string; summary: string; method: string; path: string; body: unknown; danger?: boolean; run: () => Promise<unknown> };
 const toProto = (p?: ModelProto) => (p ? { id: p.id, value: p.value, name: p.name, version: p.version } : undefined);
 
-export interface Ctx { dicts: Record<number, DictItem[]>; poleTypes: PoleType[]; protoOpts: ModelProto[] }
+export interface Ctx { pid: string; dicts: Record<number, DictItem[]>; poleTypes: PoleType[]; protoOpts: ModelProto[] }
 
 /** Ô nhập theo loại: enum (dictionary), danh sách chức năng, loại cột (Lamp Pole), giao thức. Mọi thay đổi ghi lại vào JSON `cfg`; giao thức trả qua `setProto`. */
 function TemplateFields({ typeValue, cfg, setCfg, ctx, proto, setProto }: { typeValue: number; cfg: string; setCfg: (t: string) => void; ctx: Ctx; proto?: ModelProto; setProto: (p: ModelProto) => void }) {
+  // Hook đặt TRƯỚC mọi return sớm (đúng thứ tự hook)
+  const [fnOpts, setFnOpts] = useState<number[]>([]);
+  useEffect(() => { let live = true; if (proto?.id && FUNCTION_TYPES.includes(typeValue)) void protocolFunctions(ctx.pid, proto).then(f => { if (live) setFnOpts(f); }); else setFnOpts([]); return () => { live = false; }; }, [proto?.id, proto?.value, typeValue, ctx.pid]);
   let c: Record<string, unknown> | null = null; try { const v = JSON.parse(cfg); c = v && typeof v === 'object' && !Array.isArray(v) ? v : null; } catch { c = null; }
   if (!c) return <p className="sub">deviceConfig không phải JSON hợp lệ — sửa ở khung JSON bên dưới.</p>;
   const set = (patch: Record<string, unknown>) => setCfg(JSON.stringify({ ...c, ...patch }, null, 2));
   const row = (label: string, el: JSX.Element) => <span key={label} style={{ display: 'contents' }}><span className="sub" style={{ margin: 0 }}>{label}</span>{el}</span>;
   const rows: JSX.Element[] = [];
   if (ctx.protoOpts.length && FUNCTION_TYPES.includes(typeValue)) {
-    rows.push(row('Function (protocol)', <select value={proto?.id ?? ''} onChange={e => { const p = ctx.protoOpts.find(x => x.id === e.target.value); if (!p) return; setProto(p); const fix: Record<string, unknown> = {}; for (const f of enumFieldsOf(typeValue)) { const ok = allowedOptions(typeValue, p.value, enumOptions(f, fieldItems(f, ctx.dicts))); if (ok.length && !ok.some(o => o.value === String(c![f.key] ?? ''))) fix[f.key] = storeValue(ok[0].value); } if (Object.keys(fix).length) set(fix); }}>
+    rows.push(row('Function (protocol)', <select value={proto?.id ?? ''} onChange={e => { const p = ctx.protoOpts.find(x => x.id === e.target.value); if (!p) return; setProto(p);
+      const fix: Record<string, unknown> = {}; for (const f of enumFieldsOf(typeValue)) { const ok = allowedOptions(typeValue, p.value, enumOptions(f, fieldItems(f, ctx.dicts))); if (ok.length && !ok.some(o => o.value === String(c![f.key] ?? ''))) fix[f.key] = storeValue(ok[0].value); }
+      // Chức năng (functionList) đi theo giao thức: lấy từ server rồi điền vào cấu hình
+      void protocolFunctions(ctx.pid, p).then(fn => set({ ...fix, ...(fn.length ? { functionList: fn } : {}) })); if (!FUNCTION_TYPES.includes(typeValue) && Object.keys(fix).length) set(fix); }}>
       {!proto && <option value="">(chọn giao thức)</option>}
       {ctx.protoOpts.map(p => <option key={p.id} value={p.id}>{p.name} {p.version}</option>)}</select>));
   }
@@ -35,6 +42,11 @@ function TemplateFields({ typeValue, cfg, setCfg, ctx, proto, setProto }: { type
     rows.push(row('Pole type (loại cột)', <select value={id} onChange={e => { const t = ctx.poleTypes.find(x => x.id === e.target.value); set({ poleTypeId: e.target.value, ...(t?.value != null ? { poleType: t.value } : {}) }); }}>
       {!ctx.poleTypes.some(t => t.id === id) && <option value={id}>{id ? `(không rõ ${id.slice(0, 8)}…)` : '(chưa chọn)'}</option>}
       {ctx.poleTypes.map(t => <option key={t.id} value={t.id}>{t.name}{t.systemConfig ? ' · hệ thống' : ''}</option>)}</select>));
+  }
+  if (FUNCTION_TYPES.includes(typeValue) && (fnOpts.length || Array.isArray(c.functionList))) {
+    const cur = Array.isArray(c.functionList) ? (c.functionList as unknown[]).map(Number) : [], nums = [...new Set([...fnOpts, ...cur])].sort((a, b) => a - b);
+    rows.push(row('Function (chức năng của giao thức)', <span style={{ display: 'flex', flexWrap: 'wrap', gap: '4px 12px' }}>
+      {nums.map(n => <label key={n} style={{ fontSize: 13, opacity: fnOpts.length && !fnOpts.includes(n) ? .5 : 1 }}><input type="checkbox" checked={cur.includes(n)} onChange={e => set({ functionList: (e.target.checked ? [...cur, n] : cur.filter(x => x !== n)).sort((a, b) => a - b) })} /> #{n}</label>)}</span>));
   }
   if (!rows.length) return null;
   return <div style={{ display: 'grid', gridTemplateColumns: 'auto 1fr', gap: '8px 10px', alignItems: 'center', marginTop: 8 }}>{rows}</div>;

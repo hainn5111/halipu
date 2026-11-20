@@ -4,7 +4,7 @@ import { config } from '../../core/config';
 import type { PoleLinks, DeviceItem, DeviceModel, DeviceType, LampCommand, LightStatus, Lcu, Measurement } from '../../core/types';
 import { WRITE_ENABLED } from '../../core/flags';
 import { modelCloneBody, modelUpdateBody, modelIdsBody, poleTypeSaveBody, poleTypeUpdateBody, poleTypeIdsBody, type PoleTypeIn, type ProtoIn, lcuIdsBody, lcuModelCreateBody, lcuSaveBody, modelCreateBody, poleIdsBody, poleUpdateBody, type GroupInput } from './writeBodies';
-import { lcuSlotCount, mapLcuLamps, mapPoleLinks, mapPoleTypes, mapDictionary, type DictItem, type PoleType, mapModels, mapDeviceRow, mapDeviceTypes, mapLight, mapListRow, mapPageRow, mapTrend, mergeLcus, pickGeo, ratedPowerOf, validGeo, type LcuRow } from './mappers';
+import { lcuSlotCount, mapLcuLamps, mapPoleLinks, mapTypeProtocols, mapFunctions, mapPoleTypes, mapDictionary, type DictItem, type PoleType, mapModels, mapDeviceRow, mapDeviceTypes, mapLight, mapListRow, mapPageRow, mapTrend, mergeLcus, pickGeo, ratedPowerOf, validGeo, type LcuRow } from './mappers';
 
 const PID_KEY = 'pid';
 
@@ -190,12 +190,16 @@ export const sendPoleTypeSave = (projectId: string, body: Record<string, unknown
 export const sendPoleTypeUpdate = (projectId: string, body: Record<string, unknown>) => { assertWrite(); return call('POST', 'poleType/update', { projectId, body }); };
 export const sendPoleTypeDelete = (projectId: string, ids: string[]) => { assertWrite(); return call('POST', 'poleType/delete', { projectId, body: poleTypeIdsBody(ids) }); };
 
-/** Mọi giao thức của hệ thống (GET protocolActor/queryList: {protocolId, protocolName, protocolValue, protocolVersion, protocolGroup, deviceTypeId}) — chỉ đọc; lỗi thì [] (dùng giao thức của các model sẵn có). */
-export async function listProtocols(projectId: string): Promise<Array<ModelProto & { typeId: string; group: string }>> {
+/** Giao thức chọn được của một loại thiết bị (POST deviceTypeController/queryProtocolByDeviceId — đã dò thật 2026-11-20); lỗi thì []. */
+export async function listTypeProtocols(projectId: string, typeId: string): Promise<ModelProto[]> {
   try {
-    const d = await call<Array<Record<string, unknown>>>('GET', 'protocolActor/queryList', { projectId });
-    return (Array.isArray(d) ? d : []).filter(r => r?.protocolId).map(r => ({ id: String(r.protocolId), value: Number(r.protocolValue), name: String(r.protocolName ?? ''), version: String(r.protocolVersion ?? ''), systemConfig: 0, remark: '', typeId: String(r.deviceTypeId ?? ''), group: String(r.protocolGroup ?? '') }));
+    const d = mapTypeProtocols(await call('POST', 'deviceTypeController/queryProtocolByDeviceId', { projectId, body: { deviceTypeId: typeId, projectId } }));
+    return d.filter(p => p.enable).map(p => ({ id: p.id, value: p.value, name: p.name, version: p.version, systemConfig: 0, remark: '' }));
   } catch { return []; }
+}
+/** Chức năng của một giao thức (POST protocolActor/queryProtocolFunction) = `functionList` của model; lỗi thì []. */
+export async function protocolFunctions(projectId: string, p: { id: string; value: number }): Promise<number[]> {
+  try { return mapFunctions(await call('POST', 'protocolActor/queryProtocolFunction', { projectId, body: { protocolId: p.id, protocolValue: p.value, projectId } })); } catch { return []; }
 }
 
 /** Giao thức/phiên bản/systemConfig của các model một loại (deviceModel/getDeviceModelPage — danh sách model trả kèm các trường này). */

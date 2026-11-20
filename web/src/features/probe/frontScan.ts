@@ -5,7 +5,7 @@
 // Hàm TỰ CHỨA (không dùng biến ngoài) vì được sao chép qua toString().
 export function scanFrontend(win: any): Promise<any> {
   const KEYS = ['KXHL', 'kmFactory', 'powerProtocol', 'rtuType', 'gatewayTypes', 'lampTypes', 'powerTypes', 'poleArmType', 'poleTypeValue', 'meterType', 'currentP',
-    'dimmingLevel', 'functionList', 'protocolValue', 'Constant Current Drive Power', 'Led Lamp', 'Willow', 'RTU 200', 'RTU500', 'RF/F2', 'CAT1/F2', 'FEMS', 'Single arm lamp', 'Magnolia'];
+    'dimmingLevel', 'functionList', 'protocolValue', 'Constant Current Drive Power', 'Led Lamp', 'Willow', 'RTU 200', 'RTU500', 'RF/F2', 'CAT1/F2', 'FEMS', 'Single arm lamp', 'Magnolia', 'rtuTypeArr', 'gatewayTypeArr', 'gatewayTypesArr', 'rtuTypeOptions', 'concentratorType', 'queryDictionaryByKey)(99', 'queryDictionaryByKey)(119', 'queryDictionaryByKey)(55', 'queryDictionaryByKey)(20', 'queryDictionaryByKey)(15', 'queryDictionaryByKey)(21', 'RTU200', 'RTU700', 'RTU150', 'RTU190', 'poleTypeArr', 'poleArmTypeArr', 'hasFactoryDeviceType', 'table.D4I', 'protocolModelChange'];
   const doc = win.document;
   const urls = new Set<string>();
   for (const s of Array.from(doc.scripts) as any[]) if (s.src) urls.add(s.src);
@@ -22,7 +22,7 @@ export function scanFrontend(win: any): Promise<any> {
         while (i >= 0) {
           n++;
           const rec = out.keys[k];
-          if (rec.samples.length < 4) { const s = text.slice(Math.max(0, i - 260), i + 340).replace(/\s+/g, ' '); if (!rec.samples.includes(s)) rec.samples.push(s); }
+          if (rec.samples.length < 12) { const s = text.slice(Math.max(0, i - 260), i + 340).replace(/\s+/g, ' '); /* bỏ ngữ cảnh là bảng dịch i18n (nhiều cặp "khoá":"chuỗi" liên tiếp) */ if (!/("[A-Za-z0-9_]+":"[^"]{2,}",){3}/.test(s) && !rec.samples.includes(s)) rec.samples.push(s); }
           i = text.indexOf(k, i + k.length);
         }
         if (n) { out.keys[k].total += n; out.keys[k].files.push({ url, count: n }); }

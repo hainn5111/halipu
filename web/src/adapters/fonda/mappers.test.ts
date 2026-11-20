@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { lcuSpec, channelRows, lcuSlotCount, mapLcuLamps, mapPoleLinks, categoryOf, configEntries, mapModels, safeJson, mapPoleTypes, mapDictionary, mapDeviceRow, mapDeviceTypes, mapLight, mapListRow, mapPageRow, mapTrend, mergeLcus, pickGeo, ratedPowerOf, toCsv, validGeo } from './mappers';
+import { lcuSpec, channelRows, lcuSlotCount, mapLcuLamps, mapPoleLinks, categoryOf, configEntries, mapModels, mapTypeProtocols, mapFunctions, safeJson, mapPoleTypes, mapDictionary, mapDeviceRow, mapDeviceTypes, mapLight, mapListRow, mapPageRow, mapTrend, mergeLcus, pickGeo, ratedPowerOf, toCsv, validGeo } from './mappers';
 
 describe('pickGeo / validGeo', () => {
   it('đọc lat/lng dạng chuỗi', () => expect(pickGeo({ lat: '20.93271', lng: '105.67026' })).toEqual({ lat: 20.93271, lng: 105.67026 }));
@@ -153,5 +153,13 @@ describe('safeJson', () => {
     expect(() => Number(m.config.lampHolderNum)).not.toThrow();
     expect(() => String(m.config.lampHolderNum)).not.toThrow();
     expect(safeJson({ a: { toString: 1 } })).toEqual({ a: { _toString: 1 } });
+  });
+});
+
+describe('giao thức theo loại', () => {
+  it('mapTypeProtocols / mapFunctions', () => {
+    const r = mapTypeProtocols([{ protocolValue: 56, protocolId: 'P', protocolName: 'RTU/SDMP-X', enable: 1, protocolVersion: 'SDMP-RTU v1.0' }, { protocolName: 'x' }]);
+    expect(r).toEqual([{ id: 'P', value: 56, name: 'RTU/SDMP-X', version: 'SDMP-RTU v1.0', enable: true }]);
+    expect(mapFunctions([1, 2, '3', 'x'])).toEqual([1, 2, 3]); expect(mapFunctions(null)).toEqual([]);
   });
 });

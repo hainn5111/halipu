@@ -8,10 +8,10 @@ export const TYPE_ENUMS: Record<number, EnumField[]> = {
   2: [{ key: 'dimmingLevel', label: 'Dimming level', dict: 20, byName: true }],
   3: [{ key: 'gatewayTypes', label: 'Gateway type', dict: 119 }],
   4: [{ key: 'rtuType', label: 'Concentrator type', dict: 99 }],
-  5: [{ key: 'lampTypes', label: 'Lamp type', dict: 3 }, { key: 'powerTypes', label: 'Power type', dict: 17 }, { key: 'powerProtocol', label: 'Power protocol', items: [{ value: '0', name: 'Lựa chọn 0 (tên chưa rõ)' }, { value: '1', name: 'Lựa chọn 1 (tên chưa rõ)' }] }],
+  5: [{ key: 'lampTypes', label: 'Lamp type', dict: 3 }, { key: 'powerTypes', label: 'Power type', dict: 17 }, { key: 'powerProtocol', label: 'Power protocol', items: [{ value: '0', name: 'Không (nothing)' }, { value: '1', name: 'D4I' }] }   /* cứng trong giao diện Fonda: powerProtocolArr */ ],
   6: [{ key: 'poleArmType', label: 'Arm type', dict: 55 }],
-  // Producer của Switch: danh sách cố định trên form Fonda (người dùng xác nhận 2 lựa chọn "XY…" và "KXHL"). Đã xác nhận bằng capture: "XY…" = "1", KXHL = "2".
-  9: [{ key: 'kmFactory', label: 'Producer', items: [{ value: '1', name: 'XY…' }, { value: '2', name: 'KXHL' }] }],
+  // Producer của Switch: danh sách CỨNG trong giao diện Fonda (kmFactoryArr = [{1,"XY"},{2,"KXHL"}] — quét front-end 2026-11-20), không có trên server.
+  9: [{ key: 'kmFactory', label: 'Producer', items: [{ value: '1', name: 'XY' }, { value: '2', name: 'KXHL' }] }],
 };
 /** Loại có ô "Function" = chọn GIAO THỨC (RF/F2, CAT1/F2, …) — LCU, Gateway, Concentrator. `functionList` (mảng số) KHÔNG sửa trong form, chỉ hiện nguyên giá trị. */
 export const FUNCTION_TYPES = [2, 3, 4];
