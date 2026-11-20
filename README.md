@@ -1,3 +1,18 @@
+# SLCP — Web điều khiển chiếu sáng thông minh
+
+## Dùng ngay
+**Link:** https://hainn5111.github.io/halipu/
+
+Trang chạy https còn API Fonda chạy http, nên trình duyệt máy tính cần **cho phép Insecure content** một lần cho trang này:
+1. Mở link trên, bấm biểu tượng bên trái thanh địa chỉ → **Site settings**.
+2. Tìm **Insecure content** → chọn **Allow**.
+3. Tải lại trang (Ctrl+Shift+R) rồi đăng nhập bằng tài khoản Fonda của bạn.
+
+Lưu ý:
+- **iPhone/Safari không có cách bật** mục này, Android tuỳ phiên bản Chrome. Hiện nên dùng máy tính. Hướng lâu dài: Fonda bật HTTPS, hoặc có reverse proxy HTTPS (`web/deploy/nginx.conf.example`).
+- Muốn không phải bấm trên từng trình duyệt (máy tính do bạn quản trị): đặt chính sách Chrome `InsecureContentAllowedForUrls` = `https://hainn5111.github.io`.
+- Nếu trang không đổi sau khi cập nhật, tải lại cứng (Ctrl+Shift+R) vì trình duyệt giữ cache.
+
 > Làm việc trên repo này (người hoặc session Claude): đọc [`docs/14-quy-trinh-phat-trien.md`](docs/14-quy-trinh-phat-trien.md) và [`CLAUDE.md`](CLAUDE.md) trước.
 
 ## Cấu trúc
