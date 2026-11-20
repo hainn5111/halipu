@@ -25,7 +25,7 @@ export default function DictLab() {
 
   const next = useMemo(() => nextDictValue(items), [items]);
   const parsed = useMemo(() => (text ? dictBodyError(text) : null), [text]);
-  const fill = () => { if (items[srcIdx]) setText(JSON.stringify(cloneDictBody(items[srcIdx], { name, value: next }), null, 2)); };
+  const fill = () => { if (items[srcIdx]) setText(JSON.stringify(cloneDictBody(items[srcIdx], { name, value: next, dictKey: key.trim() }), null, 2)); };
 
   if (!WRITE_ENABLED) return <div className="lcus"><div className="listwrap"><p className="sub">Công cụ này chỉ có ở bản preview.</p></div></div>;
   return (

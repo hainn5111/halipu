@@ -9,6 +9,7 @@ describe('dictLab', () => {
     expect(b).toEqual({ dictValue: 9, dsName: 'Test', dictName: 'Ordinary pole lamp arm type', dictType: '55', dictionarySecond: [] });
     expect(rec.dictId).toBe('D1');
   });
+  it('thêm dictKey khi được cho', () => { expect(cloneDictBody(rec, { name: 'T', value: 3, dictKey: '55' }).dictKey).toBe('55'); expect('dictKey' in cloneDictBody(rec, { name: 'T', value: 3 })).toBe(false); });
   it('dictBodyError', () => {
     expect(dictBodyError('x').ok).toBe(false); expect(dictBodyError('[]').ok).toBe(false);
     expect(dictBodyError('{"dictValue":1}').ok).toBe(false); expect(dictBodyError('{"dsName":"a","dictValue":1}').ok).toBe(true);

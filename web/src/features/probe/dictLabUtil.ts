@@ -9,10 +9,11 @@ export function nextDictValue(items: Rec[]): number {
 }
 
 /** Sao chép một bản ghi để thêm mục mới: bỏ id/dấu vết tạo-sửa, đổi tên giá trị (`dsName`) và `dictValue`; giữ nguyên các trường còn lại (nhóm, dictType…). */
-export function cloneDictBody(src: Rec, o: { name: string; value: number | string; remark?: string }): Rec {
+export function cloneDictBody(src: Rec, o: { name: string; value: number | string; remark?: string; dictKey?: string }): Rec {
   const b: Rec = { ...src };
   for (const k of DROP) delete b[k];
   b.dsName = o.name; b.dictValue = o.value;
+  if (o.dictKey) b.dictKey = o.dictKey;   // server đòi `dictKey` (lỗi "Parameter dictKey cannot be empty") — bản ghi đọc về không có trường này; thử = key nhóm
   if (o.remark !== undefined && 'dictStairRemark' in b) b.dictStairRemark = o.remark;
   if (Array.isArray(b.dictionarySecond)) b.dictionarySecond = [];
   return b;
