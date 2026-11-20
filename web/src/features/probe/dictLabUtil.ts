@@ -42,11 +42,12 @@ export function buildDictBody(shape: DictShape, src: Rec, o: Parameters<typeof c
 
 export type UpdateShape = 'min' | 'full' | 'second';
 /** Body `dictionary/update` đoán từ bản ghi trong queryDictionaryPage (server trả 500 với dạng `full` — nên thử dạng khác). */
-export function buildUpdateBody(shape: UpdateShape, rec: Rec, name: string, remark = ''): Rec {
+export function buildUpdateBody(shape: UpdateShape, rec: Rec, name: string, remark = '', projectId = ''): Rec {
   const base: Rec = { dictId: rec.dictId, dictKey: rec.dictKey, dictValue: rec.dictValue, dictName: rec.dictName };
+  if (projectId) base.projectId = projectId;   // web Fonda gốc thường gửi kèm projectId trong body
   if (shape === 'min') return { ...base, dsName: name };
   if (shape === 'second') return { ...base, dictionarySecond: [{ dsName: name, dictValue: rec.dictValue, dictStairRemark: remark }] };
-  return { ...rec, dsName: name, dictStairRemark: remark };
+  return { ...rec, dsName: name, dictStairRemark: remark, ...(projectId ? { projectId } : {}) };
 }
 
 /** Kiểm tra body trước khi gửi: JSON object, có dsName và dictValue. */

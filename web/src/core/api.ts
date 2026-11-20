@@ -49,8 +49,11 @@ export async function call<T = unknown>(method: 'GET' | 'POST' | 'PUT', path: st
   const headers: Record<string, string> = { authorization: getToken() || '', 'Content-Type': 'application/json' };
   if (projectId) headers.projectId = projectId;
   const res = await fetch(`${config().apiBase}/api/v1.0/${path}?lang=en-US`, { method, headers, body: body ? JSON.stringify(body) : undefined });
-  const json = await res.json().catch(() => ({}));
+  const text = await res.text().catch(() => '');
+  let json: { code?: number; message?: string; error?: string; data?: unknown } = {};
+  try { json = text ? JSON.parse(text) : {}; } catch { /* không phải JSON (vd trang lỗi 500) */ }
   if (json.code === 10002) { clearSession(); onExpired(); }
-  if (!OK.includes(json.code)) throw new ApiError(`${path}: ${json.message || 'HTTP ' + res.status} (code ${json.code})`, json.code);
+  // Lỗi không có message: kèm vài chục ký tự thân phản hồi để biết server nói gì (vd 500)
+  if (!OK.includes(json.code as number)) throw new ApiError(`${path}: ${json.message || json.error || ('HTTP ' + res.status + (text ? ' — ' + text.slice(0, 300) : ''))} (code ${json.code})`, json.code);
   return json.data as T;
 }
