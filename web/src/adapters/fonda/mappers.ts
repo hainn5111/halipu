@@ -3,7 +3,16 @@ import type { PoleLamp, PoleGroup, PoleLinks, ConfigEntry, DeviceItem, DeviceMod
 
 type Rec = Record<string, unknown>;
 const num = (v: unknown): number | undefined => { const x = typeof v === 'number' ? v : parseFloat(String(v ?? '')); return Number.isFinite(x) ? x : undefined; };
-const str = (v: unknown) => (v == null ? '' : String(v));
+const str = (v: unknown) => { if (v == null) return ''; if (typeof v !== 'object') return String(v); try { return JSON.stringify(v) ?? ''; } catch { return ''; } };
+
+/** Chép sâu giá trị JSON, đổi tên khoá làm hỏng ép kiểu (`toString`, `valueOf`, `toJSON`) — một object như vậy làm `String()`/`Number()` ném
+ *  "Cannot convert object to primitive value" và trắng cả trang. */
+const BAD_KEYS = new Set(['toString', 'valueOf', 'toJSON', '__proto__']);
+export function safeJson(v: unknown): unknown {
+  if (Array.isArray(v)) return v.map(safeJson);
+  if (v && typeof v === 'object') { const o: Rec = {}; for (const [k, x] of Object.entries(v as Rec)) o[BAD_KEYS.has(k) ? `_${k}` : k] = safeJson(x); return o; }
+  return v;
+}
 
 export interface Geo { lat: number; lng: number }
 
@@ -106,9 +115,9 @@ export function mapModels(d: unknown): DeviceModel[] {
   for (const r of d as Rec[]) {
     const id = str(r?.deviceModelId); if (!id) continue;
     let config: Record<string, unknown> = {};
-    if (r.deviceConfig && typeof r.deviceConfig === 'object') config = r.deviceConfig as Rec;
+    if (r.deviceConfig && typeof r.deviceConfig === 'object') config = safeJson(r.deviceConfig) as Rec;
     else if (typeof r.deviceConfig === 'string' && r.deviceConfig.trim()) {
-      try { const v = JSON.parse(r.deviceConfig); config = v && typeof v === 'object' && !Array.isArray(v) ? v : { _raw: r.deviceConfig }; } catch { config = { _raw: r.deviceConfig }; }
+      try { const v = safeJson(JSON.parse(r.deviceConfig)); config = v && typeof v === 'object' && !Array.isArray(v) ? (v as Rec) : { _raw: r.deviceConfig }; } catch { config = { _raw: r.deviceConfig }; }
     }
     out.push({ id, name: str(r.deviceModelName), typeId: str(r.deviceTypeId), config });
   }

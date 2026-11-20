@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { lcuSpec, channelRows, lcuSlotCount, mapLcuLamps, mapPoleLinks, categoryOf, configEntries, mapModels, mapPoleTypes, mapDictionary, mapDeviceRow, mapDeviceTypes, mapLight, mapListRow, mapPageRow, mapTrend, mergeLcus, pickGeo, ratedPowerOf, toCsv, validGeo } from './mappers';
+import { lcuSpec, channelRows, lcuSlotCount, mapLcuLamps, mapPoleLinks, categoryOf, configEntries, mapModels, safeJson, mapPoleTypes, mapDictionary, mapDeviceRow, mapDeviceTypes, mapLight, mapListRow, mapPageRow, mapTrend, mergeLcus, pickGeo, ratedPowerOf, toCsv, validGeo } from './mappers';
 
 describe('pickGeo / validGeo', () => {
   it('đọc lat/lng dạng chuỗi', () => expect(pickGeo({ lat: '20.93271', lng: '105.67026' })).toEqual({ lat: 20.93271, lng: 105.67026 }));
@@ -144,5 +144,14 @@ describe('mapDictionary', () => {
   it('lấy giá trị/tên, rỗng thì []', () => {
     expect(mapDictionary([{ dictValue: 1, dictName: 'Ordinary pole lamp arm type', dsName: 'Willow leaf', dictStairRemark: 'r' }, { dictValue: 2, dictName: 'Nhóm', dsName: 'Ginkgo' }, null])).toEqual([{ value: '1', name: 'Willow leaf', remark: 'r' }, { value: '2', name: 'Ginkgo', remark: '' }]);
     expect(mapDictionary(null)).toEqual([]);
+  });
+});
+
+describe('safeJson', () => {
+  it('đổi khoá toString/valueOf để ép kiểu không ném lỗi', () => {
+    const m = mapModels([{ deviceModelId: 'M', deviceTypeId: 'T', deviceConfig: '{"lampHolderNum":{"toString":1,"valueOf":2},"x":[{"toJSON":1}]}' }])[0];
+    expect(() => Number(m.config.lampHolderNum)).not.toThrow();
+    expect(() => String(m.config.lampHolderNum)).not.toThrow();
+    expect(safeJson({ a: { toString: 1 } })).toEqual({ a: { _toString: 1 } });
   });
 });

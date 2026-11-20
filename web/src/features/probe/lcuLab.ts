@@ -1,3 +1,4 @@
+import { show } from '../common/show';
 // Hàm thuần cho công cụ "Thử tạo model LCU (không giới hạn)": sửa vài trường trong body JSON mà vẫn để người dùng sửa tay phần còn lại.
 type Rec = Record<string, unknown>;
 
@@ -6,7 +7,7 @@ export function parseBody(text: string): { ok: true; body: Rec } | { ok: false; 
     const v = JSON.parse(text);
     if (!v || typeof v !== 'object' || Array.isArray(v)) return { ok: false, reason: 'Body phải là một đối tượng JSON' };
     const b = v as Rec;
-    if (!String(b.deviceModelName ?? '').trim()) return { ok: false, reason: 'Thiếu deviceModelName' };
+    if (!show(b.deviceModelName ?? '').trim()) return { ok: false, reason: 'Thiếu deviceModelName' };
     if (!b.projectId || !b.deviceTypeId) return { ok: false, reason: 'Thiếu projectId hoặc deviceTypeId' };
     if (b.deviceTypeValue !== 2) return { ok: false, reason: 'Công cụ này chỉ dành cho model LCU (deviceTypeValue phải là 2)' };
     return { ok: true, body: b };

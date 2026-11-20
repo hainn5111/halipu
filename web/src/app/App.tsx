@@ -1,3 +1,4 @@
+import ErrorBoundary from './ErrorBoundary';
 import { Suspense, useEffect, useState } from 'react';
 import { HashRouter, Navigate, NavLink, Route, Routes, useLocation } from 'react-router-dom';
 import { useAuth } from '../core/auth';
@@ -50,12 +51,12 @@ function Shell() {
       <section className="main">
         <div className="crumb">{cur ? <>{cur.group} › <b>{cur.label}</b></> : ''}</div>
         <div className="pane">
-          <Suspense fallback={<div className="empty">Đang tải…</div>}>
+          <ErrorBoundary resetKey={loc.pathname}><Suspense fallback={<div className="empty">Đang tải…</div>}>
             <Routes>
               {ALL_TABS.filter(t => t.view).map(t => { const V = t.view!; return <Route key={t.id} path={t.id} element={<V />} />; })}
               <Route path="*" element={<Navigate to="/gis" replace />} />
             </Routes>
-          </Suspense>
+          </Suspense></ErrorBoundary>
         </div>
       </section>
     </div>

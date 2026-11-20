@@ -3,6 +3,7 @@ import { projectIds, rawDictionary, rawDictionaryPage, sendDictionary } from '..
 import { WRITE_ENABLED } from '../../core/flags';
 import ConfirmWrite from '../common/ConfirmWrite';
 import { cloneDictBody, dictBodyError, nextDictValue } from './dictLab';
+import { show } from '../common/show';
 
 type Rec = Record<string, unknown>;
 // THỬ NGHIỆM (GHI THẬT, chỉ preview): thêm một giá trị vào dictionary (mặc định key 55 = kiểu tay đèn). Body của dictionary/save CHƯA bắt từ web Fonda gốc:
@@ -39,7 +40,7 @@ export default function DictLab() {
       {page && <pre style={{ maxHeight: 200, overflow: 'auto', fontSize: 12 }}>{page}</pre>}
       {items.length > 0 && (<>
         <table style={{ marginTop: 10 }}><thead><tr><th></th><th>dictValue</th><th>dsName (tên giá trị)</th><th>dictName (nhóm)</th><th>dictType</th></tr></thead>
-          <tbody>{items.map((r, i) => <tr key={i} className={'lrow' + (i === srcIdx ? ' sel' : '')} onClick={() => setSrcIdx(i)}><td>{i === srcIdx ? '◉' : '○'}</td><td>{String(r.dictValue)}</td><td><b>{String(r.dsName ?? '')}</b></td><td>{String(r.dictName ?? '')}</td><td>{String(r.dictType ?? '')}</td></tr>)}</tbody></table>
+          <tbody>{items.map((r, i) => <tr key={i} className={'lrow' + (i === srcIdx ? ' sel' : '')} onClick={() => setSrcIdx(i)}><td>{i === srcIdx ? '◉' : '○'}</td><td>{show(r.dictValue)}</td><td><b>{show(r.dsName ?? '')}</b></td><td>{show(r.dictName ?? '')}</td><td>{show(r.dictType ?? '')}</td></tr>)}</tbody></table>
         <div style={{ display: 'flex', gap: 8, alignItems: 'end', flexWrap: 'wrap', margin: '12px 0' }}>
           <label><span className="sub">Tên giá trị mới (dsName)</span><input value={name} onChange={e => setName(e.target.value)} /></label>
           <span className="sub" style={{ margin: 0 }}>dictValue mới: <b>{next}</b></span>
@@ -50,7 +51,7 @@ export default function DictLab() {
         {parsed && !parsed.ok && <div className="err">{parsed.reason}</div>}
         <div style={{ marginTop: 10 }}><button disabled={!parsed?.ok} onClick={() => parsed?.ok && setConfirm(parsed.body)}>Gửi thử lên server…</button></div>
       </>)}
-      {after && <div style={{ marginTop: 14 }}><h3>Đọc lại sau khi gửi ({after.length} mục)</h3><p className="sub">{after.map(r => `${String(r.dictValue)}=${String(r.dsName ?? '')}`).join(' · ')}</p></div>}
+      {after && <div style={{ marginTop: 14 }}><h3>Đọc lại sau khi gửi ({after.length} mục)</h3><p className="sub">{after.map(r => `${show(r.dictValue)}=${show(r.dsName ?? '')}`).join(' · ')}</p></div>}
       {confirm && <ConfirmWrite title={`Thử ${op === 'save' ? 'thêm' : 'sửa'} giá trị dictionary ${key}`} summary="Gửi nguyên body bên dưới. Server từ chối thì lỗi hiện ở đây; nhận thì bên dưới sẽ đọc lại dictionary để xem mục mới." method="POST" path={`dictionary/${op}`} body={confirm}
         onConfirm={async () => { await sendDictionary(pid, op, confirm); const r = await rawDictionary(pid, key); setAfter(Array.isArray(r) ? r : []); setItems(Array.isArray(r) ? r : []); }} onClose={() => setConfirm(null)} />}
     </div></div>

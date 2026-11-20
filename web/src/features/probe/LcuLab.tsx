@@ -4,6 +4,7 @@ import { WRITE_ENABLED } from '../../core/flags';
 import type { DeviceModel } from '../../core/types';
 import ConfirmWrite from '../common/ConfirmWrite';
 import { compareStored, parseBody, withFields } from './lcuLab';
+import { show } from '../common/show';
 
 // THỬ NGHIỆM (GHI THẬT, chỉ preview): gửi deviceModel/saveNew cho model LCU với body JSON sửa tự do — để xem SERVER có chặn số đầu đèn /
 // lcuType như form Fonda hay không. Chỉ gọi đúng một API (deviceModel/saveNew) và chỉ cho model LCU.
@@ -37,7 +38,7 @@ export default function LcuLab() {
     setResult(null);
   }
   const parsed = useMemo(() => (text ? parseBody(text) : null), [text]);
-  const cur = useMemo(() => { try { const b = JSON.parse(text); return { name: String(b.deviceModelName ?? ''), holders: b.deviceConfig?.lampHolderNum as number | undefined, lcuType: b.deviceConfig?.lcuType as number | null | undefined }; } catch { return null; } }, [text]);
+  const cur = useMemo(() => { try { const b = JSON.parse(text); return { name: show(b.deviceModelName ?? ''), holders: b.deviceConfig?.lampHolderNum as number | undefined, lcuType: b.deviceConfig?.lcuType as number | null | undefined }; } catch { return null; } }, [text]);
   const set = (f: Parameters<typeof withFields>[1]) => { const t = withFields(text, f); if (t) setText(t); };
 
   if (!WRITE_ENABLED) return <div className="lcus"><div className="listwrap"><p className="sub">Công cụ này chỉ có ở bản preview.</p></div></div>;
@@ -48,7 +49,7 @@ export default function LcuLab() {
       {!busy && !err && (<>
         <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
           <span className="sub" style={{ margin: 0 }}>Nạp body từ model:</span>
-          <select value={baseId} onChange={e => setBaseId(e.target.value)}>{models.map(m => <option key={m.id} value={m.id}>{m.name} ({protos.get(m.id)?.name}, sys{protos.get(m.id)?.systemConfig ?? 0}, {String(m.config.lampHolderNum ?? '?')} đầu đèn)</option>)}</select>
+          <select value={baseId} onChange={e => setBaseId(e.target.value)}>{models.map(m => <option key={m.id} value={m.id}>{m.name} ({protos.get(m.id)?.name}, sys{protos.get(m.id)?.systemConfig ?? 0}, {show(m.config.lampHolderNum ?? '?')} đầu đèn)</option>)}</select>
           <button className="b" disabled={!base || !baseProto} onClick={load}>Nạp body</button>
         </div>
         {text && cur && (
@@ -64,7 +65,7 @@ export default function LcuLab() {
           <div style={{ marginTop: 16 }}>
             <h3>Kết quả: server ĐÃ NHẬN — so sánh giá trị gửi và giá trị server lưu</h3>
             <table className="kv"><thead><tr><th>Trường</th><th>Đã gửi</th><th>Server lưu</th><th></th></tr></thead>
-              <tbody>{compareStored(result.sent, result.stored).map(r => <tr key={r.field}><td>{r.field}</td><td>{String(r.sent)}</td><td>{String(r.stored)}</td><td>{r.same ? '✔ giống' : '✘ khác'}</td></tr>)}</tbody></table>
+              <tbody>{compareStored(result.sent, result.stored).map(r => <tr key={r.field}><td>{r.field}</td><td>{show(r.sent)}</td><td>{show(r.stored)}</td><td>{r.same ? '✔ giống' : '✘ khác'}</td></tr>)}</tbody></table>
             <p className="sub">Mở Mẫu thiết bị → LCU để xem model mới. Nếu số đầu đèn lưu đúng như đã gửi thì Fonda chỉ khoá ở giao diện.</p>
           </div>)}
       </>)}

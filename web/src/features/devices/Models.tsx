@@ -4,6 +4,7 @@ import { WRITE_ENABLED } from '../../core/flags';
 import ConfirmWrite from '../common/ConfirmWrite';
 import { configEntries, lcuSpec, type DictItem, type PoleType } from '../../adapters/fonda/mappers';
 import type { DeviceModel, DeviceType } from '../../core/types';
+import { show } from '../common/show';
 
 // Mẫu thiết bị (template deviceConfig) — chỉ ĐỌC. Model nhóm theo loại thiết bị; bấm model để xem cấu hình / thiết bị đính kèm.
 const POLE_TYPES = '__poleTypes', ARM_TYPES = '__armTypes';
@@ -76,14 +77,14 @@ export default function Models() {
           {ptErr && <div className="err">{ptErr}</div>}
           <p className="sub">Model Lamp Pole tham chiếu loại cột qua <code>poleTypeId</code> trong <code>deviceConfig</code>.</p>
           <table><thead><tr><th>#</th><th>Tên loại cột</th><th>Giá trị</th><th>Hệ thống</th><th>Ghi chú</th><th>Mã</th><th>Số model cột dùng</th></tr></thead>
-            <tbody>{poleTypes.map((p, i) => <tr key={p.id} className={'lrow' + (p.id === ptSel ? ' sel' : '')} onClick={() => setPtSel(p.id)}><td>{i + 1}</td><td><b>{p.name}</b></td><td>{p.value ?? '–'}</td><td>{p.systemConfig || '–'}</td><td>{p.remark}</td><td>{p.id.slice(0, 8)}</td><td>{models.filter(m => String(m.config.poleTypeId ?? '') === p.id).length}</td></tr>)}</tbody></table>
+            <tbody>{poleTypes.map((p, i) => <tr key={p.id} className={'lrow' + (p.id === ptSel ? ' sel' : '')} onClick={() => setPtSel(p.id)}><td>{i + 1}</td><td><b>{p.name}</b></td><td>{p.value ?? '–'}</td><td>{p.systemConfig || '–'}</td><td>{p.remark}</td><td>{p.id.slice(0, 8)}</td><td>{models.filter(m => show(m.config.poleTypeId ?? '') === p.id).length}</td></tr>)}</tbody></table>
           {!poleTypes.length && !ptErr && <p className="sub">Chưa đọc được loại cột nào.</p>}
         </>)}
         {typeId === ARM_TYPES && (<>
           {armErr && <div className="err">{armErr}</div>}
           <p className="sub">Giá trị <code>poleArmType</code> trong <code>deviceConfig</code> của model Lamp Pole tra theo dictionary key 55. Hiện chỉ đọc — thêm/bớt kiểu tay đèn cần bắt request từ web Fonda gốc.</p>
           <table><thead><tr><th>#</th><th>Giá trị</th><th>Tên</th><th>Ghi chú</th><th>Số model cột dùng</th></tr></thead>
-            <tbody>{arms.map((a, i) => <tr key={a.value}><td>{i + 1}</td><td>{a.value}</td><td><b>{a.name}</b></td><td>{a.remark}</td><td>{models.filter(m => String(m.config.poleArmType ?? '') === a.value).length}</td></tr>)}</tbody></table>
+            <tbody>{arms.map((a, i) => <tr key={a.value}><td>{i + 1}</td><td>{a.value}</td><td><b>{a.name}</b></td><td>{a.remark}</td><td>{models.filter(m => show(m.config.poleArmType ?? '') === a.value).length}</td></tr>)}</tbody></table>
           {!arms.length && !armErr && <p className="sub">Chưa đọc được kiểu tay đèn nào.</p>}
         </>)}
         {typeId && typeId !== POLE_TYPES && typeId !== ARM_TYPES && (<>
@@ -97,7 +98,7 @@ export default function Models() {
       </div>
       {typeId === POLE_TYPES && ptSel && (() => {
         const pt = poleTypes.find(p => p.id === ptSel); if (!pt) return null;
-        const used = models.filter(m => String(m.config.poleTypeId ?? '') === pt.id);
+        const used = models.filter(m => show(m.config.poleTypeId ?? '') === pt.id);
         return (
           <aside className="drawer">
             <button className="x" onClick={() => setPtSel(null)}>✕</button>
@@ -108,15 +109,15 @@ export default function Models() {
             </tbody></table>
             <p className="sub">Giá trị <code>poleTypeValue</code> là mã enum của loại cột; bảng tra tên chưa tìm được — chạy tab Dò API (mục "Quét dictionary") để tìm key khớp.</p>
             <h3>Model Lamp Pole dùng loại này ({used.length})</h3>
-            {used.length ? <ul style={{ margin: 0, paddingLeft: 18 }}>{used.map(m => <li key={m.id}>{m.name}{m.config.poleArmType != null ? ` — tay đèn: ${arms.find(a => a.value === String(m.config.poleArmType))?.name ?? String(m.config.poleArmType)}` : ''}</li>)}</ul> : <p className="sub">Chưa có model nào.</p>}
+            {used.length ? <ul style={{ margin: 0, paddingLeft: 18 }}>{used.map(m => <li key={m.id}>{m.name}{m.config.poleArmType != null ? ` — tay đèn: ${arms.find(a => a.value === show(m.config.poleArmType))?.name ?? show(m.config.poleArmType)}` : ''}</li>)}</ul> : <p className="sub">Chưa có model nào.</p>}
           </aside>);
       })()}
       {typeId !== POLE_TYPES && sel && (
         <aside className="drawer">
           <button className="x" onClick={() => setSelId(null)}>✕</button>
           <h2>{sel.name}</h2>
-          {sel.config.poleArmType != null && <p className="sub" style={{ margin: '4px 0 0' }}>Kiểu tay đèn: <b>{arms.find(a => a.value === String(sel.config.poleArmType))?.name ?? String(sel.config.poleArmType)}</b></p>}
-          {sel.config.poleTypeId != null && <p className="sub" style={{ margin: '4px 0 0' }}>Loại cột: <b>{poleTypes.find(p => p.id === String(sel.config.poleTypeId))?.name ?? String(sel.config.poleTypeId)}</b></p>}
+          {sel.config.poleArmType != null && <p className="sub" style={{ margin: '4px 0 0' }}>Kiểu tay đèn: <b>{arms.find(a => a.value === show(sel.config.poleArmType))?.name ?? show(sel.config.poleArmType)}</b></p>}
+          {sel.config.poleTypeId != null && <p className="sub" style={{ margin: '4px 0 0' }}>Loại cột: <b>{poleTypes.find(p => p.id === show(sel.config.poleTypeId))?.name ?? show(sel.config.poleTypeId)}</b></p>}
           <h3>Cấu hình (deviceConfig)</h3>
           {!entries.length && <p className="sub">Không có trường cấu hình.</p>}
           <table className="kv"><tbody>
