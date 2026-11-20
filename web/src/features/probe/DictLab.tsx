@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { projectIds, rawDictionary, rawDictionaryByName, rawDictionaryPage, sendDictionary } from '../../adapters/fonda';
 import { WRITE_ENABLED } from '../../core/flags';
 import ConfirmWrite from '../common/ConfirmWrite';
-import { cloneDictBody, dictBodyError, findInDicts, nextDictValue } from './dictLabUtil';
+import { buildDictBody, type DictShape, dictBodyError, findInDicts, nextDictValue } from './dictLabUtil';
 import { show } from '../common/show';
 
 type Rec = Record<string, unknown>;
@@ -14,7 +14,7 @@ export default function DictLab() {
   const [srcIdx, setSrcIdx] = useState(0), [name, setName] = useState('Test arm'), [text, setText] = useState('');
   const [op, setOp] = useState<'save' | 'update'>('save');
   const [confirm, setConfirm] = useState<Rec | null>(null), [after, setAfter] = useState<Rec[] | null>(null);
-  const [page, setPage] = useState<string>(''), [keepId, setKeepId] = useState(true), [keepStair, setKeepStair] = useState(false), [found, setFound] = useState('');
+  const [page, setPage] = useState<string>(''), [keepId, setKeepId] = useState(true), [keepStair, setKeepStair] = useState(false), [found, setFound] = useState(''), [shape, setShape] = useState<DictShape>('item');
 
   async function load(k = key) {
     setBusy(true); setErr(''); setAfter(null);
@@ -25,7 +25,7 @@ export default function DictLab() {
 
   const next = useMemo(() => nextDictValue(items), [items]);
   const parsed = useMemo(() => (text ? dictBodyError(text) : null), [text]);
-  const fill = () => { if (items[srcIdx]) setText(JSON.stringify(cloneDictBody(items[srcIdx], { name, value: next, dictKey: key.trim(), keepDictId: keepId, keepStairId: keepStair }), null, 2)); };
+  const fill = () => { if (items[srcIdx]) setText(JSON.stringify(buildDictBody(shape, items[srcIdx], { name, value: next, dictKey: key.trim(), keepDictId: keepId, keepStairId: keepStair }), null, 2)); };
 
   if (!WRITE_ENABLED) return <div className="lcus"><div className="listwrap"><p className="sub">Công cụ này chỉ có ở bản preview.</p></div></div>;
   return (
@@ -46,6 +46,7 @@ export default function DictLab() {
           <label><span className="sub">Tên giá trị mới (dsName)</span><input value={name} onChange={e => setName(e.target.value)} /></label>
           <span className="sub" style={{ margin: 0 }}>dictValue mới: <b>{next}</b></span>
           <button className="b" onClick={fill}>Nạp body từ dòng đã chọn</button>
+          <label className="sub" style={{ margin: 0 }}>Dạng body <select value={shape} onChange={e => setShape(e.target.value as DictShape)}><option value="item">1. mục (như đọc về)</option><option value="group">2. nhóm + dictionarySecond</option><option value="child">3. mục con (dictStairId = dictId nhóm)</option></select></label>
           <label className="sub" style={{ margin: 0 }}><input type="checkbox" checked={keepId} onChange={e => setKeepId(e.target.checked)} /> giữ dictId (nhóm)</label>
           <label className="sub" style={{ margin: 0 }}><input type="checkbox" checked={keepStair} onChange={e => setKeepStair(e.target.checked)} /> giữ dictStairId (id mục gốc)</label>
           <label className="sub" style={{ margin: 0 }}>API <select value={op} onChange={e => setOp(e.target.value as 'save' | 'update')}><option value="save">dictionary/save</option><option value="update">dictionary/update</option></select></label>

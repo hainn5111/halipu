@@ -27,12 +27,26 @@ export function cloneDictBody(src: Rec, o: { name: string; value: number | strin
   return b;
 }
 
+export type DictShape = 'item' | 'group' | 'child';
+/** Ba cách đoán body thêm giá trị (chưa biết cách nào đúng): `item` = bản ghi mục (như đọc về); `group` = nhóm kèm mục trong `dictionarySecond`;
+ *  `child` = mục trỏ `dictStairId` về `dictId` của nhóm. */
+export function buildDictBody(shape: DictShape, src: Rec, o: Parameters<typeof cloneDictBody>[1]): Rec {
+  if (shape === 'item') return cloneDictBody(src, o);
+  if (shape === 'child') { const b = cloneDictBody(src, { ...o, keepDictId: true }); if (src.dictId != null) b.dictStairId = src.dictId; return b; }
+  const child = { dsName: o.name, dictValue: o.value, dictStairRemark: o.remark ?? src.dictStairRemark ?? '' };
+  const g: Rec = { dictName: src.dictName, dictType: src.dictType, dictionarySecond: [child] };
+  if (o.dictKey) g.dictKey = o.dictKey;
+  if (o.keepDictId && src.dictId != null) g.dictId = src.dictId;
+  return g;
+}
+
 /** Kiểm tra body trước khi gửi: JSON object, có dsName và dictValue. */
 export function dictBodyError(text: string): { ok: true; body: Rec } | { ok: false; reason: string } {
   let v: unknown; try { v = JSON.parse(text); } catch { return { ok: false, reason: 'JSON không hợp lệ' }; }
   if (!v || typeof v !== 'object' || Array.isArray(v)) return { ok: false, reason: 'Body phải là một object' };
   const b = v as Rec;
-  if (!String(b.dsName ?? '').trim()) return { ok: false, reason: 'Thiếu dsName (tên giá trị)' };
-  if (b.dictValue == null || b.dictValue === '') return { ok: false, reason: 'Thiếu dictValue' };
+  const nested = Array.isArray(b.dictionarySecond) && (b.dictionarySecond as Rec[]).some(c => c && String(c.dsName ?? '').trim());
+  if (!nested && !String(b.dsName ?? '').trim()) return { ok: false, reason: 'Thiếu dsName (tên giá trị)' };
+  if (!nested && (b.dictValue == null || b.dictValue === '')) return { ok: false, reason: 'Thiếu dictValue' };
   return { ok: true, body: b };
 }
