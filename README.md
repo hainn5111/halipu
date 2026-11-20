@@ -1,3 +1,7 @@
+# SLCP — web điều khiển chiếu sáng
+
+**Dùng ngay: https://hainn5111.github.io/halipu/** (máy tính, Chrome/Edge). Lần đầu cần bật *Site settings → Insecure content → Allow* cho trang này — trang đăng nhập có hướng dẫn từng bước. Điện thoại iPhone chưa dùng được.
+
 > Làm việc trên repo này (người hoặc session Claude): đọc [`docs/14-quy-trinh-phat-trien.md`](docs/14-quy-trinh-phat-trien.md) và [`CLAUDE.md`](CLAUDE.md) trước.
 
 ## Cấu trúc
