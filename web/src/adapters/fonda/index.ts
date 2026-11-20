@@ -129,12 +129,6 @@ export async function listPoleTypes(projectId: string): Promise<PoleType[]> {
   return mapPoleTypes(await call('POST', 'poleType/getAllPoleTypeOfProjectPage', { projectId, body: { projectId, current: 1, size: 100 } }));
 }
 
-/** Model của một loại theo getDeviceModelPage (không có deviceConfig) — bổ sung model mà queryAll… không trả (vd LCU dựng sẵn). */
-export async function listModelPage(projectId: string, typeId: string): Promise<DeviceModel[]> {
-  const d = await call<{ records?: Array<Record<string, unknown>> }>('POST', 'deviceModel/getDeviceModelPage', { projectId, body: { projectId, current: 1, size: 100, deviceTypeId: typeId } });
-  return (d.records || []).filter(r => r.deviceModelId).map(r => ({ id: String(r.deviceModelId), name: String(r.deviceModelName ?? ''), typeId, config: {} }));
-}
-
 export async function listModels(projectId: string): Promise<DeviceModel[]> {
   return mapModels(await call('GET', `deviceModel/queryAllDeviceModelByProjectId/${projectId}`, { projectId }));
 }

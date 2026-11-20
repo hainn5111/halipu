@@ -59,7 +59,7 @@ Cấu trúc `deviceConfig` đổi theo loại (mẫu model đầu tiên của t�
 `BS, ai, di, km, lcu, lux, anti, lamp, pole, surge, appeal, camera, master, router, screen, sensor, wiFiAP, …` → mỗi phần tử `{checked:boolean, modelId, modelName}`; riêng `lamp[]` thêm `lampIndex` (đèn thứ mấy), `ai/di/km[]` thêm `pathNum` (số mạch). Ở Switch and detection `pole` là **object** (không phải mảng).
 → Đây chính là "mẫu" dùng để khai **LCU/tủ đính kèm Lamp, Lamp Pole…** cùng lúc: `checked` = có gắn, `modelId` trỏ tới `deviceModelId` ở mục trên.
 
-**Loại cột (PoleType):** `POST poleType/getAllPoleTypeOfProjectList` (body `{projectId}`; nếu không được thì `getAllPoleTypeOfProjectPage` `{projectId,current,size}`) → `{poleTypeId, poleTypeName, poleTypeValue, systemConfig, remark}`. `deviceConfig.poleTypeId` của model Lamp Pole trỏ tới `poleTypeId`. Tab "Mẫu thiết bị" có chip "Loại cột — PoleType" (body chưa được xác nhận trên Fonda thật). Chip "Model LCU" luôn hiện và bổ sung model từ `getDeviceModelPage` nếu `queryAll…` không trả (khi đó chỉ có tên, không có `deviceConfig`).
+**Loại cột (PoleType):** `POST poleType/getAllPoleTypeOfProjectList` (body `{projectId}`; nếu không được thì `getAllPoleTypeOfProjectPage` `{projectId,current,size}`) → `{poleTypeId, poleTypeName, poleTypeValue, systemConfig, remark}`. `deviceConfig.poleTypeId` của model Lamp Pole trỏ tới `poleTypeId`. Tab "Mẫu thiết bị" có chip "Loại cột — PoleType" (dữ liệu khớp Fonda, đã xác nhận).
 
 ## 4. Dictionary (enum)
 

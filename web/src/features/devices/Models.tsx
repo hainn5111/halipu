@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { listDeviceTypes, listModelPage, listModels, listPoleTypes, modelProtocols, previewLcuModelClone, previewModelClone, projectIds, sendModelCreate, type ModelProto } from '../../adapters/fonda';
+import { listDeviceTypes, listModels, listPoleTypes, modelProtocols, previewLcuModelClone, previewModelClone, projectIds, sendModelCreate, type ModelProto } from '../../adapters/fonda';
 import { WRITE_ENABLED } from '../../core/flags';
 import ConfirmWrite from '../common/ConfirmWrite';
 import { configEntries, lcuSpec, type PoleType } from '../../adapters/fonda/mappers';
@@ -30,8 +30,6 @@ export default function Models() {
         const pts: PoleType[] = [];
         for (const pid of ps) {
           const tt = await listDeviceTypes(pid), mm = await listModels(pid);
-          // Model LCU: bổ sung từ getDeviceModelPage những model mà queryAll… không trả (chỉ có tên/giao thức, không có deviceConfig)
-          for (const t of tt.filter(x => x.value === 2)) { try { const have = new Set(mm.map(m => m.id)); mm.push(...(await listModelPage(pid, t.id)).filter(m => !have.has(m.id))); } catch { /* giữ phần có */ } }
           ts.push(...tt); ms.push(...mm);
           try { pts.push(...await listPoleTypes(pid)); } catch (e) { setPtErr((e as Error).message); }
         }
@@ -45,7 +43,7 @@ export default function Models() {
 
   const withModels = useMemo(() => {
     const count = new Map<string, number>(); for (const m of models) count.set(m.typeId, (count.get(m.typeId) ?? 0) + 1);
-    return types.filter(t => count.has(t.id) || t.value === 2).map(t => ({ t, n: count.get(t.id) ?? 0 }));
+    return types.filter(t => count.has(t.id)).map(t => ({ t, n: count.get(t.id)! }));
   }, [types, models]);
   const list = models.filter(m => m.typeId === typeId);   // typeId = POLE_TYPES → rỗng
   const curType = types.find(t => t.id === typeId);
@@ -61,14 +59,14 @@ export default function Models() {
   const selType = types.find(t => t.id === sel?.typeId);
   const selProto = sel ? protos.get(sel.id) : undefined;
   // Chỉ loại đã bắt payload (docs/15 §7): Lamp Pole (6) và LCU (2, cần giao thức của model gốc)
-  const canClone = WRITE_ENABLED && !!sel && Object.keys(sel.config).length > 0 && (selType?.value === 6 || (selType?.value === 2 && !!selProto));
+  const canClone = WRITE_ENABLED && !!sel && (selType?.value === 6 || (selType?.value === 2 && !!selProto));
   return (
     <div className="lcus">
       <div className="listwrap">
         <p className="sub">{busy ? 'Đang tải…' : `${models.length} model · ${withModels.length} loại thiết bị`}</p>
         {err && <div className="err">{err}</div>}
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginBottom: 12 }}>
-          {withModels.map(({ t, n }) => <button key={t.id} className={t.id === typeId ? '' : 'b'} onClick={() => { setTypeId(t.id); setSelId(null); }}>{t.value === 2 ? 'Model LCU' : t.name} ({n})</button>)}
+          {withModels.map(({ t, n }) => <button key={t.id} className={t.id === typeId ? '' : 'b'} onClick={() => { setTypeId(t.id); setSelId(null); }}>{t.name} ({n})</button>)}
           <button className={typeId === POLE_TYPES ? '' : 'b'} onClick={() => { setTypeId(POLE_TYPES); setSelId(null); }}>Loại cột — PoleType ({poleTypes.length})</button>
         </div>
         {typeId === POLE_TYPES && (<>
@@ -92,7 +90,6 @@ export default function Models() {
           <button className="x" onClick={() => setSelId(null)}>✕</button>
           <h2>{sel.name}</h2>
           {sel.config.poleTypeId != null && <p className="sub" style={{ margin: '4px 0 0' }}>Loại cột: <b>{poleTypes.find(p => p.id === String(sel.config.poleTypeId))?.name ?? String(sel.config.poleTypeId)}</b></p>}
-          {Object.keys(sel.config).length === 0 && <p className="sub">Model này chỉ có tên (lấy từ danh sách model), chưa có deviceConfig.</p>}
           <h3>Cấu hình (deviceConfig)</h3>
           {!entries.length && <p className="sub">Không có trường cấu hình.</p>}
           <table className="kv"><tbody>
