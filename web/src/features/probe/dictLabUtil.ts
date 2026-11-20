@@ -2,6 +2,12 @@
 type Rec = Record<string, unknown>;
 const DROP = ['dictId', 'createTime', 'createUserId', 'updateTime', 'updateUserId'];
 
+/** Các key dictionary (1..max) có chứa `needle` trong dsName/dictName — để tìm xem mục vừa thêm nằm ở đâu. */
+export function findInDicts(all: Record<string, Rec[]>, needle: string): string[] {
+  const n = needle.trim().toLowerCase(); if (!n) return [];
+  return Object.entries(all).filter(([, items]) => items.some(r => `${String(r.dsName ?? '')} ${String(r.dictName ?? '')}`.toLowerCase().includes(n))).map(([k]) => k);
+}
+
 /** Giá trị số kế tiếp (lớn nhất + 1) trong các bản ghi thô; không có số thì 1. */
 export function nextDictValue(items: Rec[]): number {
   const nums = items.map(r => (typeof r.dictValue === 'number' || typeof r.dictValue === 'string' ? Number(r.dictValue) : NaN)).filter(Number.isFinite);   // dictValue lạ (object) bị bỏ qua, không ném lỗi
@@ -9,9 +15,10 @@ export function nextDictValue(items: Rec[]): number {
 }
 
 /** Sao chép một bản ghi để thêm mục mới: bỏ id/dấu vết tạo-sửa, đổi tên giá trị (`dsName`) và `dictValue`; giữ nguyên các trường còn lại (nhóm, dictType…). */
-export function cloneDictBody(src: Rec, o: { name: string; value: number | string; remark?: string; dictKey?: string }): Rec {
+export function cloneDictBody(src: Rec, o: { name: string; value: number | string; remark?: string; dictKey?: string; keepDictId?: boolean; keepStairId?: boolean }): Rec {
   const b: Rec = { ...src };
-  for (const k of DROP) delete b[k];
+  for (const k of DROP) if (!(k === 'dictId' && o.keepDictId)) delete b[k];
+  if (!o.keepStairId) delete b.dictStairId;   // id RIÊNG của mục được sao chép — mục mới không được dùng lại
   b.dsName = o.name; b.dictValue = o.value;
   if (o.dictKey) b.dictKey = o.dictKey;   // server đòi `dictKey` (lỗi "Parameter dictKey cannot be empty") — bản ghi đọc về không có trường này; thử = key nhóm
   if (o.remark !== undefined && 'dictStairRemark' in b) b.dictStairRemark = o.remark;

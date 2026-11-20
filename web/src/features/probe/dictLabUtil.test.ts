@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { cloneDictBody, dictBodyError, nextDictValue } from './dictLabUtil';
+import { cloneDictBody, findInDicts, dictBodyError, nextDictValue } from './dictLabUtil';
 
 const rec = { dictId: 'D1', dictValue: 2, dsName: 'Willow leaf', dictName: 'Ordinary pole lamp arm type', dictType: '55', createTime: 1, dictionarySecond: [{ x: 1 }] };
 describe('dictLab', () => {
@@ -10,6 +10,13 @@ describe('dictLab', () => {
     expect(rec.dictId).toBe('D1');
   });
   it('thêm dictKey khi được cho', () => { expect(cloneDictBody(rec, { name: 'T', value: 3, dictKey: '55' }).dictKey).toBe('55'); expect('dictKey' in cloneDictBody(rec, { name: 'T', value: 3 })).toBe(false); });
+  it('giữ/bỏ dictId, dictStairId', () => {
+    const r2 = { ...rec, dictStairId: 'S1' };
+    expect(cloneDictBody(r2, { name: 'T', value: 3 })).not.toHaveProperty('dictId'); expect(cloneDictBody(r2, { name: 'T', value: 3 })).not.toHaveProperty('dictStairId');
+    const k = cloneDictBody(r2, { name: 'T', value: 3, keepDictId: true }); expect(k.dictId).toBe('D1'); expect(k).not.toHaveProperty('dictStairId');
+    expect(cloneDictBody(r2, { name: 'T', value: 3, keepStairId: true }).dictStairId).toBe('S1');
+  });
+  it('findInDicts', () => { expect(findInDicts({ '55': [{ dsName: 'Test arm' }], '9': [{ dsName: 'x' }] }, 'test')).toEqual(['55']); expect(findInDicts({}, '')).toEqual([]); });
   it('dictBodyError', () => {
     expect(dictBodyError('x').ok).toBe(false); expect(dictBodyError('[]').ok).toBe(false);
     expect(dictBodyError('{"dictValue":1}').ok).toBe(false); expect(dictBodyError('{"dsName":"a","dictValue":1}').ok).toBe(true);

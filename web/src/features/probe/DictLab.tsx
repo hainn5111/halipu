@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { projectIds, rawDictionary, rawDictionaryPage, sendDictionary } from '../../adapters/fonda';
 import { WRITE_ENABLED } from '../../core/flags';
 import ConfirmWrite from '../common/ConfirmWrite';
-import { cloneDictBody, dictBodyError, nextDictValue } from './dictLabUtil';
+import { cloneDictBody, dictBodyError, findInDicts, nextDictValue } from './dictLabUtil';
 import { show } from '../common/show';
 
 type Rec = Record<string, unknown>;
@@ -14,7 +14,7 @@ export default function DictLab() {
   const [srcIdx, setSrcIdx] = useState(0), [name, setName] = useState('Test arm'), [text, setText] = useState('');
   const [op, setOp] = useState<'save' | 'update'>('save');
   const [confirm, setConfirm] = useState<Rec | null>(null), [after, setAfter] = useState<Rec[] | null>(null);
-  const [page, setPage] = useState<string>('');
+  const [page, setPage] = useState<string>(''), [keepId, setKeepId] = useState(true), [keepStair, setKeepStair] = useState(false), [found, setFound] = useState('');
 
   async function load(k = key) {
     setBusy(true); setErr(''); setAfter(null);
@@ -25,7 +25,7 @@ export default function DictLab() {
 
   const next = useMemo(() => nextDictValue(items), [items]);
   const parsed = useMemo(() => (text ? dictBodyError(text) : null), [text]);
-  const fill = () => { if (items[srcIdx]) setText(JSON.stringify(cloneDictBody(items[srcIdx], { name, value: next, dictKey: key.trim() }), null, 2)); };
+  const fill = () => { if (items[srcIdx]) setText(JSON.stringify(cloneDictBody(items[srcIdx], { name, value: next, dictKey: key.trim(), keepDictId: keepId, keepStairId: keepStair }), null, 2)); };
 
   if (!WRITE_ENABLED) return <div className="lcus"><div className="listwrap"><p className="sub">Công cụ này chỉ có ở bản preview.</p></div></div>;
   return (
@@ -45,10 +45,17 @@ export default function DictLab() {
           <label><span className="sub">Tên giá trị mới (dsName)</span><input value={name} onChange={e => setName(e.target.value)} /></label>
           <span className="sub" style={{ margin: 0 }}>dictValue mới: <b>{next}</b></span>
           <button className="b" onClick={fill}>Nạp body từ dòng đã chọn</button>
+          <label className="sub" style={{ margin: 0 }}><input type="checkbox" checked={keepId} onChange={e => setKeepId(e.target.checked)} /> giữ dictId (nhóm)</label>
+          <label className="sub" style={{ margin: 0 }}><input type="checkbox" checked={keepStair} onChange={e => setKeepStair(e.target.checked)} /> giữ dictStairId (id mục gốc)</label>
           <label className="sub" style={{ margin: 0 }}>API <select value={op} onChange={e => setOp(e.target.value as 'save' | 'update')}><option value="save">dictionary/save</option><option value="update">dictionary/update</option></select></label>
         </div>
         <textarea value={text} onChange={e => setText(e.target.value)} placeholder="Chọn một dòng làm mẫu rồi bấm “Nạp body”, hoặc dán JSON body." style={{ width: '100%', height: 240, fontFamily: 'monospace', fontSize: 12 }} />
         {parsed && !parsed.ok && <div className="err">{parsed.reason}</div>}
+        <div style={{ marginTop: 10, display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}><button className="b" disabled={busy || !pid || !name.trim()} onClick={async () => {
+            setFound('đang quét key 1..200…'); const all: Record<string, Rec[]> = {};
+            for (let k = 1; k <= 200; k++) { try { const r = await rawDictionary(pid, k); if (Array.isArray(r) && r.length) all[String(k)] = r; } catch { /* bỏ qua */ } }
+            const hit = findInDicts(all, name); setFound(hit.length ? `"${name}" có ở key: ${hit.join(', ')}` : `Không thấy "${name}" ở key 1..200 (${Object.keys(all).length} key có dữ liệu)`);
+          }}>Tìm "{name}" trong mọi dictionary</button>{found && <span className="sub" style={{ margin: 0 }}>{found}</span>}</div>
         <div style={{ marginTop: 10 }}><button disabled={!parsed?.ok} onClick={() => parsed?.ok && setConfirm(parsed.body)}>Gửi thử lên server…</button></div>
       </>)}
       {after && <div style={{ marginTop: 14 }}><h3>Đọc lại sau khi gửi ({after.length} mục)</h3><p className="sub">{after.map(r => `${show(r.dictValue)}=${show(r.dsName ?? '')}`).join(' · ')}</p></div>}
