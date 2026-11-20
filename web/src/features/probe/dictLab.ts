@@ -4,7 +4,7 @@ const DROP = ['dictId', 'createTime', 'createUserId', 'updateTime', 'updateUserI
 
 /** Giá trị số kế tiếp (lớn nhất + 1) trong các bản ghi thô; không có số thì 1. */
 export function nextDictValue(items: Rec[]): number {
-  const nums = items.map(r => Number(r.dictValue)).filter(Number.isFinite);
+  const nums = items.map(r => (typeof r.dictValue === 'number' || typeof r.dictValue === 'string' ? Number(r.dictValue) : NaN)).filter(Number.isFinite);   // dictValue lạ (object) bị bỏ qua, không ném lỗi
   return nums.length ? Math.max(...nums) + 1 : 1;
 }
 
