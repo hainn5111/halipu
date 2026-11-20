@@ -16,11 +16,15 @@ Tài liệu cho **bất kỳ ai (hoặc session Claude nào) tiếp tục làm v
 ```
 tách nhánh từ main ──► sửa/commit ──► thử ở localhost (preview-commit-local.bat, docs/15) ──► typecheck+test+build ở máy
                                                                    │
-                  (khi người dùng bảo) merge vào main ──► pages.yml: typecheck + test (fail → dừng) ──► build ──► deploy ra GỐC trang
+                  (khi người dùng bảo) merge vào main ──► Web CI kiểm tra (typecheck + test + build), KHÔNG deploy
+                                                                   │
+                              đánh tag v* trên main ──► pages.yml: typecheck + test (fail → dừng) ──► build ──► deploy ra GỐC trang
+                                                    └──► release.yml: GitHub Release + ghi chú tự sinh từ commit
                                                                    │
                                                           xoá nhánh
 ```
-Web CI (build + test + e2e chỉ đọc) chỉ chạy khi mở PR hoặc chạy tay.
+Đẩy gấp một bản bất kỳ ra gốc trang (không tạo release): chạy tay *Deploy to GitHub Pages*, nhập `ref`. Quay lui: chạy tay với tag cũ.
+Web CI (build + test; e2e chỉ đọc) chạy khi PR Ready, push vào main (không e2e) hoặc chạy tay.
 
 **Quy tắc:**
 1. **Không bao giờ làm việc trực tiếp trên `main`** cho tính năng. Tách nhánh từ `main` mới nhất (`git fetch` rồi tách từ `origin/main`).
@@ -41,12 +45,13 @@ npm run build        # typecheck + build → dist/
 ```
 Trước khi push luôn chạy `npm run typecheck && npm test && npm run build` trong `web/`.
 
-## 3. Hai workflow (`.github/workflows/`)
+## 3. Ba workflow (`.github/workflows/`)
 
 | File | Khi nào chạy | Làm gì | Deploy? |
 |---|---|---|---|
-| `web-ci.yml` | Mở/cập nhật PR **không phải Draft** có đổi `web/` (bấm *Ready for review* để chạy), hoặc chạy tay | typecheck → test → build → e2e chỉ đọc (cần secret) → lưu artifact (`web-dist`, ảnh chụp). Có `concurrency` huỷ run cũ | Không |
-| `pages.yml` | Push lên `main` có đổi `web/`, hoặc chạy tay | typecheck + test (fail thì dừng, không deploy) → build (đóng dấu `main@sha`) → đẩy vào `gh-pages` ở **gốc** | Có, ra gốc trang |
+| `web-ci.yml` | Mở/cập nhật PR **không phải Draft** có đổi `web/` (bấm *Ready for review* để chạy), push vào `main` có đổi `web/` (không e2e, không artifact), hoặc chạy tay | typecheck → test → build → e2e chỉ đọc (cần secret) → lưu artifact (`web-dist`, ảnh chụp). Có `concurrency` huỷ run cũ | Không |
+| `pages.yml` | Đẩy tag `v*` (phải nằm trên main), hoặc chạy tay (nhập `ref`) | typecheck + test (fail thì dừng, không deploy) → build (đóng dấu `<tag>@sha`) → đẩy vào `gh-pages` ở **gốc** | Có, ra gốc trang |
+| `release.yml` | Đẩy tag `v*`, hoặc chạy tay (nhập tên tag) | Tạo GitHub Release, ghi chú gom từ commit (feat/fix/docs…) từ tag trước là tổ tiên; tag có `-` là Pre-release | Không |
 
 - Workflow **Preview** (link `/preview/<nhánh>/`) đã bỏ để tiết kiệm minute Actions; xem thử bằng `preview-commit-local.bat` (xem `docs/15-chay-local-sourcetree.md`). Cần lại thì khôi phục `preview.yml` từ lịch sử git.
 - PR từ **fork** bị bỏ qua có chủ đích (không cấp quyền ghi/secret cho mã lạ).

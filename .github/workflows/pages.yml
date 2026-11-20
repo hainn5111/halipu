@@ -1,17 +1,24 @@
-name: Deploy main to GitHub Pages
+name: Deploy to GitHub Pages
 
-# Chỉ `main` deploy ra GỐC trang. Bản build được đẩy vào nhánh gh-pages (GitHub Pages phục vụ nhánh này);
-# Trước khi deploy: typecheck + test; lỗi thì dừng, KHÔNG deploy (main luôn là bản đã qua kiểm tra).
+# Phương án lai: merge vào main CHỈ chạy CI (web-ci.yml), KHÔNG deploy.
+# Deploy ra GỐC trang (nhánh gh-pages) khi:
+#  - đẩy tag v* (tag phải nằm trên main) — cùng lúc release.yml tạo GitHub Release;
+#  - hoặc chạy tay (Actions → Deploy to GitHub Pages → Run workflow): nhập `ref` (nhánh/tag/sha) để đẩy một bản bất kỳ, để trống = nhánh đang chọn.
+# Trước khi deploy: typecheck + test; lỗi thì dừng, KHÔNG deploy.
 on:
   push:
-    branches: [main]
-    paths: ['web/**', '.github/workflows/pages.yml']
+    tags: ['v*']
   workflow_dispatch:
+    inputs:
+      ref:
+        description: 'Nhánh/tag/sha cần deploy (trống = nhánh đang chọn). Ghi đè bản đang ở gốc trang!'
+        required: false
+        default: ''
 
 permissions:
   contents: write
 
-# Cả 2 workflow cùng ghi vào gh-pages → xếp hàng, không chạy song song.
+# release.yml/pages.yml cùng ghi vào gh-pages → xếp hàng, không chạy song song.
 concurrency:
   group: gh-pages-write
   cancel-in-progress: false
@@ -22,19 +29,36 @@ jobs:
     timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.ref || github.ref }}
+          fetch-depth: 0
+      - name: Tag phải nằm trên main
+        if: github.ref_type == 'tag'
+        run: |
+          git fetch origin main
+          git merge-base --is-ancestor "$GITHUB_SHA" origin/main || { echo "Tag $GITHUB_REF_NAME không nằm trên main — không deploy"; exit 1; }
+      - id: info
+        run: |
+          SHA="$(git rev-parse --short=7 HEAD)"
+          if [ "$GITHUB_REF_TYPE" = "tag" ]; then L="$GITHUB_REF_NAME"; else L="${INPUT_REF:-$GITHUB_REF_NAME}"; fi
+          echo "label=${L}@${SHA}" >> "$GITHUB_OUTPUT"
+        env:
+          INPUT_REF: ${{ inputs.ref }}
       - uses: actions/setup-node@v4
         with: { node-version: 20, cache: npm, cache-dependency-path: web/package-lock.json }
       - name: Typecheck + test + build
         working-directory: web
+        env:
+          VITE_BUILD_INFO: ${{ steps.info.outputs.label }}
         run: |
           npm ci
           npm run typecheck
           npm test
-          VITE_BUILD_INFO="${GITHUB_REF_NAME}@${GITHUB_SHA::7}" npm run build
+          npm run build
       - name: Publish to gh-pages (root)
         uses: JamesIves/github-pages-deploy-action@v4
         with:
           branch: gh-pages
           folder: web/dist
-          clean: true   # xoá luôn thư mục preview/ cũ (quy trình Preview đã bỏ)
-          commit-message: "deploy main@${{ github.sha }}"
+          clean: true
+          commit-message: "deploy ${{ steps.info.outputs.label }}"

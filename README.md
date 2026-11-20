@@ -23,6 +23,6 @@ Lưu ý:
 
 ## Triển khai và xem thử (GitHub Pages)
 Pages phục vụ nhánh `gh-pages` (Settings → Pages → Source: *Deploy from a branch* → `gh-pages` / root).
-- **`main` → gốc trang** `https://<user>.github.io/<repo>/` (`pages.yml`): typecheck, test (fail thì dừng, không deploy), build rồi đẩy vào `gh-pages`. Chỉ main được ghi ra gốc.
+- **Tag `v*` trên main → gốc trang** `https://<user>.github.io/<repo>/` (`pages.yml`): typecheck, test (fail thì dừng, không deploy), build rồi đẩy vào `gh-pages`; đồng thời `release.yml` tạo GitHub Release. Merge vào main **không** tự deploy. Cần đẩy một bản bất kỳ: Actions → *Deploy to GitHub Pages* → Run workflow (nhập `ref`).
 - **Thử nghiệm** chạy ở localhost (`preview-commit-local.bat`, xem `docs/15-chay-local-sourcetree.md`); không còn bản preview trên GitHub.
-- **Web CI** (`web-ci.yml`): build + test, chỉ chạy khi PR ở trạng thái Ready (Draft bị bỏ qua) hoặc chạy tay, không deploy.
+- **Web CI** (`web-ci.yml`): build + test, chạy khi PR Ready (Draft bị bỏ qua), push vào main (chỉ typecheck+test+build) hoặc chạy tay, không deploy.

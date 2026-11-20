@@ -1,9 +1,12 @@
 name: Web CI (React)
 
-# Build + kiểm thử bản React trong web/ (typecheck, unit test, build, e2e chỉ đọc nếu có secret) khi mở PR hoặc chạy tay, không deploy.
-# Deploy: chỉ pages.yml (main → gốc trang). Thử nghiệm hằng ngày: preview-commit-local.bat (docs/15).
+# Build + kiểm thử bản React trong web/ (typecheck, unit test, build; e2e chỉ đọc nếu có secret) khi PR Ready, push vào main (chỉ typecheck+test+build, không e2e), hoặc chạy tay. Không deploy.
+# Deploy: chỉ pages.yml (tag v* hoặc chạy tay). Thử nghiệm hằng ngày: preview-commit-local.bat (docs/15).
 on:
   workflow_dispatch:
+  push:
+    branches: [main]        # merge vào main: chỉ kiểm tra, KHÔNG deploy (deploy bằng tag v*)
+    paths: ['web/**', 'e2e/web-smoke.js', '.github/workflows/web-ci.yml']
   pull_request:             # chỉ chạy khi mở/cập nhật PR (tiết kiệm minute); thử nghiệm hằng ngày dùng preview-commit-local.bat
     types: [opened, synchronize, reopened, ready_for_review]
     paths: ['web/**', 'e2e/web-smoke.js', '.github/workflows/web-ci.yml']
@@ -33,8 +36,10 @@ jobs:
           npm test
           VITE_BUILD_INFO="${GITHUB_REF_NAME}@${GITHUB_SHA::7}" npm run build
       - uses: actions/upload-artifact@v4
+        if: github.event_name != 'push'
         with: { name: web-dist, path: web/dist }
       - name: E2E smoke (read-only, cần secret FONDA_USER/FONDA_PASS)
+        if: github.event_name != 'push'
         working-directory: .
         env:
           FONDA_USER: ${{ secrets.FONDA_USER }}
@@ -45,5 +50,5 @@ jobs:
           sleep 2
           node e2e/web-smoke.js
       - uses: actions/upload-artifact@v4
-        if: always()
+        if: always() && github.event_name != 'push'
         with: { name: web-e2e-screenshots, path: web-*.png, if-no-files-found: ignore }

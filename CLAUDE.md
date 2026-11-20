@@ -21,11 +21,13 @@ Dự án: web điều khiển chiếu sáng thông minh (SLCP), gọi thẳng AP
 
 ```
 tách nhánh từ origin/main → sửa/commit → thử ở localhost (preview-commit-local.bat, chuột phải commit trong SourceTree)
-   → typecheck + test + build ở máy → (khi được bảo) merge vào main
-   → pages.yml: typecheck + test (fail thì KHÔNG deploy) → build → deploy ra gốc trang
+   → typecheck + test + build ở máy → (khi được bảo) merge vào main → Web CI kiểm tra (KHÔNG deploy)
+   → phát hành: đánh tag v* trên main → pages.yml (typecheck + test, fail thì KHÔNG deploy) → build → deploy ra gốc trang
+                                       + release.yml tạo GitHub Release (ghi chú từ commit)
+   → cần đẩy gấp một bản bất kỳ: chạy tay workflow "Deploy to GitHub Pages" (nhập ref)
    → xoá nhánh
 ```
-Web CI (build+test+e2e chỉ đọc) chỉ chạy khi PR ở trạng thái Ready (PR Draft bị bỏ qua) hoặc chạy tay. Không còn workflow Preview.
+Web CI (build+test; e2e chỉ đọc) chạy khi PR Ready (Draft bị bỏ qua), push vào main (không e2e) hoặc chạy tay. Không còn workflow Preview.
 
 ## Kiến trúc trong 5 dòng
 

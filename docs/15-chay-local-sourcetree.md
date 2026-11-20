@@ -1,6 +1,6 @@
 # 15 — Chạy ở localhost (thay cho Preview)
 
-Thử nghiệm hằng ngày chạy trên máy, không tốn minute GitHub Actions. Chỉ `main` mới deploy GitHub Pages (`pages.yml`).
+Thử nghiệm hằng ngày chạy trên máy, không tốn minute GitHub Actions. Merge vào `main` chỉ chạy CI; GitHub Pages chỉ deploy khi đánh tag `v*` hoặc chạy tay `pages.yml`.
 
 ## Cần có
 Node.js 18+ (có `npm` trong PATH) và git.
@@ -27,7 +27,7 @@ Bấm đúp `preview-commit-local.bat` (không tham số) = chạy commit HEAD h
 - `localhost` được coi là nguồn an toàn nên không bị chặn mixed content khi gọi API http của Fonda.
 - Lệnh điều khiển đèn thật vẫn phải có hộp xác nhận.
 - Kiểm tra trước khi push: `cd web && npm run typecheck && npm test && npm run build`.
-- `Web CI` chỉ chạy khi mở PR hoặc chạy tay; `Preview` chỉ chạy tay.
+- `Web CI` chạy khi PR Ready, push vào `main` hoặc chạy tay; Preview đã bỏ.
 
 ## Dev bằng SourceTree (tuỳ chọn)
 Thêm Custom Action thứ hai: caption `Dev local`, Script = `dev-local.bat`, Parameters để trống.
