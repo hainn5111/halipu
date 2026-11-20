@@ -23,7 +23,8 @@ describe('scanFrontend', () => {
     const out = await scanForms(win);
     expect(out.forms).toHaveLength(1);
     expect(out.forms[0].rules).toContain('deviceConfig.gatewayTypes'); expect(out.forms[0].dataForm).toContain('protocolValue:-1');
-    expect(Object.keys(out.forms[0].fields)).toEqual(['dataForm.deviceConfig.gatewayTypes']); expect(out.forms[0].fields['dataForm.deviceConfig.gatewayTypes'].before).toContain('3===e.dataForm.deviceTypeValue');
+    expect(Object.keys(out.forms[0].fields)).toEqual(['dataForm.deviceConfig.gatewayTypes']);
+    const occ = out.forms[0].fields['dataForm.deviceConfig.gatewayTypes']; expect(occ).toHaveLength(1); expect(occ[0].head).toContain('3===e.dataForm.deviceTypeValue'); expect(occ[0].label).toBe('x.gw'); expect(occ[0].prop).toBe('deviceConfig.gatewayTypes');
     expect(out.forms[0].typeConditions).toEqual(['3===e.dataForm.deviceTypeValue']); expect(out.forms[0].save).toContain('save:function');
     expect(formScanScript().endsWith('(window);')).toBe(true);
   });

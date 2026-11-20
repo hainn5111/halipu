@@ -71,12 +71,17 @@ export function scanForms(win: any): Promise<any> {
         // `rules:{` gần nhất phía trước (cùng component)
         const r = t.lastIndexOf('rules:{', i); if (r >= 0 && i - r < 20000) form.rules = balanced(t, r + 6);
         const around = t.slice(Math.max(0, i - 25000), i + 120000);
-        // CÁC Ô NHẬP CỦA FORM TEMPLATE nằm ở module render riêng (có thể xa `dataForm`): quét TOÀN FILE mọi `expression:"dataForm.deviceConfig.…"`
-        // (và protocol/deviceTypeId/deviceModelName/remark) kèm 1300 ký tự trước (điều kiện hiện theo loại + nhãn + prop) và 200 sau.
-        const fields: Record<string, any> = {}; const re = /expression:"(dataForm\.(?:deviceConfig\.|protocol|deviceType|deviceModelName|remark|deviceSystem)[A-Za-z0-9_.]*)"/g; let m: RegExpExecArray | null;
-        while ((m = re.exec(t)) && Object.keys(fields).length < 400) {
-          const f = m[1];
-          if (!fields[f]) fields[f] = { before: t.slice(Math.max(0, m.index - 1300), m.index).replace(/\s+/g, ' '), after: t.slice(m.index, m.index + 200) };
+        // CÁC Ô NHẬP CỦA FORM TEMPLATE nằm ở module render riêng (có thể xa `dataForm`): quét TOÀN FILE MỌI lần xuất hiện của
+        // `expression:"dataForm.…"` (cùng một trường có thể hiện ở nhiều loại → nhiều điều kiện khác nhau). Mỗi lần: `head` = 260 ký tự ngay TRƯỚC
+        // `a("el-form-item"` chứa ô (đuôi của nó là điều kiện hiện theo loại/giao thức), cùng nhãn i18n và `prop`.
+        const fields: Record<string, any[]> = {}; const re = /expression:"(dataForm\.(?:deviceConfig\.|protocol|deviceType|deviceModelName|remark|deviceSystem)[A-Za-z0-9_.]*)"/g; let m: RegExpExecArray | null; let total = 0;
+        while ((m = re.exec(t)) && total < 800) {
+          const f = m[1], bef = t.slice(Math.max(0, m.index - 1600), m.index), fi = bef.lastIndexOf('a("el-form-item"');
+          if (fi < 0) continue;
+          const head = bef.slice(Math.max(0, fi - 260), fi).replace(/\s+/g, ' '), seg = bef.slice(fi);
+          const label = (/label:e\.\$t\("([^"]+)"\)/.exec(seg) || [])[1] || '', prop = (/prop:"([^"]+)"/.exec(seg) || [])[1] || '';
+          const list = fields[f] || (fields[f] = []);
+          if (!list.some((x: any) => x.head === head)) { list.push({ head, label, prop }); total++; }
         }
         form.fields = fields;
         // điều kiện theo loại thiết bị xuất hiện trong form

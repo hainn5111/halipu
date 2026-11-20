@@ -280,6 +280,30 @@ attributeDevice: [ { checked: true, lampPosition: 1, uid: "<uid 12 hex>", solar:
 - Khoảng giá trị (validator): `voltageP`/`pathNum`/`di`/`ai` 1–255; `power`/`waterTankCapacity` 1–999 (không bắt buộc); `lampLifetime` 1–99999; `nominalPower`/`lampPower`/`ratedApparentPower`/`ratedVoltage` 1–1000; `nominalCurrent`/`ratedCurrent` (0,10]; `ratedPowerFactor` (0,1]; `taskNum` nguyên 1–10; `high`/`wide` nguyên > 0. Riêng Lamps (`validLampData`): `lampPower` ≤ `nominalPower` và `ratedCurrent` ≤ `nominalCurrent`. Web: `features/devices/configRules.ts` (chặn trước khi gửi).
 - Mặc định khi mở popup (`dataForm`): `protocolId:""`, `protocolValue:-1`, `useTag:null`, và `deviceConfig` với `lampLifetime 6000, nominalPower 110, lampPower 88, ratedApparentPower 112, nominalCurrent 0.4, ratedCurrent 0.4, ratedVoltage 220, ratedPowerFactor 0.99, hasTaskNum 1, taskNum 10, dimmingLevel 20, lampHolderNum 1, tempsNum 6, currentsNum 6, cameraType 1, rtuType "", powerProtocol 0, loopType 1, totalChargingPorts 1` (khớp body đã bắt). Tạo → `createModelNew` = `deviceModel/saveNew`, sửa → `updateModelNew` = `deviceModel/updateNew`; bấm lưu khi không đổi gì → báo "không có thay đổi" (`$contrast`).
 
+**Ô nhập theo loại trong popup tạo template (quét 2026-11-20, lần xuất hiện ĐẦU của mỗi trường — chưa đủ, một trường có thể hiện ở nhiều loại; bản quét v3 lấy mọi lần xuất hiện):**
+| Loại (deviceTypeValue) | Ô hiện thêm ngoài tên/giao thức (nhãn Fonda → trường) |
+|---|---|
+| 1 Electric Meter | `voltageP` (tỉ số điện áp), `currentP` (tỉ số dòng), `meterType` |
+| 2 LCU | `lcuType` (nếu giao thức 4/53 hoặc chế độ điều khiển 3), `lcuCtype` (loại truyền thông, chế độ 3), `platformModelId/Name` (lcuCtype 2), `lampHolderNum`, `dimmingLevel` (loại 2/56/67), `loopType` (giao thức 3/4/53), `productId` (giao thức 2/18/25/50), `bandName` (giao thức 3, lcuCtype ≠ 2) |
+| 3 Gateway | `gatewayTypes` |
+| 4 Concentrator | `rtuType` |
+| 5 Lamps (và 68 solar) | `lampTypes`, `powerTypes`, `powerProtocol` (chỉ 5), `ratedApparentPower`, `ratedCurrent`, `ratedVoltage`, `ratedPowerFactor`, công suất (`nominalPower`/`lampPower`), `lampLifetime` |
+| 6 Lamp Pole | `poleTypeId` (→ `poleType`), `poleArmType` |
+| 8 Smart box | `smartBoxType` |
+| 9 Switch and detection | `pathNum` (cả 9/10/11), `di`, `ai`, `factoryId`/producer (9, 16, 17, 18, 60, 64) |
+| 14 Manhole Cover | `coverTypes` |
+| 15 Anti-Theft | `sensitivity` |
+| 18 Camera | `cameraType` |
+| 26 Charging Pile | `totalChargingPorts` (giao thức 64) |
+| 27 Advertising Screen | `high`, `wide` |
+| 32 Power Box | `powerBoxType` |
+| 37 Breaker | `breakerType` |
+| 46 | `power`, `waterTankCapacity` |
+| 48 | `tempsNum`, `currentsNum` |
+| 54 Radar | `radarType` (giao thức 1/12/4) |
+| 60 | `hnVersion` (giao thức 47) |
+Chỗ này lấy từ điều kiện `N===e.dataForm.deviceTypeValue` / `[..].includes(...)` đứng ngay trước mỗi ô.
+
 ## 8. Việc còn mở (cập nhật 2026-11-20)
 
 **Đã xong trong đợt này:** thêm/sửa/xoá template mọi loại (`saveNew/updateNew/delete`), thêm/sửa/xoá PoleType, enum theo loại + lọc theo giao thức (§4), giao thức/chức năng theo loại, xác nhận enum nào ở server/front-end, thêm/xoá LCU riêng lẻ (`lcuActor/save`; xoá theo quy ước, chưa bắt).
