@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { lazy, Suspense } from 'react';
-import { DICT_KEYS, enumFieldsOf, enumLabel, functionLabels, FUNCTION_DICT, isRelevantKey, POLE_SHAPE_DICT } from './enums';
+import { DICT_KEYS, enumFieldsOf, enumLabel, isRelevantKey, POLE_SHAPE_DICT } from './enums';
 
 import { listDeviceTypes, listDictionary, listModels, listPoleTypes, modelProtocols, projectIds, type ModelProto } from '../../adapters/fonda';
 import { WRITE_ENABLED } from '../../core/flags';
@@ -136,11 +136,11 @@ export default function Models() {
           <h2>{sel.name}</h2>
           {selType?.value === 6 && sel.config.poleArmType != null && <p className="sub" style={{ margin: '4px 0 0' }}>Kiểu tay đèn: <b>{arms.find(a => a.value === show(sel.config.poleArmType))?.name ?? show(sel.config.poleArmType)}</b></p>}
           {selType?.value === 6 && sel.config.poleTypeId != null && <p className="sub" style={{ margin: '4px 0 0' }}>Loại cột: <b>{poleTypes.find(p => p.id === show(sel.config.poleTypeId))?.name ?? show(sel.config.poleTypeId)}</b></p>}
-          {selProto && selProto.value >= 0 && <p className="sub" style={{ margin: '4px 0 0' }}>Giao thức: <b>{selProto.name} {selProto.version}</b></p>}
+          {selProto && selProto.value >= 0 && <p className="sub" style={{ margin: '4px 0 0' }}>Function (giao thức): <b>{selProto.name} {selProto.version}</b></p>}
           <h3>Cấu hình (deviceConfig)</h3>
           {!entries.length && <p className="sub">Không có trường cấu hình.</p>}
           <table className="kv"><tbody>
-            {entries.filter(e => e.kind === 'value').map(e => e.kind === 'value' && <tr key={e.key}><td>{e.key}</td><td>{e.text}{enumName(selType?.value, e.key, e.text)}{e.key === 'functionList' ? ` — ${functionLabels(sel.config.functionList, dicts[FUNCTION_DICT] ?? []).join(', ')}` : ''}</td></tr>)}
+            {entries.filter(e => e.kind === 'value').map(e => e.kind === 'value' && <tr key={e.key}><td>{e.key}</td><td>{e.text}{enumName(selType?.value, e.key, e.text)}</td></tr>)}
           </tbody></table>
           {entries.some(e => e.kind === 'attached') && <h3>Thiết bị đính kèm theo template</h3>}
           {entries.map(e => e.kind === 'attached' && (

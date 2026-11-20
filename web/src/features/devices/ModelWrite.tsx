@@ -4,7 +4,7 @@ import { modelIdsBody, modelNameError, poleTypeError, type PoleTypeIn } from '..
 import type { DictItem, PoleType } from '../../adapters/fonda/mappers';
 import type { DeviceModel, DeviceType } from '../../core/types';
 import ConfirmWrite from '../common/ConfirmWrite';
-import { enumFieldsOf, enumOptions, FUNCTION_DICT, FUNCTION_TYPES, storeValue } from './enums';
+import { enumFieldsOf, enumOptions, FUNCTION_TYPES, storeValue } from './enums';
 
 // Thêm / sửa / xoá template (model) mọi loại và loại cột (PoleType) — GHI THẬT, chỉ bản preview. Payload: docs/15 §7 (bắt 2026-11-20). Luôn qua hộp xác nhận.
 type Op = { title: string; summary: string; method: string; path: string; body: unknown; danger?: boolean; run: () => Promise<unknown> };
@@ -20,7 +20,7 @@ function TemplateFields({ typeValue, cfg, setCfg, ctx, proto, setProto }: { type
   const row = (label: string, el: JSX.Element) => <span key={label} style={{ display: 'contents' }}><span className="sub" style={{ margin: 0 }}>{label}</span>{el}</span>;
   const rows: JSX.Element[] = [];
   if (ctx.protoOpts.length && FUNCTION_TYPES.includes(typeValue)) {
-    rows.push(row('Protocol', <select value={proto?.id ?? ''} onChange={e => { const p = ctx.protoOpts.find(x => x.id === e.target.value); if (p) setProto(p); }}>
+    rows.push(row('Function (protocol)', <select value={proto?.id ?? ''} onChange={e => { const p = ctx.protoOpts.find(x => x.id === e.target.value); if (p) setProto(p); }}>
       {!proto && <option value="">(chọn giao thức)</option>}
       {ctx.protoOpts.map(p => <option key={p.id} value={p.id}>{p.name} {p.version}</option>)}</select>));
   }
@@ -35,12 +35,6 @@ function TemplateFields({ typeValue, cfg, setCfg, ctx, proto, setProto }: { type
     rows.push(row('Pole type (loại cột)', <select value={id} onChange={e => { const t = ctx.poleTypes.find(x => x.id === e.target.value); set({ poleTypeId: e.target.value, ...(t?.value != null ? { poleType: t.value } : {}) }); }}>
       {!ctx.poleTypes.some(t => t.id === id) && <option value={id}>{id ? `(không rõ ${id.slice(0, 8)}…)` : '(chưa chọn)'}</option>}
       {ctx.poleTypes.map(t => <option key={t.id} value={t.id}>{t.name}{t.systemConfig ? ' · hệ thống' : ''}</option>)}</select>));
-  }
-  if (FUNCTION_TYPES.includes(typeValue)) {
-    const fn = Array.isArray(c.functionList) ? (c.functionList as unknown[]).map(Number) : [], items = ctx.dicts[FUNCTION_DICT] ?? [];
-    const nums = [...new Set([...items.map(i => Number(i.value)), ...fn])].filter(Number.isFinite).sort((a, b) => a - b);
-    rows.push(row('Function', <span style={{ display: 'flex', flexWrap: 'wrap', gap: '4px 12px' }}>
-      {nums.map(n => <label key={n} style={{ fontSize: 13 }}><input type="checkbox" checked={fn.includes(n)} onChange={e => set({ functionList: (e.target.checked ? [...fn, n] : fn.filter(x => x !== n)).sort((a, b) => a - b) })} /> {items.find(i => Number(i.value) === n)?.name ?? `#${n}`}</label>)}</span>));
   }
   if (!rows.length) return null;
   return <div style={{ display: 'grid', gridTemplateColumns: 'auto 1fr', gap: '8px 10px', alignItems: 'center', marginTop: 8 }}>{rows}</div>;

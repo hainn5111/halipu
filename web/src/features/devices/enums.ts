@@ -10,14 +10,13 @@ export const TYPE_ENUMS: Record<number, EnumField[]> = {
   4: [{ key: 'rtuType', label: 'Concentrator type', dict: 99 }],
   5: [{ key: 'lampTypes', label: 'Lamp type', dict: 3 }, { key: 'powerTypes', label: 'Power type', dict: 17 }],
   6: [{ key: 'poleArmType', label: 'Arm type', dict: 55 }],
-  9: [{ key: 'kmFactory', label: 'Producer', dict: 88 }],   // ứng viên: "Controller manufacturer" (chưa kiểm chứng)
+  9: [{ key: 'kmFactory', label: 'Producer', dict: 88 }],   // CHƯA RÕ nguồn danh sách (không phải dict 88 — người dùng thấy tên "XY…"); tạm để dict 88 cho tới khi dò ra
 };
-/** Danh sách chức năng (functionList) — LCU, Gateway, Concentrator. Ứng viên: dictionary 5 "Operation Type" (1 Turn On … 4 Data Query, 5 Dimming, 6 Display Brightness). */
+/** Loại có ô "Function" = chọn GIAO THỨC (RF/F2, CAT1/F2, …) — LCU, Gateway, Concentrator. `functionList` (mảng số) KHÔNG sửa trong form, chỉ hiện nguyên giá trị. */
 export const FUNCTION_TYPES = [2, 3, 4];
-export const FUNCTION_DICT = 5;
 /** Loại có giao thức (protocol) chọn trong form. */
 export const POLE_SHAPE_DICT = 39;   // poleTypeValue = mã kiểu/hình cột có sẵn (Magnolia Lamp, High Pole Lights, …)
-export const DICT_KEYS = [...new Set([...Object.values(TYPE_ENUMS).flat().map(f => f.dict), FUNCTION_DICT, POLE_SHAPE_DICT])];
+export const DICT_KEYS = [...new Set([...Object.values(TYPE_ENUMS).flat().map(f => f.dict), POLE_SHAPE_DICT])];
 
 /** Khoá "thuộc về" một số loại: hiện ở loại khác là rác (server giữ lại giá trị mặc định như rtuType 0 ở LCU) → ẩn. */
 const OWNED: Record<string, number[]> = {

@@ -33,6 +33,8 @@ export async function runProbe(pid: string, log: (line: string) => void, withLcu
   const types = (await get('types-all-by-project', 'GET', `deviceTypeController/queryAllDeviceTypeByProjectId/${pid}`)) as Rec[] | null;
   const models = (await get('models-by-project', 'GET', `deviceModel/queryAllDeviceModelByProjectId/${pid}`)) as Rec[] | null;
   for (const k of DICTS) await get(`dict-${k}`, 'GET', `dictionary/queryDictionaryByKey/${k}`);
+  await get('factory-list', 'GET', 'factoryController/queryFactoryList');   // nhà sản xuất (producer) — tìm tên "XY…" của Switch (kmFactory)
+  await get('factory-page', 'POST', 'factoryController/queryAllFactoriesPage', { current: 1, size: 100 });
   await get('pole-types', 'POST', 'poleType/getAllPoleTypeOfProjectList', { projectId: pid });
   await get('pole-types-page', 'POST', 'poleType/getAllPoleTypeOfProjectPage', { projectId: pid, current: 1, size: 100 });
   await get('dictionary-page', 'POST', 'dictionary/queryDictionaryPage', { current: 1, size: 100 });

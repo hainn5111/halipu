@@ -90,13 +90,13 @@ Cấu trúc `deviceConfig` đổi theo loại (mẫu model đầu tiên của t�
 | Loại | Trường → dictionary | Ghi chú |
 |---|---|---|
 | Electric Meter (1) | `currentP` → 15 (Current Rate: 30=150/5, 40=200/5, 50=250/5), `meterType` → 21 | lưu `dictValue` |
-| LCU (2) | `dimmingLevel` → 20 (Dimming Level: tên 20 / 100), `functionList` → 5 (ứng viên), giao thức | `dimmingLevel` lưu theo **tên** (20, 100), không phải `dictValue` 1/2 |
-| Gateway (3) | `gatewayTypes` → 119, `functionList`, giao thức | |
-| Concentrator (4) | `rtuType` → 99, `functionList`, giao thức | |
+| LCU (2) | `dimmingLevel` → 20 (Dimming Level: tên 20 / 100), **Function = giao thức** (RF/F2, CAT1/F2…) | `dimmingLevel` lưu theo **tên** (20, 100), không phải `dictValue` 1/2 |
+| Gateway (3) | `gatewayTypes` → 119, **Function = giao thức** | |
+| Concentrator (4) | `rtuType` → 99, **Function = giao thức** | |
 | Lamps (5) | `lampTypes` → 3, `powerTypes` → 17 | |
 | Lamp Pole (6) | `poleArmType` → 55; `poleTypeId` = loại cột khai ở PoleType, kèm `poleType` = `poleTypeValue` của loại đó | |
-| Switch and detection (9) | `kmFactory` (producer) → 88 "Controller manufacturer" (ứng viên, chưa kiểm chứng) | |
-- `functionList` ứng viên dictionary 5 "Operation Type" (1 Turn On, 2 Turn Off, 3 Status Query, 4 Data Query, 5 Dimming, 6 Display Brightness): LCU D-light = [1..4], Gateway/Concentrator = [1..4]; LCU test có [1..7] (số 7 chưa có tên).
+| Switch and detection (9) | `kmFactory` (Producer) — nguồn danh sách CHƯA rõ: người dùng thấy tên "XY…", không có trong dictionary 1–130; thử `factoryController/queryFactoryList` (tab Dò API: `factory-list`) | |
+- Ô **Function** trên form Fonda của LCU/Gateway/Concentrator thực chất là chọn **giao thức** (người dùng xác nhận: RF/F2, CAT1/F2…); `functionList` (mảng số trong `deviceConfig`) không có nhãn đã biết — web chỉ hiện nguyên giá trị, không sửa.
 - `poleTypeValue` = mã kiểu/hình cột có sẵn = dictionary **39 "Pole Type"** (1 Magnolia Lamp, 2 High Pole Lights, 3 Hibiscus Lamp, … 10 New Leaf Single Pick Light); loại hệ thống dùng 1–8, loại tự khai dùng lại. Bản ghi dictionary không có địa chỉ hình — hình do giao diện Fonda gắn theo mã.
 - Khoá của loại khác (server vẫn trả giá trị mặc định, vd `rtuType` 0 ở LCU, `gatewayTypes` ngoài Gateway) bị **ẩn** ở drawer (`isRelevantKey`).
 
