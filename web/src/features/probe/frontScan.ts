@@ -39,3 +39,59 @@ export function scanFrontend(win: any): Promise<any> {
 
 /** Mã để dán vào Console của trang Fonda gốc. */
 export const frontScanScript = (): string => `(${scanFrontend.toString()})(window);`;
+
+/**
+ * Quét FORM TẠO TEMPLATE của Fonda (popup khai model thiết bị): luật bắt buộc (`rules`), giá trị mặc định (`dataForm`), và từng ô nhập
+ * (điều kiện hiện theo loại `deviceTypeValue`, nhãn i18n, tên trường, `prop`). Dán vào Console web Fonda gốc; tải `fonda-form-scan-….json`.
+ * Chỉ đọc file JS tĩnh. Hàm TỰ CHỨA (copy qua toString()).
+ */
+export function scanForms(win: any): Promise<any> {
+  const doc = win.document, urls = new Set<string>();
+  for (const s of Array.from(doc.scripts) as any[]) if (s.src) urls.add(s.src);
+  for (const e of win.performance.getEntriesByType('resource') as any[]) if (/\.js(\?|$)/i.test(e.name) && e.name.startsWith(win.location.origin)) urls.add(e.name);
+  /** Lấy khối {...} cân bằng ngoặc bắt đầu tại `open` (vị trí dấu `{`), bỏ qua dấu ngoặc trong chuỗi. */
+  const balanced = (t: string, open: number, max = 60000): string => {
+    let d = 0, q = '';
+    for (let i = open; i < Math.min(t.length, open + max); i++) {
+      const c = t[i];
+      if (q) { if (c === '\\') i++; else if (c === q) q = ''; continue; }
+      if (c === '"' || c === "'" || c === '`') { q = c; continue; }
+      if (c === '{') d++; else if (c === '}') { d--; if (d === 0) return t.slice(open, i + 1); }
+    }
+    return t.slice(open, open + max);
+  };
+  const out: any = { origin: win.location.origin, scannedAt: new Date().toISOString(), forms: [] };
+  const run = async () => {
+    for (const url of urls) {
+      let t = '';
+      try { t = await (await win.fetch(url, { credentials: 'same-origin' })).text(); } catch { continue; }
+      let i = t.indexOf('dataForm:{protocolId:"",protocolValue:-1,useTag:null');
+      while (i >= 0) {
+        const form: any = { url, dataForm: balanced(t, t.indexOf('{', i + 'dataForm:'.length - 1)).slice(0, 4000) };
+        // `rules:{` gần nhất phía trước (cùng component)
+        const r = t.lastIndexOf('rules:{', i); if (r >= 0 && i - r < 20000) form.rules = balanced(t, r + 6);
+        const around = t.slice(Math.max(0, i - 25000), i + 120000);
+        // các ô nhập: mỗi `expression:"dataForm.…"` kèm 900 ký tự trước (điều kiện hiện theo loại + nhãn + prop) và 160 sau
+        const fields: Record<string, any> = {}; const re = /expression:"(dataForm\.[A-Za-z0-9_.]+)"/g; let m: RegExpExecArray | null;
+        while ((m = re.exec(around))) {
+          const f = m[1];
+          if (!fields[f]) fields[f] = { before: around.slice(Math.max(0, m.index - 900), m.index).replace(/\s+/g, ' '), after: around.slice(m.index, m.index + 160) };
+        }
+        form.fields = fields;
+        // điều kiện theo loại thiết bị xuất hiện trong form
+        form.typeConditions = Array.from(new Set(around.match(/(\[[\d,]+\]\.includes\(e\.dataForm\.deviceTypeValue\)|\d+===e\.dataForm\.deviceTypeValue|e\.dataForm\.deviceTypeValue===\d+)/g) || []));
+        // hàm lưu/kiểm tra trước khi gửi (có thể chặn theo loại)
+        const sv = around.indexOf('save:function(e){'); if (sv >= 0) form.save = around.slice(sv, sv + 3500);
+        const cf = around.indexOf('confirm:function(e){'); if (cf >= 0) form.confirm = around.slice(cf, cf + 2500);
+        out.forms.push(form);
+        i = t.indexOf('dataForm:{protocolId:"",protocolValue:-1,useTag:null', i + 10);
+      }
+    }
+    win.console.log('Quét form template xong:', out.forms.length, 'form');
+    const blob = new Blob([JSON.stringify(out, null, 2)], { type: 'application/json' });
+    const a = doc.createElement('a'); a.href = URL.createObjectURL(blob); a.download = `fonda-form-scan-${new Date().toISOString().replace(/[:.]/g, '-')}.json`; a.click(); URL.revokeObjectURL(a.href);
+    return out;
+  };
+  return run();
+}
+export const formScanScript = (): string => `(${scanForms.toString()})(window);`;

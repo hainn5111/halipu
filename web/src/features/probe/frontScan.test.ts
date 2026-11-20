@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { frontScanScript, scanFrontend } from './frontScan';
+import { formScanScript, frontScanScript, scanForms, scanFrontend } from './frontScan';
 
 describe('scanFrontend', () => {
   it('đếm từ khoá trong file JS của trang và lấy đoạn quanh nó', async () => {
@@ -15,4 +15,16 @@ describe('scanFrontend', () => {
     expect(clicks.some(c => c.startsWith('fonda-frontend-scan-'))).toBe(true);
   });
   it('script tự chứa, không tham chiếu biến ngoài', () => { expect(frontScanScript()).toMatch(/^\(.*scanFrontend|^\(function|^\(.*=>/s); expect(frontScanScript().endsWith('(window);')).toBe(true); });
+  it('scanForms: lấy rules, dataForm, ô nhập theo loại và hàm save', async () => {
+    const js = 'x={data:function(){return{rules:{"deviceConfig.gatewayTypes":[{required:!0,message:"G"}],deviceTypeId:[{required:!0}]},dataForm:{protocolId:"",protocolValue:-1,useTag:null,deviceTypeValue:null,deviceConfig:{a:1}}}},'
+      + 'render:[3===e.dataForm.deviceTypeValue?a("el-form-item",{attrs:{label:e.$t("x.gw"),prop:"deviceConfig.gatewayTypes"}},[a("el-select",{model:{value:e.dataForm.deviceConfig.gatewayTypes,expression:"dataForm.deviceConfig.gatewayTypes"}})]):e._e()],save:function(e){return 1}}';
+    const win: any = { document: { scripts: [{ src: 'http://f/a.js' }], createElement: () => ({ click() { /* */ }, set href(_v: string) { /* */ }, set download(_v: string) { /* */ } }) },
+      location: { origin: 'http://f' }, console: { log() { /* */ } }, performance: { getEntriesByType: () => [] }, fetch: async () => ({ text: async () => js }) };
+    const out = await scanForms(win);
+    expect(out.forms).toHaveLength(1);
+    expect(out.forms[0].rules).toContain('deviceConfig.gatewayTypes'); expect(out.forms[0].dataForm).toContain('protocolValue:-1');
+    expect(Object.keys(out.forms[0].fields)).toEqual(['dataForm.deviceConfig.gatewayTypes']); expect(out.forms[0].fields['dataForm.deviceConfig.gatewayTypes'].before).toContain('3===e.dataForm.deviceTypeValue');
+    expect(out.forms[0].typeConditions).toEqual(['3===e.dataForm.deviceTypeValue']); expect(out.forms[0].save).toContain('save:function');
+    expect(formScanScript().endsWith('(window);')).toBe(true);
+  });
 });

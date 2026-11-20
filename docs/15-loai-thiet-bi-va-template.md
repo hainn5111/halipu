@@ -282,6 +282,7 @@ attributeDevice: [ { checked: true, lampPosition: 1, uid: "<uid 12 hex>", solar:
 **Còn mở**
 - `lcuActor/delete`: body hiện suy theo `poleActor/delete` (`{deviceIdList, deviceTypeValue:2}`), chưa bắt từ web gốc.
 - Server từ chối `lcuActor/save` cho model tự tạo `LCU-lab-4vo4` (code 1001) dù nhận `saveNew` và tạo LCU trong `poleActor/save` — lý do chưa rõ.
+- **Trường bắt buộc / ô nhập theo loại trong popup tạo template của Fonda** chưa tái tạo đủ: dùng script "Quét form template" (tab Bắt request) để lấy `rules` (`required`), `dataForm` mặc định, điều kiện hiện theo `deviceTypeValue` và nhãn từng ô, rồi dựng validate/ô nhập tương ứng trong `ModelWrite.tsx`.
 - Tên chính thức của từng số trong `functionList` (6 ≈ nghiêng cột, 7 ≈ điều khiển ánh sáng là suy từ mã).
 - Tên đầy đủ của producer "XY" (Switch).
 - LCU LoRaWAN: `lcuCtype` (`PLATFORM_TYPES()`), `bandName` (dictionary 18) chưa xử lý trong form.

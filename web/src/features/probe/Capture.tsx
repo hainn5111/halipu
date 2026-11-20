@@ -1,12 +1,12 @@
 import { useMemo, useState } from 'react';
 import { captureScript } from './captureSnippet';
-import { frontScanScript } from './frontScan';
+import { formScanScript, frontScanScript } from './frontScan';
 
 // Hướng dẫn + đoạn script bắt request của web Fonda gốc (xem captureSnippet.ts).
 export default function Capture() {
   const script = useMemo(captureScript, []);
   const [copied, setCopied] = useState(false), [copied2, setCopied2] = useState(false);
-  const scan = useMemo(frontScanScript, []);
+  const scan = useMemo(frontScanScript, []), formScan = useMemo(formScanScript, []), [copied3, setCopied3] = useState(false);
   return (
     <div className="lcus"><div className="listwrap" style={{ maxWidth: 900 }}>
       <p className="sub">Bắt body của các thao tác <b>thêm / sửa / xoá / gắn thiết bị</b> trên web Fonda gốc để biết đúng cấu trúc API ghi. Công cụ chỉ ghi lại, không tự gọi gì.</p>
@@ -22,6 +22,9 @@ export default function Capture() {
       <h3 style={{ marginTop: 24 }}>Quét front-end Fonda: enum nằm ở server hay trong code giao diện?</h3>
       <p className="sub">Dán đoạn script này vào Console của web Fonda gốc (sau khi đăng nhập). Nó tải các file JS tĩnh của chính trang, tìm các từ khoá (<code>KXHL</code>, <code>kmFactory</code>, <code>powerProtocol</code>, <code>rtuType</code>, <code>gatewayTypes</code>, tên giao thức…) và tải về <code>fonda-frontend-scan-….json</code> (số lần xuất hiện + đoạn mã quanh từ khoá). Từ khoá có trong file JS ⇒ danh sách do giao diện giữ cứng; không có ⇒ lấy từ server. Chỉ đọc file tĩnh, không gọi API, không đọc token.</p>
       <button onClick={() => { void navigator.clipboard.writeText(scan).then(() => { setCopied2(true); setTimeout(() => setCopied2(false), 2000); }); }}>{copied2 ? 'Đã sao chép ✓' : 'Sao chép script quét front-end'}</button>
+      <h3 style={{ marginTop: 24 }}>Quét form tạo template của Fonda (trường bắt buộc, điều kiện hiện theo loại)</h3>
+      <p className="sub">Dán vào Console web Fonda gốc. Script đọc file JS tĩnh, tìm form khai template (popup "Thêm model") và tải về <code>fonda-form-scan-….json</code>: luật bắt buộc (<code>rules</code>), giá trị mặc định (<code>dataForm</code>), từng ô nhập kèm điều kiện hiện theo loại thiết bị và nhãn, cùng hàm kiểm tra trước khi lưu. Dùng để tái tạo đủ ô nhập và kiểm tra bắt buộc cho từng loại. Chỉ đọc, không gọi API.</p>
+      <button onClick={() => { void navigator.clipboard.writeText(formScan).then(() => { setCopied3(true); setTimeout(() => setCopied3(false), 2000); }); }}>{copied3 ? 'Đã sao chép ✓' : 'Sao chép script quét form template'}</button>
     </div></div>
   );
 }
