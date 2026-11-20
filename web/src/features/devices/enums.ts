@@ -56,11 +56,22 @@ export function poleShapeItems(poleTypes: Array<{ value?: number; name: string; 
 }
 
 /**
- * Giao thức quyết định danh sách enum của loại (vd Concentrator: protocol → Concentrator type). Khoá: deviceTypeValue → protocolValue → giá trị `rtuType`/`gatewayTypes` cho phép.
- * CHƯA có dữ liệu bảng quan hệ (cần người dùng cung cấp hoặc dò protocolActor/queryProtocolFunction / deviceTypeController/queryProtocolByDeviceId) → rỗng = không lọc.
+ * Giao thức quyết định danh sách enum của loại — LẤY TỪ MÃ GIAO DIỆN FONDA (quét front-end 2026-11-20), không có trên server:
+ *  - Concentrator: protocolValue 56 (RTU/SDMP-X) → rtuType {3 RTU 190, 4 RTU 150}; giao thức khác (1 FEMS, 58 SDMP) → {1 RTU 200, 2 RTU 700, 5 RTU 200-6DO}.
+ *  - Gateway: protocolValue 12 (Gateway/SDMP) → gatewayTypes {1 RTU500, 2 RTU500LD}; giao thức khác (1 FEMS) → chỉ {1 RTU500}.
+ * Khoá: deviceTypeValue → protocolValue (hoặc '*' = mặc định) → giá trị dictValue cho phép.
  */
-export const ENUM_BY_PROTOCOL: Record<number, Record<number, string[]>> = {};
+export const ENUM_BY_PROTOCOL: Record<number, Record<string, string[]>> = {
+  4: { '56': ['3', '4'], '*': ['1', '2', '5'] },
+  3: { '12': ['1', '2'], '*': ['1'] },
+};
 export function allowedOptions(typeValue: number, protocolValue: number | undefined, opts: DictOpt[]): DictOpt[] {
-  const allowed = protocolValue == null ? undefined : ENUM_BY_PROTOCOL[typeValue]?.[protocolValue];
+  const m = ENUM_BY_PROTOCOL[typeValue]; if (!m) return opts;
+  const allowed = (protocolValue != null ? m[String(protocolValue)] : undefined) ?? m['*'];
   return allowed ? opts.filter(o => allowed.includes(o.value)) : opts;
 }
+
+/** functionList: chức năng 1–4 luôn bật và không bỏ được (bảng chức năng của Fonda: `[1,2,3,4].includes(id)` → bật + khoá); 5–7 tuỳ giao thức hỗ trợ. */
+export const FIXED_FUNCTIONS = [1, 2, 3, 4];
+/** Gợi ý từ mã giao diện: 6 = cảnh báo nghiêng cột (isSupportTiltAlarm), 7 = điều khiển ánh sáng (isLightControlFunction). Tên chính thức chưa lấy được. */
+export const FUNCTION_HINTS: Record<number, string> = { 6: 'cảnh báo nghiêng cột', 7: 'điều khiển ánh sáng' };

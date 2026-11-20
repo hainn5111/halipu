@@ -5,7 +5,7 @@ import { modelIdsBody, modelNameError, poleTypeError, type PoleTypeIn } from '..
 import type { DictItem, PoleType } from '../../adapters/fonda/mappers';
 import type { DeviceModel, DeviceType } from '../../core/types';
 import ConfirmWrite from '../common/ConfirmWrite';
-import { allowedOptions, enumFieldsOf, enumOptions, fieldItems, FUNCTION_TYPES, storeValue } from './enums';
+import { allowedOptions, enumFieldsOf, enumOptions, fieldItems, FIXED_FUNCTIONS, FUNCTION_HINTS, FUNCTION_TYPES, storeValue } from './enums';
 
 // Thêm / sửa / xoá template (model) mọi loại và loại cột (PoleType) — GHI THẬT, chỉ bản preview. Payload: docs/15 §7 (bắt 2026-11-20). Luôn qua hộp xác nhận.
 type Op = { title: string; summary: string; method: string; path: string; body: unknown; danger?: boolean; run: () => Promise<unknown> };
@@ -44,9 +44,11 @@ function TemplateFields({ typeValue, cfg, setCfg, ctx, proto, setProto }: { type
       {ctx.poleTypes.map(t => <option key={t.id} value={t.id}>{t.name}{t.systemConfig ? ' · hệ thống' : ''}</option>)}</select>));
   }
   if (FUNCTION_TYPES.includes(typeValue) && (fnOpts.length || Array.isArray(c.functionList))) {
-    const cur = Array.isArray(c.functionList) ? (c.functionList as unknown[]).map(Number) : [], nums = [...new Set([...fnOpts, ...cur])].sort((a, b) => a - b);
-    rows.push(row('Function (chức năng của giao thức)', <span style={{ display: 'flex', flexWrap: 'wrap', gap: '4px 12px' }}>
-      {nums.map(n => <label key={n} style={{ fontSize: 13, opacity: fnOpts.length && !fnOpts.includes(n) ? .5 : 1 }}><input type="checkbox" checked={cur.includes(n)} onChange={e => set({ functionList: (e.target.checked ? [...cur, n] : cur.filter(x => x !== n)).sort((a, b) => a - b) })} /> #{n}</label>)}</span>));
+    const cur = Array.isArray(c.functionList) ? (c.functionList as unknown[]).map(Number) : [], nums = [...new Set([...FIXED_FUNCTIONS, ...fnOpts, ...cur])].sort((a, b) => a - b);
+    rows.push(row('Function (chức năng)', <span style={{ display: 'flex', flexWrap: 'wrap', gap: '4px 12px' }}>
+      {nums.map(n => { const fixed = FIXED_FUNCTIONS.includes(n), supported = !fnOpts.length || fnOpts.includes(n) || fixed;
+        return <label key={n} title={fixed ? 'Luôn bật (Fonda khoá chức năng 1–4)' : supported ? '' : 'Giao thức này không hỗ trợ'} style={{ fontSize: 13, opacity: supported ? 1 : .5 }}>
+          <input type="checkbox" checked={fixed || cur.includes(n)} disabled={fixed || !supported} onChange={e => set({ functionList: (e.target.checked ? [...cur, n] : cur.filter(x => x !== n)).sort((a, b) => a - b) })} /> #{n}{FUNCTION_HINTS[n] ? ` (${FUNCTION_HINTS[n]})` : ''}</label>; })}</span>));
   }
   if (!rows.length) return null;
   return <div style={{ display: 'grid', gridTemplateColumns: 'auto 1fr', gap: '8px 10px', alignItems: 'center', marginTop: 8 }}>{rows}</div>;

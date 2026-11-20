@@ -27,10 +27,15 @@ describe('enums', () => {
     expect(poleShapeItems(types)).toEqual([{ value: '1', name: 'Single arm lamp' }, { value: '8', name: 'Three-Arm Lamp' }]);
   });
   it('powerProtocol thuộc Lamps, hai lựa chọn', () => { expect(isRelevantKey(5, 'powerProtocol')).toBe(true); expect(isRelevantKey(6, 'powerProtocol')).toBe(false); expect(TYPE_ENUMS[5].find(f => f.key === 'powerProtocol')?.items).toHaveLength(2); });
-  it('allowedOptions: không có bảng thì giữ nguyên, có thì lọc', () => {
-    const o = [{ value: '1', name: 'a' }, { value: '2', name: 'b' }];
-    expect(allowedOptions(4, 1, o)).toEqual(o);
-    ENUM_BY_PROTOCOL[4] = { 1: ['2'] }; expect(allowedOptions(4, 1, o)).toEqual([o[1]]); expect(allowedOptions(4, 9, o)).toEqual(o); delete ENUM_BY_PROTOCOL[4];
+  it('allowedOptions theo giao thức (mã giao diện Fonda)', () => {
+    const rtu = ['1', '2', '3', '4', '5'].map(v => ({ value: v, name: `RTU${v}` }));
+    expect(allowedOptions(4, 56, rtu).map(o => o.value)).toEqual(['3', '4']);
+    expect(allowedOptions(4, 1, rtu).map(o => o.value)).toEqual(['1', '2', '5']); expect(allowedOptions(4, 58, rtu).map(o => o.value)).toEqual(['1', '2', '5']);
+    expect(allowedOptions(4, undefined, rtu).map(o => o.value)).toEqual(['1', '2', '5']);
+    const gw = [{ value: '1', name: 'RTU500' }, { value: '2', name: 'RTU500LD' }];
+    expect(allowedOptions(3, 12, gw)).toEqual(gw); expect(allowedOptions(3, 1, gw)).toEqual([gw[0]]);
+    expect(allowedOptions(2, 53, gw)).toEqual(gw);   // loại khác: không lọc
+    expect(Object.keys(ENUM_BY_PROTOCOL)).toEqual(['3', '4']);
   });
   it('storeValue + functionLabels', () => {
     expect(storeValue('20')).toBe(20); expect(storeValue('abc')).toBe('abc'); expect(storeValue('')).toBe('');
