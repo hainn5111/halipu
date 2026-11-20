@@ -3,7 +3,7 @@ import { listDeviceTypes, listModels, modelProtocols, previewLcuModelClone, proj
 import { WRITE_ENABLED } from '../../core/flags';
 import type { DeviceModel } from '../../core/types';
 import ConfirmWrite from '../common/ConfirmWrite';
-import { compareStored, parseBody, withFields } from './lcuLab';
+import { compareStored, parseBody, withFields } from './lcuLabUtil';
 import { show } from '../common/show';
 
 // THỬ NGHIỆM (GHI THẬT, chỉ preview): gửi deviceModel/saveNew cho model LCU với body JSON sửa tự do — để xem SERVER có chặn số đầu đèn /

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { cloneDictBody, dictBodyError, nextDictValue } from './dictLab';
+import { cloneDictBody, dictBodyError, nextDictValue } from './dictLabUtil';
 
 const rec = { dictId: 'D1', dictValue: 2, dsName: 'Willow leaf', dictName: 'Ordinary pole lamp arm type', dictType: '55', createTime: 1, dictionarySecond: [{ x: 1 }] };
 describe('dictLab', () => {

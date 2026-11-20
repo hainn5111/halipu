@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { compareStored, parseBody, withFields } from './lcuLab';
+import { compareStored, parseBody, withFields } from './lcuLabUtil';
 
 const base = { deviceTypeId: 'T2', deviceTypeValue: 2, deviceModelName: 'LCU-lab', projectId: 'P', protocolValue: 53, deviceConfig: { lampHolderNum: 1, lcuType: 1, functionList: [1, 2] } };
 

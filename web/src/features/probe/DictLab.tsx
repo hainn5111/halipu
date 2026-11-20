@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { projectIds, rawDictionary, rawDictionaryPage, sendDictionary } from '../../adapters/fonda';
 import { WRITE_ENABLED } from '../../core/flags';
 import ConfirmWrite from '../common/ConfirmWrite';
-import { cloneDictBody, dictBodyError, nextDictValue } from './dictLab';
+import { cloneDictBody, dictBodyError, nextDictValue } from './dictLabUtil';
 import { show } from '../common/show';
 
 type Rec = Record<string, unknown>;
