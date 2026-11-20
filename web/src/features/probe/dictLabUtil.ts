@@ -36,7 +36,7 @@ export function buildDictBody(shape: DictShape, src: Rec, o: Parameters<typeof c
   const child = { dsName: o.name, dictValue: o.value, dictStairRemark: o.remark ?? src.dictStairRemark ?? '' };
   const g: Rec = { dictName: src.dictName, dictType: src.dictType, dictionarySecond: [child] };
   if (o.dictKey) g.dictKey = o.dictKey;
-  if (o.keepDictId && src.dictId != null) g.dictId = src.dictId;
+  // KHÔNG gửi dictId của nhóm dựng sẵn: tránh ghi đè bản ghi hệ thống (save không dictId = tạo bản ghi mới)
   return g;
 }
 

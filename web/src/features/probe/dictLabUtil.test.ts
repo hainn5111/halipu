@@ -22,7 +22,7 @@ describe('dictLab', () => {
     expect(buildDictBody('item', rec, o).dsName).toBe('T');
     expect(buildDictBody('child', { ...rec, dictId: 'G1' }, o).dictStairId).toBe('G1');
     const g = buildDictBody('group', { ...rec, dictId: 'G1' }, o);
-    expect(g).toMatchObject({ dictKey: '55', dictId: 'G1', dictName: 'Ordinary pole lamp arm type' }); expect((g.dictionarySecond as unknown[])[0]).toMatchObject({ dsName: 'T', dictValue: 3 });
+    expect(g).toMatchObject({ dictKey: '55', dictName: 'Ordinary pole lamp arm type' }); expect(g).not.toHaveProperty('dictId'); expect((g.dictionarySecond as unknown[])[0]).toMatchObject({ dsName: 'T', dictValue: 3 });
     expect(dictBodyError(JSON.stringify(g)).ok).toBe(true);
   });
   it('buildUpdateBody', () => {
