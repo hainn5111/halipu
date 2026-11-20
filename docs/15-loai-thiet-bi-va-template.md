@@ -86,6 +86,20 @@ Cấu trúc `deviceConfig` đổi theo loại (mẫu model đầu tiên của t�
 
 **Đã đối chiếu dữ liệu thật (2026-11-20):** `lampTypes` ↔ dictionary **3** (Lamp Type: 1 High Pressure Sodium, 2 Metal Halide, 3 Electrodeless, **4 Led Lamp**, 5 CCT Adjustable, 6 Ordinary) — các model "Đèn đường phố - LED", "Đèn pha - LED" đều `lampTypes` 4; `powerTypes` ↔ dictionary **17** (Power Type: 1 Inductive Ballast, 2 Electronic Ballast, **3 Constant Current Drive Power**, 4 CCT Adjustable, 5 Dali, 6 D4I, 7 RGB, 8 TC) — model LED đều `powerTypes` 3. Tab Mẫu thiết bị hiện tên cạnh giá trị và form thêm/sửa có ô chọn enum (lampTypes, powerTypes, meterType, rtuType, gatewayTypes, poleArmType).
 
+**Enum theo từng loại — đã chốt cho giao diện (2026-11-20, `web/src/features/devices/enums.ts`):**
+| Loại | Trường → dictionary | Ghi chú |
+|---|---|---|
+| Electric Meter (1) | `currentP` → 15 (Current Rate: 30=150/5, 40=200/5, 50=250/5), `meterType` → 21 | lưu `dictValue` |
+| LCU (2) | `dimmingLevel` → 20 (Dimming Level: tên 20 / 100), `functionList` → 5 (ứng viên), giao thức | `dimmingLevel` lưu theo **tên** (20, 100), không phải `dictValue` 1/2 |
+| Gateway (3) | `gatewayTypes` → 119, `functionList`, giao thức | |
+| Concentrator (4) | `rtuType` → 99, `functionList`, giao thức | |
+| Lamps (5) | `lampTypes` → 3, `powerTypes` → 17 | |
+| Lamp Pole (6) | `poleArmType` → 55; `poleTypeId` = loại cột khai ở PoleType, kèm `poleType` = `poleTypeValue` của loại đó | |
+| Switch and detection (9) | `kmFactory` (producer) → 88 "Controller manufacturer" (ứng viên, chưa kiểm chứng) | |
+- `functionList` ứng viên dictionary 5 "Operation Type" (1 Turn On, 2 Turn Off, 3 Status Query, 4 Data Query, 5 Dimming, 6 Display Brightness): LCU D-light = [1..4], Gateway/Concentrator = [1..4]; LCU test có [1..7] (số 7 chưa có tên).
+- `poleTypeValue` = mã kiểu/hình cột có sẵn = dictionary **39 "Pole Type"** (1 Magnolia Lamp, 2 High Pole Lights, 3 Hibiscus Lamp, … 10 New Leaf Single Pick Light); loại hệ thống dùng 1–8, loại tự khai dùng lại. Bản ghi dictionary không có địa chỉ hình — hình do giao diện Fonda gắn theo mã.
+- Khoá của loại khác (server vẫn trả giá trị mặc định, vd `rtuType` 0 ở LCU, `gatewayTypes` ngoài Gateway) bị **ẩn** ở drawer (`isRelevantKey`).
+
 **Enum trong `deviceConfig` ↔ dictionary** (đối chiếu giá trị; ✔ = khớp rõ ràng):
 | Trường | Dictionary | Ghi chú |
 |---|---|---|

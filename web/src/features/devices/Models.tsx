@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { lazy, Suspense } from 'react';
-import { ENUM_KEYS_STATIC } from './enums';
+import { DICT_KEYS, enumFieldsOf, enumLabel, functionLabels, FUNCTION_DICT, isRelevantKey, POLE_SHAPE_DICT } from './enums';
+
 import { listDeviceTypes, listDictionary, listModels, listPoleTypes, modelProtocols, projectIds, type ModelProto } from '../../adapters/fonda';
 import { WRITE_ENABLED } from '../../core/flags';
 import { configEntries, lcuSpec, type DictItem, type PoleType } from '../../adapters/fonda/mappers';
@@ -22,8 +23,8 @@ export default function Models() {
   const [pid, setPid] = useState('');
   const [protos, setProtos] = useState<Map<string, ModelProto>>(new Map());
   const [err, setErr] = useState('');
-  const [shapes, setShapes] = useState<DictItem[]>([]), [arms, setArms] = useState<DictItem[]>([]), [armErr, setArmErr] = useState(''), [ptSel, setPtSel] = useState<string | null>(null);
-  const [enums, setEnums] = useState<Record<string, DictItem[]>>({});
+  const [armErr, setArmErr] = useState(''), [ptSel, setPtSel] = useState<string | null>(null);
+  const [dicts, setDicts] = useState<Record<number, DictItem[]>>({});
   const [poleTypes, setPoleTypes] = useState<PoleType[]>([]), [ptErr, setPtErr] = useState('');
   const [reload, setReload] = useState(0);
 
@@ -38,12 +39,10 @@ export default function Models() {
           const tt = await listDeviceTypes(pid), mm = await listModels(pid);
           ts.push(...tt); ms.push(...mm);
           try { pts.push(...await listPoleTypes(pid)); } catch (e) { setPtErr((e as Error).message); }
-          try { setShapes(await listDictionary(pid, 39)); } catch { /* ứng viên, bỏ qua */ }
-          try { setArms(await listDictionary(pid, 55)); } catch (e) { setArmErr((e as Error).message); }
-          if (pid === ps[0]) {   // tên giá trị enum của các trường deviceConfig (lampTypes→dict 3, powerTypes→dict 17, …)
-            const en: Record<string, DictItem[]> = {};
-            for (const [field, key] of Object.entries(ENUM_KEYS_STATIC)) { try { en[field] = await listDictionary(pid, key); } catch { /* bỏ qua */ } }
-            setEnums(en);
+          if (pid === ps[0]) {   // bảng enum của các trường deviceConfig (docs/15 §4)
+            const dd: Record<number, DictItem[]> = {};
+            for (const key of DICT_KEYS) { try { dd[key] = await listDictionary(pid, key); } catch (e) { if (key === 55) setArmErr((e as Error).message); } }
+            setDicts(dd);
           }
         }
         if (!live) return;
@@ -66,9 +65,16 @@ export default function Models() {
     let live = true; modelProtocols(pid, typeId).then(m => { if (live) setProtos(m); }).catch(() => { if (live) setProtos(new Map()); });
     return () => { live = false; };
   }, [typeId, pid, reload]);
-  const enumName = (field: string, text: string) => { const n = enums[field]?.find(x => x.value === text)?.name; return n ? ` — ${n}` : ''; };
+  const arms = dicts[55] ?? [], shapes = dicts[POLE_SHAPE_DICT] ?? [];
+  const protoOpts = useMemo(() => { const m = new Map<string, ModelProto>(); for (const p of protos.values()) if (p.id && p.value >= 0 && !m.has(p.id)) m.set(p.id, p); return [...m.values()]; }, [protos]);
+  const enumName = (typeValue: number | undefined, key: string, text: string) => {
+    if (typeValue == null) return '';
+    const f = enumFieldsOf(typeValue).find(x => x.key === key); if (!f) return '';
+    const n = enumLabel(f, text, dicts[f.dict] ?? []); return n ? ` — ${n}` : '';
+  };
   const sel = models.find(m => m.id === selId);
-  const entries = useMemo(() => (sel ? configEntries(sel.config) : []), [sel]);
+  const selType0 = types.find(t => t.id === sel?.typeId);
+  const entries = useMemo(() => (sel ? configEntries(sel.config).filter(e => selType0 ? isRelevantKey(selType0.value, e.key) : true) : []), [sel, selType0]);
 
   const selType = types.find(t => t.id === sel?.typeId);
   const selProto = sel ? protos.get(sel.id) : undefined;
@@ -82,13 +88,13 @@ export default function Models() {
           <button className={typeId === POLE_TYPES ? '' : 'b'} onClick={() => { setTypeId(POLE_TYPES); setSelId(null); setPtSel(null); }}>Loại cột — PoleType ({poleTypes.length})</button>
           <button className={typeId === ARM_TYPES ? '' : 'b'} onClick={() => { setTypeId(ARM_TYPES); setSelId(null); }}>Kiểu tay đèn — poleArmType ({arms.length})</button>
         </div>
-        {Toolbar && typeId && typeId !== POLE_TYPES && typeId !== ARM_TYPES && <div style={{ marginBottom: 10 }}><Suspense fallback={null}><Toolbar pid={pid} type={curType} models={list} sel={sel} protos={protos} enums={enums} onChanged={() => { setSelId(null); setReload(n => n + 1); }} /></Suspense></div>}
+        {Toolbar && typeId && typeId !== POLE_TYPES && typeId !== ARM_TYPES && <div style={{ marginBottom: 10 }}><Suspense fallback={null}><Toolbar pid={pid} type={curType} models={list} sel={sel} protos={protos} ctx={{ dicts, poleTypes, protoOpts }} onChanged={() => { setSelId(null); setReload(n => n + 1); }} /></Suspense></div>}
         {typeId === POLE_TYPES && (<>
           {ptErr && <div className="err">{ptErr}</div>}
-          {PtWrites && <Suspense fallback={null}><PtWrites mode="add" pid={pid} onChanged={() => setReload(n => n + 1)} /></Suspense>}
+          {PtWrites && <Suspense fallback={null}><PtWrites mode="add" shapes={shapes} pid={pid} onChanged={() => setReload(n => n + 1)} /></Suspense>}
           <p className="sub">Model Lamp Pole tham chiếu loại cột qua <code>poleTypeId</code> trong <code>deviceConfig</code>.</p>
-          <table><thead><tr><th>#</th><th>Tên loại cột</th><th>Giá trị</th><th>Hệ thống</th><th>Ghi chú</th><th>Mã</th><th>Số model cột dùng</th></tr></thead>
-            <tbody>{poleTypes.map((p, i) => <tr key={p.id} className={'lrow' + (p.id === ptSel ? ' sel' : '')} onClick={() => setPtSel(p.id)}><td>{i + 1}</td><td><b>{p.name}</b></td><td>{p.value ?? '–'}</td><td>{p.systemConfig ? 'Hệ thống' : 'Dự án'}</td><td>{p.remark}</td><td>{p.id.slice(0, 8)}</td><td>{models.filter(m => show(m.config.poleTypeId ?? '') === p.id).length}</td></tr>)}</tbody></table>
+          <table><thead><tr><th>#</th><th>Tên loại cột</th><th>Giá trị</th><th>Kiểu/hình (dict 39)</th><th>Hệ thống</th><th>Ghi chú</th><th>Mã</th><th>Số model cột dùng</th></tr></thead>
+            <tbody>{poleTypes.map((p, i) => <tr key={p.id} className={'lrow' + (p.id === ptSel ? ' sel' : '')} onClick={() => setPtSel(p.id)}><td>{i + 1}</td><td><b>{p.name}</b></td><td>{p.value ?? '–'}</td><td>{shapes.find(x => x.value === show(p.value))?.name ?? '–'}</td><td>{p.systemConfig ? 'Hệ thống' : 'Dự án'}</td><td>{p.remark}</td><td>{p.id.slice(0, 8)}</td><td>{models.filter(m => show(m.config.poleTypeId ?? '') === p.id).length}</td></tr>)}</tbody></table>
           {!poleTypes.length && !ptErr && <p className="sub">Chưa đọc được loại cột nào.</p>}
         </>)}
         {typeId === ARM_TYPES && (<>
@@ -118,8 +124,8 @@ export default function Models() {
               <tr><td>poleTypeId</td><td>{pt.id}</td></tr><tr><td>poleTypeValue</td><td>{pt.value ?? '–'}</td></tr>
               <tr><td>systemConfig</td><td>{pt.systemConfig} {pt.systemConfig ? '(dựng sẵn của hệ thống)' : '(người dùng khai)'}</td></tr><tr><td>remark</td><td>{pt.remark || '–'}</td></tr>
             </tbody></table>
-            <p className="sub"><code>poleTypeValue</code> là số thứ tự trong dự án (loại hệ thống 1–8, loại tự khai dùng lại các số này nên không duy nhất). Ứng viên bảng tra: dictionary 39 "Pole Type" → <b>{shapes.find(x => x.value === show(pt.value))?.name ?? 'không có'}</b> (chưa kiểm chứng; tên khác với tên loại cột nên có thể là kiểu biểu tượng/hình dáng).</p>
-            {PtWrites && <Suspense fallback={null}><PtWrites mode="edit" pid={pid} sel={pt} usedBy={used.length} onChanged={() => { setPtSel(null); setReload(n => n + 1); }} /></Suspense>}
+            <p className="sub"><code>poleTypeValue</code> là mã kiểu/hình cột có sẵn (dictionary 39 "Pole Type"): <b>{shapes.find(x => x.value === show(pt.value))?.name ?? 'không có trong bảng'}</b>. Hình ảnh tương ứng do giao diện Fonda gắn theo mã này; bảng không trả địa chỉ hình.</p>
+            {PtWrites && <Suspense fallback={null}><PtWrites mode="edit" shapes={shapes} pid={pid} sel={pt} usedBy={used.length} onChanged={() => { setPtSel(null); setReload(n => n + 1); }} /></Suspense>}
             <h3>Model Lamp Pole dùng loại này ({used.length})</h3>
             {used.length ? <ul style={{ margin: 0, paddingLeft: 18 }}>{used.map(m => <li key={m.id}>{m.name}{m.config.poleArmType != null ? ` — tay đèn: ${arms.find(a => a.value === show(m.config.poleArmType))?.name ?? show(m.config.poleArmType)}` : ''}</li>)}</ul> : <p className="sub">Chưa có model nào.</p>}
           </aside>);
@@ -128,12 +134,13 @@ export default function Models() {
         <aside className="drawer">
           <button className="x" onClick={() => setSelId(null)}>✕</button>
           <h2>{sel.name}</h2>
-          {sel.config.poleArmType != null && <p className="sub" style={{ margin: '4px 0 0' }}>Kiểu tay đèn: <b>{arms.find(a => a.value === show(sel.config.poleArmType))?.name ?? show(sel.config.poleArmType)}</b></p>}
-          {sel.config.poleTypeId != null && <p className="sub" style={{ margin: '4px 0 0' }}>Loại cột: <b>{poleTypes.find(p => p.id === show(sel.config.poleTypeId))?.name ?? show(sel.config.poleTypeId)}</b></p>}
+          {selType?.value === 6 && sel.config.poleArmType != null && <p className="sub" style={{ margin: '4px 0 0' }}>Kiểu tay đèn: <b>{arms.find(a => a.value === show(sel.config.poleArmType))?.name ?? show(sel.config.poleArmType)}</b></p>}
+          {selType?.value === 6 && sel.config.poleTypeId != null && <p className="sub" style={{ margin: '4px 0 0' }}>Loại cột: <b>{poleTypes.find(p => p.id === show(sel.config.poleTypeId))?.name ?? show(sel.config.poleTypeId)}</b></p>}
+          {selProto && selProto.value >= 0 && <p className="sub" style={{ margin: '4px 0 0' }}>Giao thức: <b>{selProto.name} {selProto.version}</b></p>}
           <h3>Cấu hình (deviceConfig)</h3>
           {!entries.length && <p className="sub">Không có trường cấu hình.</p>}
           <table className="kv"><tbody>
-            {entries.filter(e => e.kind === 'value').map(e => e.kind === 'value' && <tr key={e.key}><td>{e.key}</td><td>{e.text}{enumName(e.key, e.text)}</td></tr>)}
+            {entries.filter(e => e.kind === 'value').map(e => e.kind === 'value' && <tr key={e.key}><td>{e.key}</td><td>{e.text}{enumName(selType?.value, e.key, e.text)}{e.key === 'functionList' ? ` — ${functionLabels(sel.config.functionList, dicts[FUNCTION_DICT] ?? []).join(', ')}` : ''}</td></tr>)}
           </tbody></table>
           {entries.some(e => e.kind === 'attached') && <h3>Thiết bị đính kèm theo template</h3>}
           {entries.map(e => e.kind === 'attached' && (
@@ -142,7 +149,7 @@ export default function Models() {
               <ul style={{ margin: '4px 0 0', paddingLeft: 18 }}>{e.items.map((it, i) => (
                 <li key={i} style={{ opacity: it.checked ? 1 : .55 }}>{it.checked ? '✔' : '○'} {it.name}{it.extra ? ` (${it.extra})` : ''}</li>))}</ul>
             </div>))}
-          {Writes && sel && <Suspense fallback={null}><Writes pid={pid} model={sel} type={selType} proto={selProto} enums={enums} onChanged={() => { setSelId(null); setReload(n => n + 1); }} /></Suspense>}
+          {Writes && sel && <Suspense fallback={null}><Writes pid={pid} model={sel} type={selType} proto={selProto} ctx={{ dicts, poleTypes, protoOpts }} onChanged={() => { setSelId(null); setReload(n => n + 1); }} /></Suspense>}
         </aside>
       )}
     </div>
