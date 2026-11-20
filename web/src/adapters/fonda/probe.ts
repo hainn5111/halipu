@@ -44,11 +44,19 @@ export async function runProbe(pid: string, log: (line: string) => void, withLcu
   await get('pole-types', 'POST', 'poleType/getAllPoleTypeOfProjectList', { projectId: pid });
   await get('pole-types-page', 'POST', 'poleType/getAllPoleTypeOfProjectPage', { projectId: pid, current: 1, size: 100 });
   await get('dictionary-page', 'POST', 'dictionary/queryDictionaryPage', { current: 1, size: 100 });
-  // Quét dictionary key 1..130 (im lặng khi lỗi) để tìm enum của poleTypeValue/poleArmType
-  say('Quét dictionary key 1..130…');
+  // Quét dictionary key 1..400 (song song theo lô, im lặng khi lỗi) để tìm enum còn thiếu (producer, power protocol, …)
+  say('Quét dictionary key 1..400…');
   const dictAll: Record<string, unknown> = {};
-  for (let k = 1; k <= 130; k++) { if (DICTS.includes(k)) continue; try { const d = await call('GET', `dictionary/queryDictionaryByKey/${k}`, { projectId: pid }); if (Array.isArray(d) && d.length) dictAll[String(k)] = d; } catch { /* bỏ qua */ } }
+  const todo = Array.from({ length: 400 }, (_, i) => i + 1).filter(k => !DICTS.includes(k));
+  for (let i = 0; i < todo.length; i += 10) await Promise.all(todo.slice(i, i + 10).map(async k => { try { const d = await call('GET', `dictionary/queryDictionaryByKey/${k}`, { projectId: pid }); if (Array.isArray(d) && d.length) dictAll[String(k)] = d; } catch { /* bỏ qua */ } }));
   results.push({ name: 'dict-scan', ok: true, data: dictAll }); say(`✔ dict-scan: ${Object.keys(dictAll).length} key có dữ liệu (${Object.keys(dictAll).join(', ')})`);
+  // Model theo loại (kèm nhà sản xuất): thử các API đọc model sẵn có — mong thấy enum/producer gắn ở server
+  const tl = Array.isArray(types) ? (types as Rec[]) : [];
+  for (const t of tl.filter(x => [1, 2, 3, 4, 5, 6, 9].includes(Number(x.deviceTypeValue)))) {
+    await get(`models-by-type-${t.deviceTypeValue}`, 'GET', `deviceModel/getDeviceModelByDeviceType/${t.deviceTypeId}`);
+    const m = (Array.isArray(models) ? (models as Rec[]) : []).find(x => x.deviceTypeId === t.deviceTypeId);
+    if (m) await get(`model-full-${t.deviceTypeValue}`, 'GET', `deviceModel/queryDeviceModelAndTypeAndSystemAndFactoryById/${m.deviceModelId}`);
+  }
   const list = Array.isArray(types) ? types : [];
   say(`Loại thiết bị: ${list.map(t => `${t.deviceTypeValue}=${t.deviceTypeName}`).join(', ')}`);
   for (const t of list) {

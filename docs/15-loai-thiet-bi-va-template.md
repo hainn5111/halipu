@@ -250,6 +250,8 @@ attributeDevice: [ { checked: true, lampPosition: 1, uid: "<uid 12 hex>", solar:
 - **`deviceModel/delete`** (bắt 2026-11-20): body `{deviceModelId:[<id>…]}` (mảng). Template còn được dùng → HTTP 200 nhưng **`code 1018`, `message "[tên] is in use, cannot be deleted."`** (cả template tự tạo như `LCU-lab-4vo4` nếu đã gắn thiết bị); template không dùng → code 200, `data:null`.
 - **Web:** tab Mẫu thiết bị (chỉ preview) có cho MỌI loại: "+ Thêm bản sao…" (`saveNew`), "Lưu thay đổi…" (`updateNew`, sửa tên/ghi chú/`deviceConfig` JSON), "Xoá template…" (`delete`); model dựng sẵn (`systemConfig`>0) không sửa/xoá. Loại cột: "+ Thêm loại cột…", "Sửa…", "Xoá…" (chặn loại hệ thống và loại còn model cột dùng).
 
+**Xác nhận enum nằm ở server hay front-end (cách làm):** (1) tab Dò API quét dictionary key 1–400 + `protocolActor/queryList` + `queryProtocolByDeviceId` + `queryProtocolFunction` + `factoryController/*` + `deviceModel/getDeviceModelByDeviceType` + `…AndFactoryById`: giá trị nào có ở đó là do server giữ; (2) tab **Bắt request → "Quét front-end Fonda"**: script dán vào Console web Fonda gốc, tải file JS tĩnh của trang và đếm các từ khoá (KXHL, kmFactory, powerProtocol, rtuType, gatewayTypes, tên giao thức…) kèm đoạn mã quanh nó → từ khoá có trong file JS ⇒ danh sách do giao diện giữ cứng. Đối chiếu hai kết quả để kết luận từng enum.
+
 ## 8. Việc còn mở
 
 - Tìm tham số đúng của `deviceModel/queryDeviceModelByDeviceTypeAndProject` (bắt request từ web gốc).

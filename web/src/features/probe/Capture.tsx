@@ -1,10 +1,12 @@
 import { useMemo, useState } from 'react';
 import { captureScript } from './captureSnippet';
+import { frontScanScript } from './frontScan';
 
 // Hướng dẫn + đoạn script bắt request của web Fonda gốc (xem captureSnippet.ts).
 export default function Capture() {
   const script = useMemo(captureScript, []);
-  const [copied, setCopied] = useState(false);
+  const [copied, setCopied] = useState(false), [copied2, setCopied2] = useState(false);
+  const scan = useMemo(frontScanScript, []);
   return (
     <div className="lcus"><div className="listwrap" style={{ maxWidth: 900 }}>
       <p className="sub">Bắt body của các thao tác <b>thêm / sửa / xoá / gắn thiết bị</b> trên web Fonda gốc để biết đúng cấu trúc API ghi. Công cụ chỉ ghi lại, không tự gọi gì.</p>
@@ -17,6 +19,9 @@ export default function Capture() {
       <p className="sub">Script không đọc header (không có token). Khoá tên giống <code>pass/token/secret/authorization/cookie</code> bị che thành <code>&lt;redacted&gt;</code>; request <code>login</code> bị bỏ qua. Body còn lại giữ nguyên (có id thiết bị của bạn).</p>
       <button onClick={() => { void navigator.clipboard.writeText(script).then(() => { setCopied(true); setTimeout(() => setCopied(false), 2000); }); }}>{copied ? 'Đã sao chép ✓' : 'Sao chép script'}</button>
       <textarea readOnly value={script} onFocus={e => e.currentTarget.select()} style={{ display: 'block', width: '100%', height: 160, marginTop: 12, fontSize: 11, fontFamily: 'monospace' }} />
+      <h3 style={{ marginTop: 24 }}>Quét front-end Fonda: enum nằm ở server hay trong code giao diện?</h3>
+      <p className="sub">Dán đoạn script này vào Console của web Fonda gốc (sau khi đăng nhập). Nó tải các file JS tĩnh của chính trang, tìm các từ khoá (<code>KXHL</code>, <code>kmFactory</code>, <code>powerProtocol</code>, <code>rtuType</code>, <code>gatewayTypes</code>, tên giao thức…) và tải về <code>fonda-frontend-scan-….json</code> (số lần xuất hiện + đoạn mã quanh từ khoá). Từ khoá có trong file JS ⇒ danh sách do giao diện giữ cứng; không có ⇒ lấy từ server. Chỉ đọc file tĩnh, không gọi API, không đọc token.</p>
+      <button onClick={() => { void navigator.clipboard.writeText(scan).then(() => { setCopied2(true); setTimeout(() => setCopied2(false), 2000); }); }}>{copied2 ? 'Đã sao chép ✓' : 'Sao chép script quét front-end'}</button>
     </div></div>
   );
 }
