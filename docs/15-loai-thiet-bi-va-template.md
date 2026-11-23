@@ -313,6 +313,8 @@ Producer (`factoryId`) hiện ở loại 9, 16, 17, 18, 60, 64 và `hasFactoryDe
 - **Đổi giao thức:** Concentrator → `rtuType` = lựa chọn đầu của danh sách đã lọc (56 → {3,4}; khác → {1,2,5}); Gateway → `gatewayTypes = null` rồi lọc (12 → cả hai; khác → {1}); `functionList` = `protocolActor/queryProtocolFunction {protocolId}`; đặt Producer theo `A(type, protocolValue)` (loại 26/27/51).
 - **Khoá (`disabled`):** `gatewayTypes` và Producer khoá khi **đã có `deviceModelId`** (sửa model đã tạo); Producer còn khoá khi model **đang được dùng** (`deviceModel/useOrNo {deviceModelId}` → `data.result`) hoặc loại 60; `lampTypes`/`powerTypes` khoá khi `useTag === 1` hoặc (Lamps và `systemConfig === 3`). Web: khoá `gatewayTypes`/Producer khi sửa; **tick "Bỏ qua kiểm tra" mở khoá** để thử xem server có nhận không.
 
+**Capture 2026-11-23 xác nhận `lcuActor/save`** (form Add Equipment, model RF/F2): body đúng 31 khoá như mô tả ở trên (không có trường của đèn như `powerProtocol`/`lampPower`); `data` trả `deviceId` mới + `lang:"en-US"`. Test `lcuSaveBody` khớp từng khoá. **Kiểm tra khoảng giá trị của form template chỉ áp cho ô ĐANG HIỆN theo loại** (LCU có `lampLifetime 0`, `ratedCurrent 0` trong config nhưng form LCU không có các ô đó → không báo lỗi).
+
 ## 8. Việc còn mở (cập nhật 2026-11-20)
 
 **Đã xong trong đợt này:** thêm/sửa/xoá template mọi loại (`saveNew/updateNew/delete`), thêm/sửa/xoá PoleType, enum theo loại + lọc theo giao thức (§4), giao thức/chức năng theo loại, xác nhận enum nào ở server/front-end, thêm/xoá LCU riêng lẻ (`lcuActor/save`; xoá theo quy ước, chưa bắt).

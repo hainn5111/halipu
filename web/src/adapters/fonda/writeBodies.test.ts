@@ -138,3 +138,10 @@ describe('template mọi loại + loại cột (bắt 2026-11-20)', () => {
     expect(modelNameError('', {})).toBeTruthy(); expect(modelNameError('a', [])).toBeTruthy(); expect(modelNameError('a', {})).toBeNull();
   });
 });
+
+describe('lcuSaveBody khớp capture thật 2026-11-23', () => {
+  it('đúng từng khoá của lcuActor/save (không có trường đèn: powerProtocol, lampPower…)', () => {
+    const captured = { connectId: '', deviceModelId: '577d2690116344c2bd9737911a009371', deviceName: 'HAI-TEST_LCU', deviceCode: '', uid: '002020208293', deviceStatus: 1, imei: '', imsi: '', sim: '', ccid: '', areaId: '', roadId: '', roadDirection: '', roadLevelId: null, deviceSource: 1, remark: '', lcuTask: 1, cls: '', fcntbits: '', lwan: '', verifyEnabled: 0, protocolValue: 53, protocolName: 'RF/F2', lightOperated: null, poleSlant: null, temDetection: null, diDetection: null, gps: null, remoteUpgrade: null, energyAccumulation: null, projectId: '9a59bd490ce14e139948fbda5addb2df' };
+    expect(lcuSaveBody({ projectId: captured.projectId, modelId: captured.deviceModelId, name: 'HAI-TEST_LCU', uid: '002020208293', protocolValue: 53, protocolName: 'RF/F2' })).toEqual(captured);
+  });
+});

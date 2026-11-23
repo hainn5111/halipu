@@ -17,11 +17,12 @@ export const MODEL_NAME_MAX = 48;
 
 const isEmpty = (v: unknown) => v === '' || v == null;
 
-/** Danh sách lỗi (tiếng Việt) của `config` cho loại `typeValue`. Rỗng = hợp lệ. */
-export function configErrors(typeValue: number, name: string, config: Record<string, unknown>): string[] {
+/** Danh sách lỗi (tiếng Việt) của `config` cho loại `typeValue`. `only` = các khoá đang hiện trong form (không đưa vào thì kiểm mọi khoá). Rỗng = hợp lệ. */
+export function configErrors(typeValue: number, name: string, config: Record<string, unknown>, only?: string[]): string[] {
   const errs: string[] = [];
   if (name.trim().length > MODEL_NAME_MAX) errs.push(`Tên template tối đa ${MODEL_NAME_MAX} ký tự`);
   for (const [k, r] of Object.entries(RANGES)) {
+    if (only && !only.includes(k)) continue;   // như Fonda: chỉ kiểm ô ĐANG HIỆN trong form của loại này (vd LCU không có lampLifetime/ratedCurrent)
     const v = config[k]; if (isEmpty(v)) continue;
     const n = typeof v === 'number' ? v : typeof v === 'string' && v.trim() !== '' ? Number(v) : NaN;
     const bad = !Number.isFinite(n) || (r.excl ? n <= r.min : n < r.min) || n > r.max || (r.int && !Number.isInteger(n));

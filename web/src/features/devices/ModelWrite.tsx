@@ -70,7 +70,8 @@ function TemplateFields({ typeValue, cfg, setCfg, ctx, proto, setProto, locked =
 
 /** Kiểm tra như form Fonda: khoảng giá trị + trường bắt buộc đang hiện + đã chọn giao thức (loại có giao thức). Có thể BỎ QUA bằng ô tick (gửi nguyên JSON). */
 function checks(typeValue: number, name: string, c: Record<string, unknown>, proto: ModelProto | undefined, ctx: Ctx): string[] {
-  const errs = [...configErrors(typeValue, name, c), ...requiredErrors({ type: typeValue, protocol: proto?.value, lcuCtype: c.lcuCtype }, c)];
+  const shown = visibleFields({ type: typeValue, protocol: proto?.value, lcuCtype: c.lcuCtype }).map(f => f.key);
+  const errs = [...configErrors(typeValue, name, c, shown), ...requiredErrors({ type: typeValue, protocol: proto?.value, lcuCtype: c.lcuCtype }, c)];
   if (ctx.protoOpts.length && FUNCTION_TYPES.includes(typeValue) && !(proto && proto.value >= 0)) errs.push('Giao thức (Function): bắt buộc');
   return errs;
 }
