@@ -315,6 +315,8 @@ Producer (`factoryId`) hiện ở loại 9, 16, 17, 18, 60, 64 và `hasFactoryDe
 
 **Capture 2026-11-23 xác nhận `lcuActor/save`** (form Add Equipment, model RF/F2): body đúng 31 khoá như mô tả ở trên (không có trường của đèn như `powerProtocol`/`lampPower`); `data` trả `deviceId` mới + `lang:"en-US"`. Test `lcuSaveBody` khớp từng khoá. **Kiểm tra khoảng giá trị của form template chỉ áp cho ô ĐANG HIỆN theo loại** (LCU có `lampLifetime 0`, `ratedCurrent 0` trong config nhưng form LCU không có các ô đó → không báo lỗi).
 
+**Thêm template — cấu hình ban đầu (`templateDefaults.ts`):** gửi cả bộ khoá như Fonda; ô không thuộc loại lấy **giá trị mặc định của Fonda** (`lampLifetime 6000, lampPower 88, nominalPower 110, ratedCurrent 0.4, …`) thay vì 0 của model hệ thống; ô thuộc loại giữ giá trị mẫu (rỗng → mặc định); `extensions`, `functionList`, `poleTypeId`… giữ nguyên.
+
 ## 8. Việc còn mở (cập nhật 2026-11-20)
 
 **Đã xong trong đợt này:** thêm/sửa/xoá template mọi loại (`saveNew/updateNew/delete`), thêm/sửa/xoá PoleType, enum theo loại + lọc theo giao thức (§4), giao thức/chức năng theo loại, xác nhận enum nào ở server/front-end, thêm/xoá LCU riêng lẻ (`lcuActor/save`; xoá theo quy ước, chưa bắt).

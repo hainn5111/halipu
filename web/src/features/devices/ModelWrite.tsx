@@ -6,6 +6,7 @@ import type { DictItem, PoleType } from '../../adapters/fonda/mappers';
 import type { DeviceModel, DeviceType } from '../../core/types';
 import ConfirmWrite from '../common/ConfirmWrite';
 import { configErrors } from './configRules';
+import { initialConfig } from './templateDefaults';
 import { requiredErrors, visibleFields } from './templateSchema';
 import { allowedOptions, enumFieldsOf, enumOptions, fieldItems, FIXED_FUNCTIONS, FUNCTION_HINTS, FUNCTION_TYPES, storeValue } from './enums';
 
@@ -86,7 +87,7 @@ export function ModelToolbar({ pid, type, models, sel, protos, ctx, onChanged }:
   const [open, setOpen] = useState(false), [name, setName] = useState(''), [remark, setRemark] = useState(''), [cfg, setCfg] = useState(''), [msg, setMsg] = useState('');
   const [op, setOp] = useState<Op | null>(null), [skip, setSkip] = useState(false);
   const typeValue = type?.value ?? NaN, ready = !!type && Number.isFinite(typeValue);
-  function start() { if (!base) return; setMsg(''); setName(`${base.name} (bản sao)`); setRemark(baseProto0?.remark ?? ''); setProtoSel(undefined); setCfg(JSON.stringify(base.config, null, 2)); setOpen(true); }
+  function start() { if (!base) return; setMsg(''); setName(`${base.name} (bản sao)`); setRemark(baseProto0?.remark ?? ''); setProtoSel(undefined); setCfg(JSON.stringify(initialConfig(typeValue, base.config), null, 2)); setOpen(true); }
   function ask() {
     const c = parseCfg(cfg), e = modelNameError(name, c); if (e || !c || !type || !base) { setMsg(e ?? 'deviceConfig không hợp lệ'); return; }
     const ce = skip ? [] : checks(typeValue, name, c, baseProto, ctx); if (ce.length) { setMsg(ce.join('\n')); return; }

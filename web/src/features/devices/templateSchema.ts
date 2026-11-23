@@ -66,3 +66,10 @@ const empty = (v: unknown) => v === '' || v == null;
 export function requiredErrors(c: VisCtx, config: Record<string, unknown>): string[] {
   return visibleFields(c).filter(f => f.required && empty(config[f.key])).map(f => `${f.label}: bắt buộc`);
 }
+
+/** Khoá có thể hiện ở loại này với BẤT KỲ giao thức nào (dùng khi chưa chọn giao thức). */
+export function relevantKeys(type: number): Set<string> {
+  const out = new Set<string>();
+  for (const protocol of [undefined, ...Array.from({ length: 101 }, (_, i) => i)]) for (const lcuCtype of [undefined, 2]) for (const f of visibleFields({ type, protocol, lcuCtype })) out.add(f.key);
+  return out;
+}
