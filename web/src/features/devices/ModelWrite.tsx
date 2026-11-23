@@ -6,7 +6,7 @@ import type { DictItem, PoleType } from '../../adapters/fonda/mappers';
 import type { DeviceModel, DeviceType } from '../../core/types';
 import ConfirmWrite from '../common/ConfirmWrite';
 import { configErrors } from './configRules';
-import { initialConfig } from './templateDefaults';
+import { FONDA_DEFAULTS, initialConfig } from './templateDefaults';
 import { requiredErrors, visibleFields } from './templateSchema';
 import { allowedOptions, enumFieldsOf, enumOptions, fieldItems, FIXED_FUNCTIONS, FUNCTION_HINTS, FUNCTION_TYPES, storeValue } from './enums';
 
@@ -65,8 +65,21 @@ function TemplateFields({ typeValue, cfg, setCfg, ctx, proto, setProto, locked =
     const textual = STRING_KEYS.includes(f.key), cur = c[f.key] == null ? '' : String(c[f.key]);
     rows.push(row(f.label + (f.required ? ' *' : ''), <input style={{ width: '100%' }} value={cur} placeholder={f.hint ?? ''} onChange={e => set({ [f.key]: textual ? e.target.value : storeValue(e.target.value) })} />));
   }
-  if (!rows.length) return null;
-  return <div style={{ display: 'grid', gridTemplateColumns: 'auto 1fr', gap: '8px 10px', alignItems: 'center', marginTop: 8 }}>{rows}</div>;
+  // Trường Fonda TỰ SINH: bộ mặc định mà front-end Fonda luôn gửi kèm dù loại này không có ô tương ứng — hiện như ô nhập thường (sửa được), kèm chú thích
+  const shown = new Set([...vis.map(f => f.key), ...enumFieldsOf(typeValue).map(f => f.key), 'poleTypeId']);
+  const extra = Object.keys(FONDA_DEFAULTS).filter(k => !shown.has(k) && k in c!);
+  const extraRows = extra.map(k => {
+    const cur = c![k] == null ? '' : String(c![k]);
+    return row(k, <input style={{ width: '100%' }} value={cur} onChange={e => set({ [k]: e.target.value === '' ? (FONDA_DEFAULTS[k] === null ? null : '') : storeValue(e.target.value) })} />);
+  });
+  if (!rows.length && !extraRows.length) return null;
+  return (<>
+    {rows.length > 0 && <div style={{ display: 'grid', gridTemplateColumns: 'auto 1fr', gap: '8px 10px', alignItems: 'center', marginTop: 8 }}>{rows}</div>}
+    {extraRows.length > 0 && (<div style={{ marginTop: 12, paddingTop: 8, borderTop: '1px dashed var(--line)' }}>
+      <p className="sub" style={{ margin: '0 0 6px' }}><b>Trường tự sinh theo front-end Fonda</b> — loại này không có ô riêng nhưng Fonda luôn gửi kèm bộ mặc định; điền sẵn giá trị mặc định của Fonda, vẫn sửa được.</p>
+      <div style={{ display: 'grid', gridTemplateColumns: 'auto 1fr', gap: '6px 10px', alignItems: 'center' }}>{extraRows}</div>
+    </div>)}
+  </>);
 }
 
 /** Kiểm tra như form Fonda: khoảng giá trị + trường bắt buộc đang hiện + đã chọn giao thức (loại có giao thức). Có thể BỎ QUA bằng ô tick (gửi nguyên JSON). */
