@@ -32,4 +32,20 @@ describe('installCapture', () => {
   });
   it('cài lần hai trả về cùng đối tượng', () => { const w = fakeWin(); expect(installCapture(w)).toBe(installCapture(w)); });
   it('captureScript là biểu thức tự gọi, không còn kiểu TypeScript', () => { const s = captureScript(); expect(s.startsWith('(')).toBe(true); expect(s.endsWith(')(window);')).toBe(true); expect(() => new Function(s)).not.toThrow(); });
+  it('ghi khung WebSocket gửi/nhận, bỏ query token, nhị phân; lọc khi tải', () => {
+    class WS { url: string; private l: Record<string, Array<(e: unknown) => void>> = {}; constructor(u: string) { this.url = u; }
+      addEventListener(t: string, f: (e: unknown) => void) { (this.l[t] ||= []).push(f); } send(_d: unknown) { /* no-op */ }
+      emit(t: string, e: unknown) { (this.l[t] || []).forEach(f => f(e)); } }
+    const w: any = { ...fakeWin(), WebSocket: WS }; const cap = installCapture(w);
+    const sock = new w.WebSocket('ws://h:81/clesws?token=SECRET&x=1') as WS;
+    sock.send(JSON.stringify({ cmd: 'query', password: 'p' }));
+    (sock as WS).emit('message', { data: JSON.stringify({ code: 200, data: { server: '1.2.3.4' }, token: 'zz' }) });
+    sock.emit('message', { data: { byteLength: 8 } });
+    const ws = cap.log.filter((x: { method: string }) => x.method === 'WS');
+    expect(ws.map((x: { dir: string }) => x.dir)).toEqual(['connect', 'send', 'recv', 'recv']);
+    expect(ws[0].path).toBe('ws://h:81/clesws');   // không còn token
+    expect(ws[1].body).toEqual({ cmd: 'query', password: '<redacted>' }); expect(ws[2].body).toEqual({ code: 200, data: { server: '1.2.3.4' }, token: '<redacted>' }); expect(ws[3].body).toBe('<nhị phân 8 byte>');
+    const old = new (class extends WS {})('ws://old/x');   // socket mở trước: móc ở lần gửi đầu
+    expect(cap.log.length).toBeGreaterThan(0); void old;
+  });
 });

@@ -41,6 +41,32 @@ export function installCapture(win: any): any {
       return f(input, init).then((res: any) => { try { res.clone().text().then((t: string) => record(method, url, init?.body, res.status, t)); } catch { /* bỏ qua */ } return res; });
     };
   }
+  // ---- WebSocket: ghi cả khung GỬI và NHẬN (kết quả lệnh thiết bị thường về qua đây, không nằm trong phản hồi HTTP) ----
+  let wsCount = 0;
+  const wsRec = (dir: string, url: string, data: any) => {
+    if (wsCount > 4000) return; wsCount++;
+    let body: any = null;
+    if (typeof data === 'string') body = parse(data);
+    else if (data && typeof data.byteLength === 'number') body = `<nhị phân ${data.byteLength} byte>`;
+    else if (data && typeof data.size === 'number') body = `<blob ${data.size} byte>`;
+    log.push({ t: new Date().toISOString(), method: 'WS', dir, path: url, write: false, body }); badge();
+  };
+  const hookWs = (ws: any) => {
+    if (!ws || ws.__capHooked) return; ws.__capHooked = true;
+    const u = String(ws.url || '').replace(/[?#].*$/, '');   // bỏ query (có thể chứa token)
+    ws.__capUrl = u;
+    try {
+      ws.addEventListener('message', (e: any) => wsRec('recv', u, e.data));
+      ws.addEventListener('close', (e: any) => wsRec('close', u, JSON.stringify({ code: e.code, reason: e.reason })));
+    } catch { /* bỏ qua */ }
+  };
+  const WSC = win.WebSocket;
+  if (typeof WSC === 'function') {
+    // socket MỚI: móc ngay khi tạo; socket ĐÃ MỞ từ trước: móc ở lần gửi đầu tiên (không liệt kê được socket cũ)
+    try { win.WebSocket = new Proxy(WSC, { construct(t: any, args: any[]) { const ws = new t(...args); hookWs(ws); wsRec('connect', String(args[0] || '').replace(/[?#].*$/, ''), null); return ws; } }); } catch { /* bỏ qua */ }
+    const origSend = WSC.prototype.send;
+    WSC.prototype.send = function (this: any, d: any) { try { hookWs(this); wsRec('send', this.__capUrl || '', d); } catch { /* bỏ qua */ } return origSend.call(this, d); };
+  }
   let el: any = null, el2: any = null;
   function badge() {
     try {
@@ -57,14 +83,15 @@ export function installCapture(win: any): any {
         win.document.body.appendChild(el2);
       }
       el.textContent = `⬇ Capture: ${log.filter(x => x.write).length} ghi / ${log.length} tổng`;
-      if (el2) el2.textContent = `⬇ Tải tất cả (${log.length}, gồm truy vấn)`;
+      if (el2) el2.textContent = `⬇ Tải tất cả (${log.length}: ${log.filter(x => x.method === 'WS').length} WS, gồm truy vấn)`;
     } catch { /* bỏ qua */ }
   }
   const api = {
     log,
-    /** Tải JSON. Mặc định chỉ các request "ghi"; `download(true)` tải tất cả. */
-    download(all = false) {
-      const rows = all ? log : log.filter(x => x.write);
+    /** Tải JSON. Mặc định chỉ các request "ghi"; `download(true)` tải tất cả (gồm truy vấn và khung WebSocket); `download(true, 'smartBox|queryParam')` chỉ các dòng có path khớp. */
+    download(all = false, only?: string | RegExp) {
+      let rows = all ? log : log.filter(x => x.write);
+      if (only) { const re = typeof only === 'string' ? new RegExp(only, 'i') : only; rows = rows.filter(x => re.test(x.path || '')); }
       const blob = new Blob([JSON.stringify(rows, null, 2)], { type: 'application/json' });
       const a = win.document.createElement('a'); a.href = URL.createObjectURL(blob);
       a.download = `fonda-capture-${new Date().toISOString().replace(/[:.]/g, '-')}.json`; a.click(); URL.revokeObjectURL(a.href);
