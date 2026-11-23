@@ -315,6 +315,7 @@ Producer (`factoryId`) hiện ở loại 9, 16, 17, 18, 60, 64 và `hasFactoryDe
 - `lcuActor/delete`: body hiện suy theo `poleActor/delete` (`{deviceIdList, deviceTypeValue:2}`), chưa bắt từ web gốc.
 - Server từ chối `lcuActor/save` cho model tự tạo `LCU-lab-4vo4` (code 1001) dù nhận `saveNew` và tạo LCU trong `poleActor/save` — lý do chưa rõ.
 - **Trường bắt buộc / ô nhập theo loại trong popup tạo template của Fonda** chưa tái tạo đủ: dùng script "Quét form template" (tab Bắt request) để lấy `rules` (`required`), `dataForm` mặc định, điều kiện hiện theo `deviceTypeValue` và nhãn từng ô, rồi dựng validate/ô nhập tương ứng trong `ModelWrite.tsx`.
+- **Tái tạo ĐÚNG hành vi form Fonda** (không chỉ ô hiện/ẩn theo loại): cần mã của component — hàm xử lý đổi loại/giao thức (đặt lại/xoá giá trị, nạp tuỳ chọn từng ô, ví dụ `changeGateway` đặt `gatewayTypes=null`, chuỗi `queryDictionaryByKey(99)…` lọc `rtuType`, `getCameraType()`), `disabled`/`maxlength` từng ô, `watch`, `computed` (`lightCtrlMode`…). Script "Quét form template" bản mới tải thêm `component` (toàn bộ script component) và `seg` (markup đầy đủ từng ô).
 - Tên chính thức của từng số trong `functionList` (6 ≈ nghiêng cột, 7 ≈ điều khiển ánh sáng là suy từ mã).
 - Tên đầy đủ của producer "XY" (Switch).
 - LCU LoRaWAN: `lcuCtype` (`PLATFORM_TYPES()`), `bandName` (dictionary 18) chưa xử lý trong form.

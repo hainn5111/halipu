@@ -81,12 +81,15 @@ export function scanForms(win: any): Promise<any> {
           const head = bef.slice(Math.max(0, fi - 260), fi).replace(/\s+/g, ' '), seg = bef.slice(fi);
           const label = (/label:e\.\$t\("([^"]+)"\)/.exec(seg) || [])[1] || '', prop = (/prop:"([^"]+)"/.exec(seg) || [])[1] || '';
           const list = fields[f] || (fields[f] = []);
-          if (!list.some((x: any) => x.head === head)) { list.push({ head, label, prop }); total++; }
+          if (!list.some((x: any) => x.head === head)) { list.push({ head, label, prop, seg: (seg + t.slice(m.index, m.index + 700)).replace(/\s+/g, ' ').slice(0, 2600) }); total++; }
         }
         form.fields = fields;
         // điều kiện theo loại thiết bị xuất hiện trong form
         form.typeConditions = Array.from(new Set(t.match(/(\[[\d,]+\]\.includes\(e\.dataForm\.deviceTypeValue\)|\d+===e\.dataForm\.deviceTypeValue|e\.dataForm\.deviceTypeValue===\d+)/g) || [])).slice(0, 200);
         // hàm lưu/kiểm tra trước khi gửi (có thể chặn theo loại)
+        // TOÀN BỘ script của component (data, computed, watch, methods): nơi quyết định ô nào hiện/khoá/xoá khi đổi loại, giao thức, và nạp tuỳ chọn từng ô
+        { const ds = t.lastIndexOf('data:function(){', i), te = t.indexOf('t.default=', i + 20000);
+          form.component = t.slice(Math.max(0, ds >= 0 ? ds : i - 6000), te > 0 ? Math.min(te + 20, (ds >= 0 ? ds : i) + 140000) : i + 110000); }
         const sv = around.indexOf('save:function(e){'); if (sv >= 0) form.save = around.slice(sv, sv + 3500);
         const cf = around.indexOf('confirm:function(e){'); if (cf >= 0) form.confirm = around.slice(cf, cf + 2500);
         out.forms.push(form);
