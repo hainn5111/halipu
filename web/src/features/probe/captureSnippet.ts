@@ -41,7 +41,7 @@ export function installCapture(win: any): any {
       return f(input, init).then((res: any) => { try { res.clone().text().then((t: string) => record(method, url, init?.body, res.status, t)); } catch { /* bỏ qua */ } return res; });
     };
   }
-  let el: any = null;
+  let el: any = null, el2: any = null;
   function badge() {
     try {
       if (!win.document?.body) return;
@@ -50,8 +50,14 @@ export function installCapture(win: any): any {
         el.style.cssText = 'position:fixed;right:12px;bottom:12px;z-index:2147483647;padding:8px 12px;border:0;border-radius:8px;background:#f59e0b;color:#111;font:600 13px sans-serif;cursor:pointer';
         el.onclick = () => api.download();
         win.document.body.appendChild(el);
+        // Nút thứ hai: tải TẤT CẢ request (kể cả truy vấn/đọc) — để xem dữ liệu mà màn hình không hiện trực tiếp
+        el2 = win.document.createElement('button');
+        el2.style.cssText = 'position:fixed;right:12px;bottom:52px;z-index:2147483647;padding:6px 10px;border:0;border-radius:8px;background:#38bdf8;color:#111;font:600 12px sans-serif;cursor:pointer';
+        el2.onclick = () => api.download(true);
+        win.document.body.appendChild(el2);
       }
       el.textContent = `⬇ Capture: ${log.filter(x => x.write).length} ghi / ${log.length} tổng`;
+      if (el2) el2.textContent = `⬇ Tải tất cả (${log.length}, gồm truy vấn)`;
     } catch { /* bỏ qua */ }
   }
   const api = {
