@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { lazy, Suspense } from 'react';
-import { DICT_KEYS, enumFieldsOf, enumLabel, fieldItems, isRelevantKey, poleShapeItems } from './enums';
+import { detailRows } from './templateView';
+import { DICT_KEYS, poleShapeItems } from './enums';
 
 import { listDeviceTypes, listDictionary, listModels, listPoleTypes, listTypeProtocols, modelProtocols, projectIds, type ModelProto } from '../../adapters/fonda';
 import { WRITE_ENABLED } from '../../core/flags';
@@ -96,17 +97,11 @@ function ModelsView({ mode }: { mode: Mode }) {
     for (const p of protos.values()) if (p.id && p.value >= 0 && !m.has(p.id)) m.set(p.id, p);
     return [...m.values()];
   }, [typeProtos, protos, typeId]);
-  const enumName = (typeValue: number | undefined, key: string, text: string) => {
-    if (typeValue == null) return '';
-    const f = enumFieldsOf(typeValue).find(x => x.key === key); if (!f) return '';
-    const n = enumLabel(f, text, fieldItems(f, dicts)); return n ? ` — ${n}` : '';
-  };
   const sel = models.find(m => m.id === selId);
-  const selType0 = types.find(t => t.id === sel?.typeId);
-  const entries = useMemo(() => (sel ? configEntries(sel.config).filter(e => selType0 ? isRelevantKey(selType0.value, e.key) : true) : []), [sel, selType0]);
 
   const selType = types.find(t => t.id === sel?.typeId);
   const selProto = sel ? protos.get(sel.id) : undefined;
+  const detail = useMemo(() => (sel && selType ? detailRows({ type: selType.value, protocol: selProto, config: sel.config, dicts, poleTypes }) : []), [sel, selType, selProto, dicts, poleTypes]);
   return (
     <div className="lcus">
       <div className="listwrap">
@@ -161,21 +156,14 @@ function ModelsView({ mode }: { mode: Mode }) {
         <aside className="drawer">
           <button className="x" onClick={() => setSelId(null)}>✕</button>
           <h2>{sel.name}</h2>
-          {selType?.value === 6 && sel.config.poleArmType != null && <p className="sub" style={{ margin: '4px 0 0' }}>Kiểu tay đèn: <b>{arms.find(a => a.value === show(sel.config.poleArmType))?.name ?? show(sel.config.poleArmType)}</b></p>}
-          {selType?.value === 6 && sel.config.poleTypeId != null && <p className="sub" style={{ margin: '4px 0 0' }}>Loại cột: <b>{poleTypes.find(p => p.id === show(sel.config.poleTypeId))?.name ?? show(sel.config.poleTypeId)}</b></p>}
-          {selProto && selProto.value >= 0 && <p className="sub" style={{ margin: '4px 0 0' }}>Function (giao thức): <b>{selProto.name} {selProto.version}</b></p>}
-          <h3>Cấu hình (deviceConfig)</h3>
-          {!entries.length && <p className="sub">Không có trường cấu hình.</p>}
+          <h3>Thông tin template</h3>
+          {sel.id && <p className="sub" style={{ margin: '0 0 6px' }}>{selType?.name ?? ''}{selProto?.remark ? ` · ${selProto.remark}` : ''}</p>}
+          {!detail.length && <p className="sub">Loại này chưa có ô riêng trong form — xem JSON bên dưới.</p>}
           <table className="kv"><tbody>
-            {entries.filter(e => e.kind === 'value').map(e => e.kind === 'value' && <tr key={e.key}><td>{e.key}</td><td>{e.text}{enumName(selType?.value, e.key, e.text)}</td></tr>)}
+            {detail.map(r => <tr key={r.key}><td>{r.label}{r.required ? ' *' : ''}</td><td>{r.value}</td></tr>)}
           </tbody></table>
-          {entries.some(e => e.kind === 'attached') && <h3>Thiết bị đính kèm theo template</h3>}
-          {entries.map(e => e.kind === 'attached' && (
-            <div key={e.key} style={{ marginBottom: 8 }}>
-              <b>{e.key}</b>
-              <ul style={{ margin: '4px 0 0', paddingLeft: 18 }}>{e.items.map((it, i) => (
-                <li key={i} style={{ opacity: it.checked ? 1 : .55 }}>{it.checked ? '✔' : '○'} {it.name}{it.extra ? ` (${it.extra})` : ''}</li>))}</ul>
-            </div>))}
+          <details style={{ margin: '10px 0' }}><summary className="sub" style={{ cursor: 'pointer' }}>Toàn bộ deviceConfig (JSON)</summary>
+            <pre style={{ fontSize: 11, whiteSpace: 'pre-wrap', overflowWrap: 'anywhere', maxHeight: 320, overflow: 'auto' }}>{JSON.stringify(sel.config, null, 2)}</pre></details>
           {Writes && sel && <Suspense fallback={null}><Writes pid={pid} model={sel} type={selType} proto={selProto} ctx={{ pid, dicts, poleTypes, protoOpts }} onChanged={() => { setSelId(null); setReload(n => n + 1); }} /></Suspense>}
         </aside>
       )}
