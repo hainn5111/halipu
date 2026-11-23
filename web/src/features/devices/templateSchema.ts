@@ -39,6 +39,7 @@ export const FIELDS: FieldSpec[] = [
   { key: 'di', label: 'Số DI (di)', required: false, when: T(9), hint: '1–255' },
   { key: 'ai', label: 'Số AI (ai)', required: false, when: T(9), hint: '1–255' },
   { key: 'kmFactory', label: 'Producer (kmFactory)', required: true, when: T(9) },
+  { key: 'factoryId', label: 'Producer (factoryId)', required: true, when: T(16, 17, 18, 46, 51, 52, 53, 55, 60, 64) },
   { key: 'coverTypes', label: 'Loại nắp (coverTypes)', required: true, when: T(14) },
   { key: 'sensitivity', label: 'Độ nhạy (sensitivity)', required: true, when: T(15) },
   { key: 'cameraType', label: 'Loại camera (cameraType)', required: true, when: T(18) },

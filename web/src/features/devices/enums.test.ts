@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { allowedOptions, ENUM_BY_PROTOCOL, poleShapeItems, fieldItems, enumLabel, enumOptions, functionLabels, isRelevantKey, storeValue, TYPE_ENUMS } from './enums';
+import { dictKeysOfType, filterProtocols, PRODUCER_DICTS, allowedOptions, ENUM_BY_PROTOCOL, poleShapeItems, fieldItems, enumLabel, enumOptions, functionLabels, isRelevantKey, storeValue, TYPE_ENUMS } from './enums';
 
 const dim = [{ value: '1', name: '20' }, { value: '2', name: '100' }];
 describe('enums', () => {
@@ -36,6 +36,17 @@ describe('enums', () => {
     expect(allowedOptions(3, 12, gw)).toEqual(gw); expect(allowedOptions(3, 1, gw)).toEqual([gw[0]]);
     expect(allowedOptions(2, 53, gw)).toEqual(gw);   // loại khác: không lọc
     expect(Object.keys(ENUM_BY_PROTOCOL)).toEqual(['3', '4']);
+  });
+  it('Producer theo loại: dictionary riêng, lưu dictStairId; loại 60 cứng HNJD/SRNE', () => {
+    expect(PRODUCER_DICTS[18]).toBe(90); expect(dictKeysOfType(18)).toEqual([90]); expect(dictKeysOfType(60)).toEqual([]);
+    const f = TYPE_ENUMS[18].find(x => x.key === 'factoryId')!; const items = [{ value: '1', name: 'Hikvision', stairId: 'S1' }];
+    expect(enumOptions(f, items)).toEqual([{ value: 'S1', name: 'Hikvision' }]); expect(enumLabel(f, 'S1', items)).toBe('Hikvision');
+    const f60 = TYPE_ENUMS[60].find(x => x.key === 'factoryId')!; expect(fieldItems(f60, {}).map(i => i.name)).toEqual(['HNJD', 'SRNE']);
+    expect(dictKeysOfType(14)).toEqual([103]); expect(dictKeysOfType(32)).toEqual([101]);
+  });
+  it('filterProtocols bỏ giao thức Fonda ẩn; LCU bỏ passthrough', () => {
+    const l = [{ name: 'RF/F2' }, { name: 'YM/AEP' }, { name: 'LORA passthrough' }, { name: 'Lighting/EXC' }];
+    expect(filterProtocols(2, l).map(p => p.name)).toEqual(['RF/F2']); expect(filterProtocols(3, l).map(p => p.name)).toEqual(['RF/F2', 'LORA passthrough']);
   });
   it('storeValue + functionLabels', () => {
     expect(storeValue('20')).toBe(20); expect(storeValue('abc')).toBe('abc'); expect(storeValue('')).toBe('');

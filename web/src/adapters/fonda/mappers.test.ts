@@ -142,7 +142,7 @@ describe('mapPoleTypes', () => {
 
 describe('mapDictionary', () => {
   it('lấy giá trị/tên, rỗng thì []', () => {
-    expect(mapDictionary([{ dictValue: 1, dictName: 'Ordinary pole lamp arm type', dsName: 'Willow leaf', dictStairRemark: 'r' }, { dictValue: 2, dictName: 'Nhóm', dsName: 'Ginkgo' }, null])).toEqual([{ value: '1', name: 'Willow leaf', remark: 'r' }, { value: '2', name: 'Ginkgo', remark: '' }]);
+    expect(mapDictionary([{ dictValue: 1, dictName: 'Ordinary pole lamp arm type', dsName: 'Willow leaf', dictStairRemark: 'r' }, { dictValue: 2, dictName: 'Nhóm', dsName: 'Ginkgo' }, null])).toEqual([{ value: '1', name: 'Willow leaf', remark: 'r', stairId: '' }, { value: '2', name: 'Ginkgo', remark: '', stairId: '' }]);
     expect(mapDictionary(null)).toEqual([]);
   });
 });

@@ -185,6 +185,10 @@ export const sendModelCreate = (projectId: string, body: Record<string, unknown>
 export { modelCloneBody, modelUpdateBody, modelIdsBody, poleTypeSaveBody, poleTypeUpdateBody, poleTypeIdsBody };
 export type { PoleTypeIn, ProtoIn };
 export const sendModelUpdate = (projectId: string, body: Record<string, unknown>) => { assertWrite(); return call('POST', 'deviceModel/updateNew', { projectId, body }); };
+/** Template có đang được thiết bị dùng không (POST deviceModel/useOrNo → data.result; Fonda dùng để khoá ô Producer). Lỗi → undefined. */
+export async function modelInUse(projectId: string, modelId: string): Promise<boolean | undefined> {
+  try { const d = await call<{ result?: unknown }>('POST', 'deviceModel/useOrNo', { projectId, body: { deviceModelId: modelId } }); return d?.result === undefined ? undefined : !!d.result; } catch { return undefined; }
+}
 export const sendModelDelete = (projectId: string, ids: string[]) => { assertWrite(); return call('POST', 'deviceModel/delete', { projectId, body: modelIdsBody(ids) }); };
 export const sendPoleTypeSave = (projectId: string, body: Record<string, unknown>) => { assertWrite(); return call('POST', 'poleType/save', { projectId, body }); };
 export const sendPoleTypeUpdate = (projectId: string, body: Record<string, unknown>) => { assertWrite(); return call('POST', 'poleType/update', { projectId, body }); };

@@ -137,10 +137,10 @@ export function mapPoleTypes(d: unknown): PoleType[] {
 }
 
 /** dictionary/queryDictionaryByKey → danh sách giá trị enum {value, name, remark}. `dsName` = tên GIÁ TRỊ (vd "Willow leaf"); `dictName` = tên NHÓM (vd "Ordinary pole lamp arm type"). */
-export interface DictItem { value: string; name: string; remark: string }
+export interface DictItem { value: string; name: string; remark: string; /** dictStairId — Fonda dùng làm GIÁ TRỊ của ô Producer (không phải dictValue) */ stairId: string }
 export function mapDictionary(d: unknown): DictItem[] {
   if (!Array.isArray(d)) return [];
-  return (d as Rec[]).filter(r => r && (r.dictValue != null || r.dictName != null)).map(r => ({ value: str(r.dictValue), name: str(r.dsName) || str(r.dictName), remark: str(r.dictStairRemark) }));
+  return (d as Rec[]).filter(r => r && (r.dictValue != null || r.dictName != null)).map(r => ({ value: str(r.dictValue), name: str(r.dsName) || str(r.dictName), remark: str(r.dictStairRemark), stairId: str(r.dictStairId) }));
 }
 
 /** deviceTypeController/queryProtocolByDeviceId → giao thức chọn được của MỘT loại thiết bị (đã dò: LCU nhiều giao thức, Gateway 2, Concentrator 3). */

@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { lazy, Suspense } from 'react';
 import { detailRows } from './templateView';
-import { DICT_KEYS, poleShapeItems } from './enums';
+import { dictKeysOfType, filterProtocols, poleShapeItems } from './enums';
 
 import { listDeviceTypes, listDictionary, listModels, listPoleTypes, listTypeProtocols, modelProtocols, projectIds, type ModelProto } from '../../adapters/fonda';
 import { WRITE_ENABLED } from '../../core/flags';
@@ -50,7 +50,7 @@ function ModelsView({ mode }: { mode: Mode }) {
         const ps = await memoCall('pids', projectIds), p0 = ps[0] ?? '';
         if (live) setPid(p0);
         // Chỉ nạp cái màn hình cần, các yêu cầu chạy SONG SONG và hiện dần (không chờ tất cả)
-        const wantDicts = mode === 'models' ? DICT_KEYS : mode === 'arm' ? [55] : [];
+        const wantDicts = mode === 'arm' ? [55] : [];   // màn hình Template nạp dictionary THEO LOẠI đang chọn (xem effect bên dưới)
         const jobs: Array<Promise<void>> = [];
         const ts: DeviceType[] = [], ms: DeviceModel[] = [], pts: PoleType[] = [];
         for (const id of ps) {
@@ -62,7 +62,7 @@ function ModelsView({ mode }: { mode: Mode }) {
           const dd: Record<number, DictItem[]> = {};
           for (const key of wantDicts) jobs.push(memoCall(`dict:${p0}:${key}`, () => listDictionary(p0, key)).then(r => { dd[key] = r; }).catch(e => { if (key === 55 && live) setArmErr((e as Error).message); }));
           await Promise.all(jobs);
-          if (live) setDicts(dd);
+          if (live) setDicts(d => ({ ...d, ...dd }));
         } else await Promise.all(jobs);
         if (!live) return;
         setPoleTypes(pts); setTypes(ts); setModels(ms);
@@ -91,12 +91,23 @@ function ModelsView({ mode }: { mode: Mode }) {
     let live = true; listTypeProtocols(pid, typeId).then(r => { if (live) setTypeProtos(m => new Map(m).set(typeId, r)); });
     return () => { live = false; };
   }, [typeId, pid, typeProtos]);
+  // Dictionary của loại đang chọn (nguồn tuỳ chọn các ô: enum, producer…) — nạp khi chọn loại, có cache
+  useEffect(() => {
+    if (!pid || !curType) return;
+    const keys = dictKeysOfType(curType.value); if (!keys.length) return;
+    let live = true;
+    Promise.all(keys.map(k => memoCall(`dict:${pid}:${k}`, () => listDictionary(pid, k)).then(r => [k, r] as const).catch(() => null))).then(rs => {
+      if (live) setDicts(d => ({ ...d, ...Object.fromEntries(rs.filter((x): x is readonly [number, DictItem[]] => !!x)) }));
+    });
+    return () => { live = false; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pid, curType?.id, reload]);
   const protoOpts = useMemo(() => {
     const m = new Map<string, ModelProto>();
     for (const p of typeProtos.get(typeId ?? '') ?? []) m.set(p.id, p);
     for (const p of protos.values()) if (p.id && p.value >= 0 && !m.has(p.id)) m.set(p.id, p);
-    return [...m.values()];
-  }, [typeProtos, protos, typeId]);
+    return filterProtocols(curType?.value ?? 0, [...m.values()]);
+  }, [typeProtos, protos, typeId, curType]);
   const sel = models.find(m => m.id === selId);
 
   const selType = types.find(t => t.id === sel?.typeId);

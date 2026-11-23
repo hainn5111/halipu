@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { protocolFunctions } from '../../adapters/fonda';
+import { modelInUse, protocolFunctions } from '../../adapters/fonda';
 import { modelCloneBody, modelUpdateBody, sendModelCreate, sendModelDelete, sendModelUpdate, sendPoleTypeDelete, sendPoleTypeSave, sendPoleTypeUpdate, poleTypeSaveBody, poleTypeUpdateBody, poleTypeIdsBody, type ModelProto } from '../../adapters/fonda';
 import { modelIdsBody, modelNameError, poleTypeError, type PoleTypeIn } from '../../adapters/fonda/writeBodies';
 import type { DictItem, PoleType } from '../../adapters/fonda/mappers';
@@ -16,7 +16,7 @@ const toProto = (p?: ModelProto) => (p ? { id: p.id, value: p.value, name: p.nam
 export interface Ctx { pid: string; dicts: Record<number, DictItem[]>; poleTypes: PoleType[]; protoOpts: ModelProto[] }
 
 /** Ô nhập theo loại: enum (dictionary), danh sách chức năng, loại cột (Lamp Pole), giao thức. Mọi thay đổi ghi lại vào JSON `cfg`; giao thức trả qua `setProto`. */
-function TemplateFields({ typeValue, cfg, setCfg, ctx, proto, setProto }: { typeValue: number; cfg: string; setCfg: (t: string) => void; ctx: Ctx; proto?: ModelProto; setProto: (p: ModelProto) => void }) {
+function TemplateFields({ typeValue, cfg, setCfg, ctx, proto, setProto, locked = [] }: { typeValue: number; cfg: string; setCfg: (t: string) => void; ctx: Ctx; proto?: ModelProto; setProto: (p: ModelProto) => void; /** ô bị khoá như Fonda (sửa model đã tạo / đang được dùng) */ locked?: string[] }) {
   // Hook đặt TRƯỚC mọi return sớm (đúng thứ tự hook)
   const [fnOpts, setFnOpts] = useState<number[]>([]);
   useEffect(() => { let live = true; if (proto?.id && FUNCTION_TYPES.includes(typeValue)) void protocolFunctions(ctx.pid, proto).then(f => { if (live) setFnOpts(f); }); else setFnOpts([]); return () => { live = false; }; }, [proto?.id, proto?.value, typeValue, ctx.pid]);
@@ -29,7 +29,10 @@ function TemplateFields({ typeValue, cfg, setCfg, ctx, proto, setProto }: { type
   const star = (key: string) => (vis.find(f => f.key === key)?.required ? ' *' : '');
   if (ctx.protoOpts.length && FUNCTION_TYPES.includes(typeValue)) {
     rows.push(row('Function (protocol)', <select value={proto?.id ?? ''} onChange={e => { const p = ctx.protoOpts.find(x => x.id === e.target.value); if (!p) return; setProto(p);
-      const fix: Record<string, unknown> = {}; for (const f of enumFieldsOf(typeValue)) { const ok = allowedOptions(typeValue, p.value, enumOptions(f, fieldItems(f, ctx.dicts))); if (ok.length && !ok.some(o => o.value === String(c![f.key] ?? ''))) fix[f.key] = storeValue(ok[0].value); }
+      // Hành vi như mã Fonda khi đổi giao thức: Concentrator → rtuType = lựa chọn ĐẦU của danh sách đã lọc; Gateway → gatewayTypes = null (chọn lại)
+      const fix: Record<string, unknown> = {};
+      if (typeValue === 4) { const f = enumFieldsOf(4)[0]; const ok = allowedOptions(4, p.value, enumOptions(f, fieldItems(f, ctx.dicts))); if (ok.length) fix[f.key] = storeValue(ok[0].value); }
+      if (typeValue === 3) fix.gatewayTypes = null;
       // Chức năng (functionList) đi theo giao thức: lấy từ server rồi điền vào cấu hình
       void protocolFunctions(ctx.pid, p).then(fn => set({ ...fix, ...(fn.length ? { functionList: fn } : {}) })); if (!FUNCTION_TYPES.includes(typeValue) && Object.keys(fix).length) set(fix); }}>
       {!proto && <option value="">(chọn giao thức)</option>}
@@ -37,7 +40,7 @@ function TemplateFields({ typeValue, cfg, setCfg, ctx, proto, setProto }: { type
   }
   for (const f of enumFieldsOf(typeValue)) {
     const items = fieldItems(f, ctx.dicts); const opts = allowedOptions(typeValue, proto?.value, enumOptions(f, items)); const cur = c[f.key] == null ? '' : String(c[f.key]);
-    rows.push(row(f.label + star(f.key), <select value={cur} onChange={e => set({ [f.key]: storeValue(e.target.value) })}>
+    rows.push(row(f.label + star(f.key) + (locked.includes(f.key) ? ' 🔒' : ''), <select value={cur} disabled={locked.includes(f.key)} title={locked.includes(f.key) ? 'Fonda khoá ô này khi sửa model đã tạo' : ''} onChange={e => set({ [f.key]: storeValue(e.target.value) })}>
       {!opts.some(o => o.value === cur) && <option value={cur}>{cur || '(chưa chọn)'}</option>}
       {opts.map(o => <option key={o.value} value={o.value}>{f.byName ? o.name : `${o.value} — ${o.name}`}</option>)}</select>));
   }
@@ -122,6 +125,8 @@ export function ModelToolbar({ pid, type, models, sel, protos, ctx, onChanged }:
 export function ModelEditor({ pid, model, type, proto: proto0, ctx, onChanged }: { pid: string; model: DeviceModel; type?: DeviceType; proto?: ModelProto; ctx: Ctx; onChanged: () => void }) {
   const [protoSel, setProtoSel] = useState<ModelProto | undefined>(undefined), [skip, setSkip] = useState(false);
   const proto = protoSel ?? proto0;
+  const [inUse, setInUse] = useState<boolean | undefined>(undefined);
+  useEffect(() => { let live = true; setInUse(undefined); void modelInUse(pid, model.id).then(r => { if (live) setInUse(r); }); return () => { live = false; }; }, [pid, model.id]);
   const [name, setName] = useState(''), [remark, setRemark] = useState(''), [cfg, setCfg] = useState(''), [msg, setMsg] = useState('');
   const [op, setOp] = useState<Op | null>(null);
   const builtIn = isBuiltIn(proto), typeValue = type?.value ?? NaN, ready = !!type && Number.isFinite(typeValue);
@@ -137,7 +142,8 @@ export function ModelEditor({ pid, model, type, proto: proto0, ctx, onChanged }:
     {builtIn && <p className="sub">Model dựng sẵn của hệ thống (systemConfig {proto?.systemConfig}): không sửa được — dùng “+ Thêm template…” ở trên để tạo bản sao.</p>}
     <label className="sub" style={{ display: 'block' }}>Tên template</label><input style={{ width: '100%' }} value={name} disabled={builtIn} onChange={e => setName(e.target.value)} />
     <label className="sub" style={{ display: 'block', marginTop: 8 }}>Ghi chú</label><input style={{ width: '100%' }} value={remark} disabled={builtIn} onChange={e => setRemark(e.target.value)} />
-    {!builtIn && type && <TemplateFields typeValue={typeValue} cfg={cfg} setCfg={setCfg} ctx={ctx} proto={proto} setProto={setProtoSel} />}
+    {!builtIn && type && <TemplateFields typeValue={typeValue} cfg={cfg} setCfg={setCfg} ctx={ctx} proto={proto} setProto={setProtoSel} locked={skip ? [] : ['gatewayTypes', 'factoryId', 'kmFactory']} />}
+    {!builtIn && !skip && <p className="sub" style={{ margin: '4px 0 0' }}>🔒 Như Fonda: khi sửa model đã tạo, ô loại gateway và Producer bị khoá{inUse ? ' (template đang được thiết bị dùng)' : inUse === false ? ' (template chưa được dùng)' : ''}. Tick “bỏ qua kiểm tra” bên dưới để mở khoá và thử.</p>}
     <details style={{ marginTop: 8 }}><summary className="sub" style={{ cursor: 'pointer' }}>deviceConfig (JSON — sửa tay nếu cần)</summary>
       <textarea value={cfg} disabled={builtIn} onChange={e => setCfg(e.target.value)} style={{ width: '100%', height: 220, fontFamily: 'monospace', fontSize: 12 }} /></details>
     <label className="sub" style={{ display: 'block', marginTop: 10 }}><input type="checkbox" checked={skip} onChange={e => setSkip(e.target.checked)} /> {SKIP_LABEL}</label>
