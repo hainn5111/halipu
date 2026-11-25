@@ -23,7 +23,6 @@ export const TABS: GroupDef[] = [
   ] },
   { group: 'Thiết bị', tabs: [
     { id: 'lcus', label: 'Danh sách LCU', view: lazy(() => import('../features/lcus/Lcus')) },
-    { id: 'poles', label: 'Cột đèn & liên kết', view: lazy(() => import('../features/poles/Poles')) },
     { id: 'rtu', label: 'RTU', view: lazy(() => import('../features/devices/tabs').then(m => ({ default: m.Rtu }))) },
     { id: 'gateway', label: 'Gateway', view: lazy(() => import('../features/devices/tabs').then(m => ({ default: m.Gateway }))) },
     { id: 'smartbox', label: 'SmartBox', view: lazy(() => import('../features/devices/tabs').then(m => ({ default: m.SmartBox }))) },
@@ -39,6 +38,7 @@ export const TABS: GroupDef[] = [
     { id: 'arms', label: 'Kiểu tay đèn', view: lazy(() => import('../features/devices/Models').then(m => ({ default: m.ArmTypes }))) },
   ] },
   { group: 'Vận hành', tabs: [
+    { id: 'poles', label: 'Điểm sáng và liên kết', view: lazy(() => import('../features/poles/Poles')) },
     { id: 'schedule', label: 'Lịch điều khiển' },
     { id: 'report', label: 'Báo cáo' },
   ] },

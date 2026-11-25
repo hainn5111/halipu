@@ -12,7 +12,7 @@ const ADD_GROUP_TO_EXISTING = true;
 const PoleAddGroups = WRITE_ENABLED && ADD_GROUP_TO_EXISTING ? lazy(() => import('./PoleAddGroups')) : null;
 import type { DeviceItem, PoleLamp, PoleLinks } from '../../core/types';
 
-// Cột đèn & liên kết — chỉ ĐỌC. Danh sách cột; bấm một cột để xem cái gì đang gắn trên nó:
+// Điểm sáng và liên kết (cột – LCU – đèn) — chỉ ĐỌC. Danh sách cột; bấm một cột để xem cái gì đang gắn trên nó:
 // LCU kèm đèn theo kênh, đèn gắn thẳng vào cột (chưa có LCU), và thiết bị khác (camera, cảm biến…).
 type Pole = DeviceItem & { pid: string };
 const POLE_TYPE = /lamp\s*pole/i;
