@@ -39,7 +39,7 @@ Body: `{projectId, current, size, deviceTypeValue}` → `{records[], total, size
 | `luid, lcuId, poleId, poleCode, bindLcu, lampPower, nominalPower, nominalCurrent, ratedCurrent` | Lamps |
 | `stationId` | Gateway |
 
-Web: các tab RTU / Gateway / SmartBox / Cảm biến / Công tơ / Camera và "Thiết bị khác" (`web/src/features/devices/`) chia theo *tên* loại bằng `categoryOf()` (`adapters/fonda/mappers.ts`); loại không khớp (Lamps, Lamp Pole, Concentrator, Switch and detection…) vào "Thiết bị khác".
+Web: các tab RTU / Gateway / SmartBox / Cảm biến / Công tơ / Camera và "Thiết bị khác" (`web/src/features/devices/`) chia theo *tên* loại bằng `categoryOf()` (`adapters/fonda/mappers.ts`); loại không khớp (Lamps; Lamp Pole đã chuyển sang tab "Điểm sáng và liên kết", Concentrator, Switch and detection…) vào "Thiết bị khác".
 
 ## 3. Template model — `deviceConfig`
 

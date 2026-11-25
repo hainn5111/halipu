@@ -20,8 +20,8 @@ export default function DeviceTab({ cat }: { cat: DeviceCat }) {
     let live = true;
     (async () => {
       try {
-        const out: Src[] = [];
-        for (const pid of await projectIds()) for (const t of await listDeviceTypes(pid)) if (categoryOf(t.name) === cat) out.push({ key: `${pid}:${t.value}`, pid, label: t.name, value: t.value });
+        const out: Src[] = [];   // "Thiết bị khác" bỏ Lamp Pole (loại 6): đã có tab "Điểm sáng và liên kết" (cùng dữ liệu, đầy đủ hơn); vẫn giữ Lamps (5)
+        for (const pid of await projectIds()) for (const t of await listDeviceTypes(pid)) if (categoryOf(t.name) === cat && !(cat === 'other' && t.value === 6)) out.push({ key: `${pid}:${t.value}`, pid, label: t.name, value: t.value });
         if (!live) return;
         setSrcs(out); setBusy(false);
         // Đếm dần số thiết bị từng loại (4 luồng); chọn loại có thiết bị đầu tiên
