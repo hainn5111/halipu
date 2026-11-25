@@ -225,3 +225,10 @@ export function rtuLinkBody(kind: RtuLinkKind, ids: string[], rtu?: { id: string
   if (rtu) return kind === 'meter' ? { rtuId: rtu.id, [key]: ids } : { rtuId: rtu.id, cuid: rtu.uid, [key]: ids };
   return kind === 'km' ? { rtuId: null, cuid: null, [key]: ids } : { rtuId: null, [key]: ids };
 }
+
+// ---- Xoá LCU kèm thiết bị trong bộ + cấp điện từ RTU (bắt 2026-11-25) ----
+/** lcuActor/delete: như `lcuIdsBody` + `otype: 1` (capture: xoá LCU CÙNG các đèn trong bộ; `device/checkDeviceRelated` trước đó trả số đối tượng liên quan, vd 1 đèn). */
+export const lcuDeleteBody = (ids: string[], otype = 1): Rec => ({ ...lcuIdsBody(ids), otype });
+
+/** supplyElectricityDevice/relatedSuppLyElectricity (viết hoa "L" đúng như API): gắn NHIỀU thiết bị (LCU = 2, Điểm sáng = 6) vào RTU cấp điện (Concentrator = 4). Trả `data:true`. */
+export const supplyLinkBody = (ids: string[], typeValue: number, rtuId: string): Rec => ({ deviceId: ids, deviceTypeValue: typeValue, parentDeviceId: rtuId, parentDeviceTypeValue: 4 });

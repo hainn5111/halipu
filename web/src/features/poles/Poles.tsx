@@ -5,6 +5,7 @@ import { poleIdsBody } from '../../adapters/fonda/writeBodies';
 import { WRITE_ENABLED } from '../../core/flags';
 import ConfirmWrite from '../common/ConfirmWrite';
 // Form thêm điểm sáng chỉ nạp khi bật ghi: bản main không chứa mã này (hằng số WRITE_ENABLED được gập lúc build).
+const SupplyLink = WRITE_ENABLED ? lazy(() => import('../devices/SupplyLink')) : null;
 const PoleCreate = WRITE_ENABLED ? lazy(() => import('./PoleCreate')) : null;
 // Thêm bộ vào điểm sáng có sẵn = PUT poleActor/update với bộ mới nối vào attributeDevice (đã bắt: bộ dùng LCU có sẵn). Lần thử đầu bị từ chối
 // ("Parameter deviceId cannot be empty") vì thiếu `checkNum` ở đèn mới — đã sửa theo capture (docs/15 §7).
@@ -50,7 +51,7 @@ export default function Poles() {
   const [edit, setEdit] = useState({ name: '', code: '' });
   const [confirm, setConfirm] = useState<null | { title: string; summary: string; method: string; path: string; body: unknown; danger?: boolean; run: () => Promise<void> }>(null);
   const [writeMsg, setWriteMsg] = useState(''), [listMsg, setListMsg] = useState('');
-  const [adding, setAdding] = useState(false), [addingGroups, setAddingGroups] = useState(false);
+  const [supply, setSupply] = useState(false), [adding, setAdding] = useState(false), [addingGroups, setAddingGroups] = useState(false);
   const [pids, setPids] = useState<string[]>([]);
   useEffect(() => {
     let live = true;
@@ -112,7 +113,7 @@ export default function Poles() {
   return (
     <div className="lcus">
       <div className="listwrap">
-        <p className="sub">{busy ? 'Đang tải…' : `${poles.length} điểm sáng`}{WRITE_ENABLED && <button style={{ marginLeft: 12 }} onClick={() => setAdding(true)}>+ Thêm điểm sáng…</button>}{WRITE_ENABLED && <button className="b" style={{ marginLeft: 8 }} disabled={!sel || !links} title={sel ? '' : 'Chọn một điểm sáng trong danh sách'} onClick={() => void askDelete()}>Xoá điểm sáng đã chọn…</button>}</p>
+        <p className="sub">{busy ? 'Đang tải…' : `${poles.length} điểm sáng`}{WRITE_ENABLED && <button style={{ marginLeft: 12 }} onClick={() => setAdding(true)}>+ Thêm điểm sáng…</button>}{WRITE_ENABLED && <button className="b" style={{ marginLeft: 8 }} disabled={!sel || !links} title={sel ? '' : 'Chọn một điểm sáng trong danh sách'} onClick={() => void askDelete()}>Xoá điểm sáng đã chọn…</button>}{WRITE_ENABLED && <button className="b" style={{ marginLeft: 8 }} onClick={() => setSupply(true)}>Cấp điện từ RTU (nhiều điểm sáng)…</button>}</p>
         {listMsg && <div className="err">{listMsg}</div>}
         {err && <div className="err">{err}</div>}
         {!busy && !err && !poles.length && <p className="sub">Dự án chưa có điểm sáng.</p>}
@@ -169,6 +170,7 @@ export default function Poles() {
           </>)}
         </aside>
       )}
+      {supply && SupplyLink && pids[0] && <Suspense fallback={null}><SupplyLink pid={pids[0]} typeValue={6} typeLabel="điểm sáng" onClose={() => setSupply(false)} /></Suspense>}
       {adding && PoleCreate && <Suspense fallback={null}><PoleCreate pid={pids[0] ?? ''} onClose={changed => { setAdding(false); if (changed) setReload(n => n + 1); }} /></Suspense>}
       {addingGroups && sel && PoleAddGroups && <Suspense fallback={null}><PoleAddGroups pid={sel.pid} poleId={sel.id} poleName={sel.name} onClose={changed => { setAddingGroups(false); if (changed) { setSel(null); setReload(n => n + 1); } }} /></Suspense>}
       {confirm && <ConfirmWrite {...confirm} onConfirm={confirm.run} onClose={changed => { setConfirm(null); if (changed) { setSel(null); setReload(n => n + 1); } }} />}

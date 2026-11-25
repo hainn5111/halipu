@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { deviceIdsBody, rtuLinkBody, kmDetectSaveBody, meterSaveBody, padUid, rtuSaveBody, smartBoxSaveBody, uidHexError, modelCloneBody, modelUpdateBody, modelIdsBody, modelNameError, poleTypeError, poleTypeSaveBody, poleTypeUpdateBody, poleTypeIdsBody, lcuIdsBody, lcuModelCreateBody, lcuSaveBody, modelCreateBody, poleIdsBody, poleUpdateBody } from './writeBodies';
+import { lcuDeleteBody, supplyLinkBody, deviceIdsBody, rtuLinkBody, kmDetectSaveBody, meterSaveBody, padUid, rtuSaveBody, smartBoxSaveBody, uidHexError, modelCloneBody, modelUpdateBody, modelIdsBody, modelNameError, poleTypeError, poleTypeSaveBody, poleTypeUpdateBody, poleTypeIdsBody, lcuIdsBody, lcuModelCreateBody, lcuSaveBody, modelCreateBody, poleIdsBody, poleUpdateBody } from './writeBodies';
 
 describe('modelCreateBody', () => {
   it('khớp payload đã bắt (deviceModelId rỗng, deviceConfig là object)', () => {
@@ -180,5 +180,13 @@ describe('xoá thiết bị & liên kết RTU — khớp capture 2026-11-25', ()
     expect(rtuLinkBody('lcu', ['L'])).toEqual({ rtuId: null, lcuIds: ['L'] });
     expect(rtuLinkBody('meter', ['M'])).toEqual({ rtuId: null, meterIds: ['M'] });
     expect(rtuLinkBody('km', ['K'])).toEqual({ rtuId: null, cuid: null, kmIds: ['K'] });
+  });
+});
+
+describe('xoá LCU kèm đèn + cấp điện — khớp capture 2026-11-25', () => {
+  it('lcuActor/delete có otype 1', () => { expect(lcuDeleteBody(['6f8e8fabf8dc48ffbabf16b1c6b2c8ac'])).toEqual({ deviceIdList: ['6f8e8fabf8dc48ffbabf16b1c6b2c8ac'], deviceTypeValue: 2, otype: 1 }); });
+  it('relatedSuppLyElectricity: nhiều LCU / điểm sáng vào RTU', () => {
+    expect(supplyLinkBody(['a', 'b', 'c'], 2, 'RTU')).toEqual({ deviceId: ['a', 'b', 'c'], deviceTypeValue: 2, parentDeviceId: 'RTU', parentDeviceTypeValue: 4 });
+    expect(supplyLinkBody(['p'], 6, 'RTU').deviceTypeValue).toBe(6);
   });
 });

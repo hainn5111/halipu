@@ -343,12 +343,16 @@ Số kênh RTU theo `rtuType` của model (nhãn i18n Fonda): RTU 200 = 4 DO·6 
   | Switch (9) | `kmDetectActor/updateRtuId` | `{rtuId, cuid, kmIds:[…]}` | `{rtuId:null, cuid:null, kmIds}` |
   `rtuId` = deviceId của RTU; `cuid` = UID của RTU (12 ký tự, đã cắt số 0 đầu). Đọc `rtuId` hiện tại từ trường `rtuId` của bản ghi thiết bị.
 
+**Xoá LCU kèm đèn + cấp điện từ RTU (bắt 2026-11-25):**
+- **`lcuActor/delete` ĐÃ BẮT:** `{deviceIdList:[id], deviceTypeValue:2, otype:1}` — trước đó `device/checkDeviceRelated` trả số đối tượng liên quan (capture: 1 = đèn trong bộ); **vẫn xoá được, `otype:1` xoá luôn các đèn đi kèm**. Giá trị `otype` khác chưa biết. Web: nút "Xoá LCU đã chọn…" không còn chặn khi còn liên quan, hộp xác nhận nói rõ số đối tượng bị xoá kèm.
+- **Cấp điện từ RTU cho nhiều thiết bị:** `POST supplyElectricityDevice/relatedSuppLyElectricity` (viết hoa "L" đúng như API) `{deviceId:[…], deviceTypeValue: 2 (LCU) | 6 (Lamp Pole), parentDeviceId: <id RTU>, parentDeviceTypeValue: 4}` → `data:true`. Khác với `updateRtuId` (liên kết từng thiết bị với RTU). API gỡ cấp điện chưa bắt. Web: "Cấp điện từ RTU (nhiều LCU)…" ở tab LCU và "(nhiều điểm sáng)…" ở tab Điểm sáng.
+
 ## 8. Việc còn mở (cập nhật 2026-11-20)
 
 **Đã xong trong đợt này:** thêm/sửa/xoá template mọi loại (`saveNew/updateNew/delete`), thêm/sửa/xoá PoleType, enum theo loại + lọc theo giao thức (§4), giao thức/chức năng theo loại, xác nhận enum nào ở server/front-end, thêm/xoá LCU riêng lẻ (`lcuActor/save`; xoá theo quy ước, chưa bắt).
 
 **Còn mở**
-- `lcuActor/delete`: body hiện suy theo `poleActor/delete` (`{deviceIdList, deviceTypeValue:2}`), chưa bắt từ web gốc.
+- `lcuActor/delete`: đã bắt (có `otype:1`); chưa biết giá trị `otype` khác. Chưa bắt API gỡ cấp điện từ RTU.
 - Server từ chối `lcuActor/save` cho model tự tạo `LCU-lab-4vo4` (code 1001) dù nhận `saveNew` và tạo LCU trong `poleActor/save` — lý do chưa rõ.
 - **Trường bắt buộc / ô nhập theo loại trong popup tạo template của Fonda** chưa tái tạo đủ: dùng script "Quét form template" (tab Bắt request) để lấy `rules` (`required`), `dataForm` mặc định, điều kiện hiện theo `deviceTypeValue` và nhãn từng ô, rồi dựng validate/ô nhập tương ứng trong `ModelWrite.tsx`.
 - **Tái tạo ĐÚNG hành vi form Fonda** (không chỉ ô hiện/ẩn theo loại): cần mã của component — hàm xử lý đổi loại/giao thức (đặt lại/xoá giá trị, nạp tuỳ chọn từng ô, ví dụ `changeGateway` đặt `gatewayTypes=null`, chuỗi `queryDictionaryByKey(99)…` lọc `rtuType`, `getCameraType()`), `disabled`/`maxlength` từng ô, `watch`, `computed` (`lightCtrlMode`…). Script "Quét form template" bản mới tải thêm `component` (toàn bộ script component) và `seg` (markup đầy đủ từng ô).
