@@ -37,8 +37,11 @@ export const TABS: GroupDef[] = [
     { id: 'poletypes', label: 'Loại cột (PoleType)', view: lazy(() => import('../features/devices/Models').then(m => ({ default: m.PoleTypes }))) },
     { id: 'arms', label: 'Kiểu tay đèn', view: lazy(() => import('../features/devices/Models').then(m => ({ default: m.ArmTypes }))) },
   ] },
-  { group: 'Vận hành', tabs: [
+  { group: 'Cấu hình', tabs: [
     { id: 'poles', label: 'Điểm sáng và liên kết', view: lazy(() => import('../features/poles/Poles')) },
+    { id: 'rtu-links', label: 'Liên kết RTU', view: lazy(() => import('../features/config/RtuLinks')) },
+  ] },
+  { group: 'Vận hành', tabs: [
     { id: 'schedule', label: 'Lịch điều khiển' },
     { id: 'report', label: 'Báo cáo' },
   ] },

@@ -1,5 +1,5 @@
 import { lazy, Suspense, useEffect, useMemo, useState } from 'react';
-import { DEVICE_CREATE, DEVICE_DELETE, RTU_LINK, deviceRelatedCount, sendDeviceDelete } from '../../adapters/fonda';
+import { DEVICE_CREATE, DEVICE_DELETE, deviceRelatedCount, sendDeviceDelete } from '../../adapters/fonda';
 import ConfirmWrite from '../common/ConfirmWrite';
 import { WRITE_ENABLED } from '../../core/flags';
 import { countDevices, listDeviceTypes, listDevices, projectIds } from '../../adapters/fonda';
@@ -10,7 +10,6 @@ import type { DeviceItem } from '../../core/types';
 // bấm một hàng để xem toàn bộ trường API trả về.
 // Thêm thiết bị từ model: chỉ nạp khi bật ghi (bản main không chứa mã này)
 const DeviceCreate = WRITE_ENABLED ? lazy(() => import('./DeviceCreate')) : null;
-const RtuLink = WRITE_ENABLED ? lazy(() => import('./RtuLink')) : null;
 interface Src { key: string; pid: string; label: string; value: number }
 
 export default function DeviceTab({ cat }: { cat: DeviceCat }) {
@@ -20,7 +19,7 @@ export default function DeviceTab({ cat }: { cat: DeviceCat }) {
   const [items, setItems] = useState<DeviceItem[]>([]);
   const [row, setRow] = useState<DeviceItem | null>(null);
   const [busy, setBusy] = useState(true);
-  const [err, setErr] = useState(''), [adding, setAdding] = useState(false), [reload, setReload] = useState(0), [linking, setLinking] = useState(false), [delMsg, setDelMsg] = useState(''), [del, setDel] = useState<null | { pid: string; type: number; id: string; name: string }>(null);
+  const [err, setErr] = useState(''), [adding, setAdding] = useState(false), [reload, setReload] = useState(0), [delMsg, setDelMsg] = useState(''), [del, setDel] = useState<null | { pid: string; type: number; id: string; name: string }>(null);
   async function askDelete() {
     if (!cur || !row) return; setDelMsg('');
     try { const n = await deviceRelatedCount(cur.pid, cur.value, row.id); if (n !== 0) { setDelMsg(`Fonda báo thiết bị còn ${n} đối tượng liên quan — không xoá.`); return; } setDel({ pid: cur.pid, type: cur.value, id: row.id, name: row.name || row.id }); } catch (e) { setDelMsg((e as Error).message); }
@@ -68,7 +67,7 @@ export default function DeviceTab({ cat }: { cat: DeviceCat }) {
   return (
     <div className="lcus">
       <div className="listwrap">
-        <p className="sub">{busy ? 'Đang tải…' : cur ? `${items.length} ${cur.label}` : ''}{DeviceCreate && cur && DEVICE_CREATE[cur.value] && <button style={{ marginLeft: 12 }} onClick={() => setAdding(true)}>+ Thêm thiết bị…</button>}{WRITE_ENABLED && cur && DEVICE_DELETE[cur.value] && <button className="b" style={{ marginLeft: 8 }} disabled={!row} title={row ? '' : 'Chọn một thiết bị trong danh sách'} onClick={() => void askDelete()}>Xoá thiết bị đã chọn…</button>}{RtuLink && cur && RTU_LINK[cur.value] && <button className="b" style={{ marginLeft: 8 }} disabled={!row} onClick={() => setLinking(true)}>Liên kết RTU…</button>}</p>
+        <p className="sub">{busy ? 'Đang tải…' : cur ? `${items.length} ${cur.label}` : ''}{DeviceCreate && cur && DEVICE_CREATE[cur.value] && <button style={{ marginLeft: 12 }} onClick={() => setAdding(true)}>+ Thêm thiết bị…</button>}{WRITE_ENABLED && cur && DEVICE_DELETE[cur.value] && <button className="b" style={{ marginLeft: 8 }} disabled={!row} title={row ? '' : 'Chọn một thiết bị trong danh sách'} onClick={() => void askDelete()}>Xoá thiết bị đã chọn…</button>}</p>
         {delMsg && <div className="err">{delMsg}</div>}
         {err && <div className="err">{err}</div>}
         {!busy && !err && !srcs.length && <p className="sub">Dự án không có loại thiết bị này.</p>}
@@ -94,7 +93,6 @@ export default function DeviceTab({ cat }: { cat: DeviceCat }) {
       )}
       {WRITE_ENABLED && del && <ConfirmWrite title={`Xoá thiết bị "${del.name}"`} summary="Đã kiểm tra liên quan (kết quả 0). Không hoàn tác được." method="POST" path={DEVICE_DELETE[del.type].del} body={{ deviceIdList: [del.id], deviceTypeValue: del.type }} danger
         onConfirm={async () => { await sendDeviceDelete(del.pid, del.type, del.id); }} onClose={changed => { setDel(null); if (changed) { setRow(null); setReload(n => n + 1); } }} />}
-      {linking && RtuLink && cur && row && <Suspense fallback={null}><RtuLink pid={cur.pid} typeValue={cur.value} deviceId={row.id} deviceName={row.name || row.id} currentRtuId={typeof row.raw.rtuId === 'string' ? row.raw.rtuId : undefined} onClose={changed => { setLinking(false); if (changed) setReload(n => n + 1); }} /></Suspense>}
       {adding && DeviceCreate && cur && <Suspense fallback={null}><DeviceCreate pid={cur.pid} typeValue={cur.value} typeLabel={cur.label} onClose={changed => { setAdding(false); if (changed) setReload(n => n + 1); }} /></Suspense>}
     </div>
   );

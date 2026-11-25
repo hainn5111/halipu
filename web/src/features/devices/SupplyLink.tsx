@@ -5,14 +5,14 @@ import { BodyJsonBox, canSend, finalBody, useBodyJson } from '../common/BodyJson
 import ConfirmWrite from '../common/ConfirmWrite';
 
 // Cấp điện từ RTU cho NHIỀU thiết bị một lần: supplyElectricityDevice/relatedSuppLyElectricity (bắt 2026-11-25). GHI THẬT, chỉ preview.
-export default function SupplyLink({ pid, typeValue, typeLabel, onClose }: { pid: string; typeValue: number; typeLabel: string; onClose: (changed: boolean) => void }) {
+export default function SupplyLink({ pid, typeValue, typeLabel, defaultRtuId, onClose }: { pid: string; typeValue: number; typeLabel: string; defaultRtuId?: string; onClose: (changed: boolean) => void }) {
   const [rtus, setRtus] = useState<DeviceItem[]>([]), [devs, setDevs] = useState<DeviceItem[]>([]), [rtuId, setRtuId] = useState('');
   const [pick, setPick] = useState<Set<string>>(new Set()), [q, setQ] = useState(''), [busy, setBusy] = useState(true), [err, setErr] = useState('');
   const [skip, setSkip] = useState(false), [confirm, setConfirm] = useState<Record<string, unknown> | null>(null);
   useEffect(() => {
     let live = true;
     (async () => {
-      try { const [r, d] = await Promise.all([listDevices(pid, 4), listDevices(pid, typeValue)]); if (!live) return; setRtus(r); setDevs(d); setRtuId(r[0]?.id ?? ''); }
+      try { const [r, d] = await Promise.all([listDevices(pid, 4), listDevices(pid, typeValue)]); if (!live) return; setRtus(r); setDevs(d); setRtuId(defaultRtuId && r.some(x => x.id === defaultRtuId) ? defaultRtuId : r[0]?.id ?? ''); }
       catch (e) { if (live) setErr((e as Error).message); } finally { if (live) setBusy(false); }
     })();
     return () => { live = false; };
