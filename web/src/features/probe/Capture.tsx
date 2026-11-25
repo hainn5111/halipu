@@ -1,10 +1,13 @@
 import { useMemo, useState } from 'react';
 import { captureScript } from './captureSnippet';
 import { formScanScript, frontScanScript } from './frontScan';
+import { DEFAULT_MATCH, userScript } from './userscript';
 
 // Hướng dẫn + đoạn script bắt request của web Fonda gốc (xem captureSnippet.ts).
 export default function Capture() {
   const script = useMemo(captureScript, []);
+  const [match, setMatch] = useState(DEFAULT_MATCH);
+  const download = () => { const b = new Blob([userScript(new Date().toISOString().slice(0, 10).replace(/-/g, '.') + '.' + Date.now().toString(36).slice(-4), match.trim() || DEFAULT_MATCH)], { type: 'text/javascript' }); const a = document.createElement('a'); a.href = URL.createObjectURL(b); a.download = 'slcp-fonda-tools.user.js'; a.click(); URL.revokeObjectURL(a.href); };
   const [copied, setCopied] = useState(false), [copied2, setCopied2] = useState(false);
   const scan = useMemo(frontScanScript, []), formScan = useMemo(formScanScript, []), [copied3, setCopied3] = useState(false);
   return (
@@ -19,6 +22,9 @@ export default function Capture() {
       <p className="sub">Script không đọc header (không có token). Khoá tên giống <code>pass/token/secret/authorization/cookie</code> bị che thành <code>&lt;redacted&gt;</code>; request <code>login</code> bị bỏ qua. Body còn lại giữ nguyên (có id thiết bị của bạn).</p>
       <button onClick={() => { void navigator.clipboard.writeText(script).then(() => { setCopied(true); setTimeout(() => setCopied(false), 2000); }); }}>{copied ? 'Đã sao chép ✓' : 'Sao chép script'}</button>
       <textarea readOnly value={script} onFocus={e => e.currentTarget.select()} style={{ display: 'block', width: '100%', height: 160, marginTop: 12, fontSize: 11, fontFamily: 'monospace' }} />
+      <h3 style={{ marginTop: 24 }}>Cài bằng Tampermonkey (khỏi dán lại mỗi lần)</h3>
+      <p className="sub">Tải <code>slcp-fonda-tools.user.js</code> rồi mở file trong trình duyệt để Tampermonkey cài. Script chạy ngay khi trang Fonda mở (<code>document-start</code>), nên bắt được cả WebSocket mở lúc đăng nhập và sống qua F5. Gồm: bắt request (nút cam/xanh), <code>__scanFrontend()</code> và <code>__scanForms()</code> gõ trong Console. Địa chỉ trang Fonda (<code>@match</code>): <input style={{ width: 260 }} value={match} onChange={e => setMatch(e.target.value)} />. Nó là bản <b>độc lập với web này</b>: web cập nhật không làm hỏng nó, nhưng cũng <b>không tự cập nhật</b> — khi mã bắt/quét đổi thì tải lại file và cài đè (cùng tên thì Tampermonkey hỏi cập nhật). Muốn tạm tắt: tắt công tắc script trong Tampermonkey.</p>
+      <button onClick={download}>Tải bản Tampermonkey (.user.js)</button>
       <h3 style={{ marginTop: 24 }}>Quét front-end Fonda: enum nằm ở server hay trong code giao diện?</h3>
       <p className="sub">Dán đoạn script này vào Console của web Fonda gốc (sau khi đăng nhập). Nó tải các file JS tĩnh của chính trang, tìm các từ khoá (<code>KXHL</code>, <code>kmFactory</code>, <code>powerProtocol</code>, <code>rtuType</code>, <code>gatewayTypes</code>, tên giao thức…) và tải về <code>fonda-frontend-scan-….json</code> (số lần xuất hiện + đoạn mã quanh từ khoá). Từ khoá có trong file JS ⇒ danh sách do giao diện giữ cứng; không có ⇒ lấy từ server. Chỉ đọc file tĩnh, không gọi API, không đọc token.</p>
       <button onClick={() => { void navigator.clipboard.writeText(scan).then(() => { setCopied2(true); setTimeout(() => setCopied2(false), 2000); }); }}>{copied2 ? 'Đã sao chép ✓' : 'Sao chép script quét front-end'}</button>
