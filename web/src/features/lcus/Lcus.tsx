@@ -1,13 +1,12 @@
 import { lazy, Suspense, useEffect, useState } from 'react';
-import { lcuRelatedCount, sendLcuDelete } from '../../adapters/fonda';
-import { lcuDeleteBody } from '../../adapters/fonda/writeBodies';
+import { lcuRelatedCount } from '../../adapters/fonda';
 import { WRITE_ENABLED } from '../../core/flags';
-import ConfirmWrite from '../common/ConfirmWrite';
 import { useLcus } from '../../core/store';
 import LcuPanel from '../lcu-panel/LcuPanel';
 
 // Form thêm LCU chỉ nạp khi bật ghi (bản main không chứa mã).
 const LcuCreate = WRITE_ENABLED ? lazy(() => import('./LcuCreate')) : null;
+const LcuDelete = WRITE_ENABLED ? lazy(() => import('./LcuDelete')) : null;
 const SupplyLink = WRITE_ENABLED ? lazy(() => import('../devices/SupplyLink')) : null;
 const RtuLink = WRITE_ENABLED ? lazy(() => import('../devices/RtuLink')) : null;
 
@@ -16,7 +15,7 @@ export default function Lcus() {
   useEffect(() => { void load(true); }, [load]);   // mở tab = tải lại danh sách
   const sel = lcus.find(l => l.uid === selectedUid);
   const [adding, setAdding] = useState(false), [msg, setMsg] = useState(''), [linking, setLinking] = useState(false);
-  const [del, setDel] = useState<null | { body: unknown; lcuId: string; projectId: string; name: string; related: number }>(null);
+  const [del, setDel] = useState<null | { lcuId: string; projectId: string; name: string; related: number }>(null);
   const [supply, setSupply] = useState(false);
   const pid = sel?.projectId ?? lcus[0]?.projectId ?? '';
   async function askDelete() {
@@ -24,7 +23,7 @@ export default function Lcus() {
     setMsg('');
     try {
       const n = await lcuRelatedCount(sel.projectId, sel.lcuId);
-      setDel({ body: lcuDeleteBody([sel.lcuId]), lcuId: sel.lcuId, projectId: sel.projectId, name: sel.name, related: n });   // như Fonda: còn đối tượng liên quan vẫn xoá được (otype 1 = xoá cả đèn trong bộ)
+      setDel({ lcuId: sel.lcuId, projectId: sel.projectId, name: sel.name, related: n });   // như Fonda: còn đối tượng liên quan vẫn xoá được (otype 1 = xoá cả đèn trong bộ)
     } catch (e) { setMsg((e as Error).message); }
   }
   return (
@@ -44,8 +43,7 @@ export default function Lcus() {
       {adding && LcuCreate && pid && <Suspense fallback={null}><LcuCreate pid={pid} onClose={changed => { setAdding(false); if (changed) void load(true); }} /></Suspense>}
       {supply && SupplyLink && pid && <Suspense fallback={null}><SupplyLink pid={pid} typeValue={2} typeLabel="LCU" onClose={() => setSupply(false)} /></Suspense>}
       {linking && RtuLink && sel && <Suspense fallback={null}><RtuLink pid={sel.projectId} typeValue={2} deviceId={sel.lcuId} deviceName={sel.name || sel.uid} onClose={() => setLinking(false)} /></Suspense>}
-      {WRITE_ENABLED && del && <ConfirmWrite title={`Xoá LCU "${del.name}"`} summary={del.related ? `LCU còn ${del.related} đối tượng liên quan (đèn trong bộ…): xoá LCU sẽ xoá luôn các đèn đó (otype 1, đúng thao tác của Fonda). Không hoàn tác.` : 'LCU không có đối tượng liên quan (đã kiểm tra bằng device/checkDeviceRelated). Không hoàn tác.'} method="POST" path="lcuActor/delete" body={del.body} danger
-        onConfirm={async () => { await sendLcuDelete(del.projectId, del.lcuId); }} onClose={changed => { setDel(null); if (changed) { select(null); void load(true); } }} />}
+      {del && LcuDelete && <Suspense fallback={null}><LcuDelete projectId={del.projectId} lcuId={del.lcuId} name={del.name} related={del.related} onClose={changed => { setDel(null); if (changed) { select(null); void load(true); } }} /></Suspense>}
     </div>
   );
 }

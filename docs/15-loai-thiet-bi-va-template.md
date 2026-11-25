@@ -344,7 +344,7 @@ Số kênh RTU theo `rtuType` của model (nhãn i18n Fonda): RTU 200 = 4 DO·6 
   `rtuId` = deviceId của RTU; `cuid` = UID của RTU (12 ký tự, đã cắt số 0 đầu). Đọc `rtuId` hiện tại từ trường `rtuId` của bản ghi thiết bị.
 
 **Xoá LCU kèm đèn + cấp điện từ RTU (bắt 2026-11-25):**
-- **`lcuActor/delete` ĐÃ BẮT:** `{deviceIdList:[id], deviceTypeValue:2, otype:1}` — trước đó `device/checkDeviceRelated` trả số đối tượng liên quan (capture: 1 = đèn trong bộ); **vẫn xoá được, `otype:1` xoá luôn các đèn đi kèm**. Giá trị `otype` khác chưa biết. Web: nút "Xoá LCU đã chọn…" không còn chặn khi còn liên quan, hộp xác nhận nói rõ số đối tượng bị xoá kèm.
+- **`lcuActor/delete` ĐÃ BẮT:** `{deviceIdList:[id], deviceTypeValue:2, otype:1}` — trước đó `device/checkDeviceRelated` trả số đối tượng liên quan (capture: 1 = đèn trong bộ); **vẫn xoá được, `otype:1` xoá luôn các đèn đi kèm**. Giá trị `otype` khác chưa biết — web có lựa chọn **`otype: 0` (ĐOÁN: chỉ xoá LCU, giữ đèn)** để thử, cùng khung JSON sửa tay. Web: nút "Xoá LCU đã chọn…" không còn chặn khi còn liên quan, hộp xác nhận nói rõ số đối tượng bị xoá kèm.
 - **Cấp điện từ RTU cho nhiều thiết bị:** `POST supplyElectricityDevice/relatedSuppLyElectricity` (viết hoa "L" đúng như API) `{deviceId:[…], deviceTypeValue: 2 (LCU) | 6 (Lamp Pole), parentDeviceId: <id RTU>, parentDeviceTypeValue: 4}` → `data:true`. Khác với `updateRtuId` (liên kết từng thiết bị với RTU). API gỡ cấp điện chưa bắt. Web: "Cấp điện từ RTU (nhiều LCU)…" ở tab LCU và "(nhiều điểm sáng)…" ở tab Điểm sáng.
 
 ## 8. Việc còn mở (cập nhật 2026-11-20)

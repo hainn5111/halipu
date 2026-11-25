@@ -280,4 +280,6 @@ export const lcuRelatedCount = (projectId: string, lcuId: string) => call<number
 /** Cấp điện từ RTU cho nhiều LCU/điểm sáng một lần (supplyElectricityDevice/relatedSuppLyElectricity). */
 export const sendSupplyLink = (projectId: string, body: Record<string, unknown>) => { assertWrite(); return call('POST', 'supplyElectricityDevice/relatedSuppLyElectricity', { projectId, body }); };
 export { lcuDeleteBody, supplyLinkBody };
+/** Xoá LCU với body tuỳ ý (otype do người dùng chọn / sửa JSON). */
+export const sendLcuDeleteBody = (projectId: string, body: Record<string, unknown>) => { assertWrite(); return call('POST', 'lcuActor/delete', { projectId, body }); };
 export const sendLcuDelete = (projectId: string, lcuId: string) => { assertWrite(); return call('POST', 'lcuActor/delete', { projectId, body: lcuDeleteBody([lcuId]) }); };
