@@ -321,10 +321,10 @@ Producer (`factoryId`) hiện ở loại 9, 16, 17, 18, 60, 64 và `hasFactoryDe
 | Loại | API | Body (khoá chính) | Phản hồi |
 |---|---|---|---|
 | 4 Concentrator/RTU | `POST rtuActor/saveNew` | `kms[{name,channel,enabled}]`, `dis[{name,channel}]`, `ais[{name,channel}]`, `deviceName/Code`, `sceneType:""`, `deviceModelId`, `deviceId:""`, `uid` (đệm 0 tới 16), `lat/lng` (chuỗi), `geographicAddress`, `deviceStatus:1`, `deviceSource:1`, `projectId` | thiết bị + mỗi kênh có `deviceId`, `atype` (1 = DI, 2 = AI); `uid` bị cắt còn 12 |
-| 1 Electric Meter | `POST meterActor/saveNew` | `deviceName`, `deviceCode`, `mType` (capture 2), `madd` (capture 255), `remark`, `deviceModelId`, `deviceId:""` | `meterId` (không phải deviceId) |
+| 1 Electric Meter | `POST meterActor/saveNew` | `deviceName`, `deviceCode`, `mType` (= quyền sở hữu công tơ, dictionary 92: 1 Built in, 2 External, 3 Consumer), `madd` (địa chỉ — người dùng tự nhập), `remark`, `deviceModelId`, `deviceId:""` | `meterId` (không phải deviceId) |
 | 3 Gateway | `POST smartBoxActor/save` | `deviceModelId`, `deviceName`, `uid` (16), `protocolValue` (của model), `sensorUid/transducerAddr/areaId/roadId:""`, `roadDirection/useType:null` | `data` = deviceId (chuỗi) |
-| 9 Switch and detection | `POST kmDetectActor/save` | `deviceName/Code`, `kadd` (capture 255), `deviceConfig:{km[], ai[], di[]}` (mỗi phần tử `{name, channel:"1"…}`) | `deviceConfig` có thêm `id` mỗi kênh |
-Số kênh RTU theo `rtuType` của model (nhãn i18n Fonda): RTU 200 = 4 DO·6 DI·2 AI; RTU 700 = 4 DO·4 AI·2 DI; RTU 200-6DO = 6 DO·4 DI·2 AI; RTU 150 = 4 DO·6 DI; RTU 190 = 1 DO·2 DI; kênh AI đánh số TIẾP sau DI (6 DI → AI 7, 8). `enabled` của km (0/1) — ý nghĩa chưa rõ. Điểm sáng (Lamp Pole) và LCU thêm ở tab riêng (xem trên).
+| 9 Switch and detection | `POST kmDetectActor/save` | `deviceName/Code`, `kadd` (địa chỉ — người dùng tự nhập), `deviceConfig:{km[], ai[], di[]}` (mỗi phần tử `{name, channel:"1"…}`) | `deviceConfig` có thêm `id` mỗi kênh |
+Số kênh RTU theo `rtuType` của model (nhãn i18n Fonda): RTU 200 = 4 DO·6 DI·2 AI; RTU 700 = 4 DO·4 AI·2 DI; RTU 200-6DO = 6 DO·4 DI·2 AI; RTU 150 = 4 DO·6 DI; RTU 190 = 1 DO·2 DI; kênh AI đánh số TIẾP sau DI (6 DI → AI 7, 8). `enabled` của km (0/1) — ý nghĩa chưa rõ (DO/DI chưa dùng, bổ sung sau). **Mọi form thêm thiết bị (và Thêm LCU) có khung "Body JSON (sửa tay)" + tick "Bỏ qua kiểm tra"** để gửi body tuỳ ý (thử vượt ràng buộc của hệ thống). Điểm sáng (Lamp Pole) và LCU thêm ở tab riêng (xem trên).
 
 ## 8. Việc còn mở (cập nhật 2026-11-20)
 

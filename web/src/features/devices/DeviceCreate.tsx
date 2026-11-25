@@ -1,9 +1,11 @@
 import { useEffect, useMemo, useState } from 'react';
-import { DEVICE_CREATE, kmDetectSaveBody, listDeviceTypes, listModels, meterSaveBody, modelProtocols, rtuSaveBody, sendDeviceCreate, smartBoxSaveBody, type ModelProto } from '../../adapters/fonda';
+import { DEVICE_CREATE, kmDetectSaveBody, listDeviceTypes, listDictionary, listModels, meterSaveBody, modelProtocols, rtuSaveBody, sendDeviceCreate, smartBoxSaveBody, type ModelProto } from '../../adapters/fonda';
 import { RTU_CHANNELS, uidHexError } from '../../adapters/fonda/writeBodies';
 import type { DeviceModel } from '../../core/types';
 import ConfirmWrite from '../common/ConfirmWrite';
 import MapPicker from '../common/MapPicker';
+import { BodyJsonBox, canSend, finalBody, useBodyJson } from '../common/BodyJson';
+import type { DictItem } from '../../adapters/fonda/mappers';
 
 // THÊM THIẾT BỊ từ model (GHI THẬT, chỉ preview): Concentrator/RTU, Công tơ, Gateway, Switch and detection — payload bắt 2026-11-25 (docs/15 §7).
 const names = (prefix: string, n: number) => Array.from({ length: Math.max(0, n) }, (_, i) => `${prefix}${i + 1}`);
@@ -13,8 +15,8 @@ export default function DeviceCreate({ pid, typeValue, typeLabel, onClose }: { p
   const kind = DEVICE_CREATE[typeValue]?.kind;
   const [models, setModels] = useState<DeviceModel[]>([]), [protos, setProtos] = useState<Map<string, ModelProto>>(new Map());
   const [busy, setBusy] = useState(true), [err, setErr] = useState('');
-  const [f, setF] = useState({ modelId: '', name: '', code: '', uid: '', lat: '', lng: '', address: '', mType: '2', madd: '255', kadd: '255', remark: '', km: '4', di: '', ai: '' });
-  const [confirm, setConfirm] = useState<Record<string, unknown> | null>(null);
+  const [f, setF] = useState({ modelId: '', name: '', code: '', uid: '', lat: '', lng: '', address: '', mType: '2', madd: '', kadd: '', remark: '', km: '4', di: '', ai: '' });
+  const [confirm, setConfirm] = useState<Record<string, unknown> | null>(null), [skip, setSkip] = useState(false), [owner, setOwner] = useState<DictItem[]>([]);
   const set = (k: keyof typeof f, v: string) => setF(x => ({ ...x, [k]: v }));
 
   useEffect(() => {
@@ -23,6 +25,7 @@ export default function DeviceCreate({ pid, typeValue, typeLabel, onClose }: { p
       try {
         const t = (await listDeviceTypes(pid)).find(x => x.value === typeValue); if (!t) throw new Error('Dự án không có loại này');
         const [ms, ps] = await Promise.all([listModels(pid), modelProtocols(pid, t.id)]);
+        if (typeValue === 1) listDictionary(pid, 92).then(r => { if (live) setOwner(r); }).catch(() => undefined);   // mType = quyền sở hữu công tơ (dict 92: 1 Built in, 2 External, 3 Consumer)
         if (!live) return;
         const list = ms.filter(m => m.typeId === t.id);
         setModels(list); setProtos(ps); setF(x => ({ ...x, modelId: list[0]?.id ?? '' }));
@@ -45,18 +48,20 @@ export default function DeviceCreate({ pid, typeValue, typeLabel, onClose }: { p
     if ((kind === 'rtu' || kind === 'gateway')) { const e = uidHexError(f.uid); if (e) return e; }
     if (kind === 'rtu' && (!f.lat.trim() || !f.lng.trim())) return 'Chọn vị trí trên bản đồ';
     if (kind === 'gateway' && !(proto && proto.value >= 0)) return 'Model chưa có giao thức';
-    if (kind === 'meter' && !(Number.isFinite(Number(f.madd)) && Number(f.madd) >= 0)) return 'Địa chỉ công tơ (madd) không hợp lệ';
+    if (kind === 'meter' && !(f.madd.trim() !== '' && Number.isFinite(Number(f.madd)) && Number(f.madd) >= 0)) return 'Nhập địa chỉ công tơ (madd)';
+    if (kind === 'switch' && !(f.kadd.trim() !== '' && Number.isFinite(Number(f.kadd)) && Number(f.kadd) >= 0)) return 'Nhập địa chỉ kadd';
     return '';
   }, [model, f, kind, proto]);
 
   function build(): Record<string, unknown> | null {
-    if (problem || !model) return null;
+    if (!model) return null;
     const base = { projectId: pid, modelId: model.id, name: f.name.trim() };
     if (kind === 'rtu') return rtuSaveBody({ ...base, code: f.code.trim(), uid: f.uid, lat: f.lat, lng: f.lng, address: f.address, kms: rtu.km, dis: rtu.di.map(name => ({ name })), ais: rtu.ai.map(name => ({ name })) });
     if (kind === 'meter') return meterSaveBody({ ...base, code: f.code.trim(), mType: Number(f.mType), madd: Number(f.madd), remark: f.remark });
-    if (kind === 'gateway') return smartBoxSaveBody({ ...base, uid: f.uid, protocolValue: proto!.value });
+    if (kind === 'gateway') return smartBoxSaveBody({ ...base, uid: f.uid, protocolValue: (proto?.value ?? -1) });
     return kmDetectSaveBody({ ...base, code: f.code.trim(), kadd: Number(f.kadd), km: names('KM', int(f.km, 0)), di: names('DI', int(f.di, 0)), ai: names('AI', int(f.ai, 0)) });
   }
+  const built = build(), bj = useBodyJson(built), body = finalBody(bj, built), sendOk = canSend(bj, built, !problem, skip);
   const label = (t: string, el: JSX.Element) => <label style={{ display: 'block', marginTop: 8 }}><span className="sub">{t}</span>{el}</label>;
   const inp = (k: keyof typeof f, ph = '') => <input style={{ width: '100%' }} value={f[k]} placeholder={ph} onChange={e => set(k, e.target.value)} />;
 
@@ -73,7 +78,7 @@ export default function DeviceCreate({ pid, typeValue, typeLabel, onClose }: { p
           {label('Tên thiết bị', inp('name'))}
           {kind !== 'gateway' && label(kind === 'meter' ? 'Mã thiết bị (deviceCode)' : 'Mã (không bắt buộc)', inp('code'))}
           {(kind === 'rtu' || kind === 'gateway') && label('UID (hex, tối đa 16 ký tự — Fonda đệm 0 phía trước)', inp('uid'))}
-          {kind === 'meter' && (<div style={{ display: 'flex', gap: 8 }}><div style={{ flex: 1 }}>{label('mType (loại đo, capture: 2)', inp('mType'))}</div><div style={{ flex: 1 }}>{label('madd (địa chỉ công tơ, capture: 255)', inp('madd'))}</div></div>)}
+          {kind === 'meter' && (<div style={{ display: 'flex', gap: 8 }}><div style={{ flex: 1 }}>{label('mType (quyền sở hữu công tơ)', owner.length ? <select style={{ width: '100%' }} value={f.mType} onChange={e => set('mType', e.target.value)}>{owner.map(o => <option key={o.value} value={o.value}>{o.value} — {o.name}</option>)}</select> : inp('mType'))}</div><div style={{ flex: 1 }}>{label('madd (địa chỉ công tơ — tự nhập)', inp('madd'))}</div></div>)}
           {kind === 'meter' && label('Ghi chú', inp('remark'))}
           {kind === 'rtu' && (<>
             <div style={{ display: 'flex', gap: 8 }}><div style={{ flex: 1 }}>{label('Vĩ độ', inp('lat'))}</div><div style={{ flex: 1 }}>{label('Kinh độ', inp('lng'))}</div></div>
@@ -88,14 +93,15 @@ export default function DeviceCreate({ pid, typeValue, typeLabel, onClose }: { p
             </div>
           </>)}
           {kind === 'switch' && (<>
-            {label('kadd (địa chỉ, capture: 255)', inp('kadd'))}
+            {label('kadd (địa chỉ — tự nhập)', inp('kadd'))}
             <div style={{ display: 'flex', gap: 8 }}><div style={{ flex: 1 }}>{label('Số km', inp('km'))}</div><div style={{ flex: 1 }}>{label('Số di', inp('di'))}</div><div style={{ flex: 1 }}>{label('Số ai', inp('ai'))}</div></div>
             <p className="sub" style={{ margin: '4px 0 0' }}>Mặc định theo model (`pathNum`, `di`, `ai`); tên kênh tự đặt KM1…, DI1…, AI1….</p>
           </>)}
-          {problem && <div className="err" style={{ marginTop: 10 }}>{problem}</div>}
+          {problem && !skip && <div className="err" style={{ marginTop: 10 }}>{problem}</div>}
+          <BodyJsonBox bj={bj} skip={skip} setSkip={setSkip} />
         </>)}
         <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', marginTop: 14 }}>
-          <button disabled={!!problem} onClick={() => { const b = build(); if (b) setConfirm(b); }}>Xem trước & xác nhận…</button>
+          <button disabled={!sendOk} onClick={() => { const b = skip ? (bj.dirty ? bj.parsed : bj.parsed ?? built) : body; if (b) setConfirm(b); }}>Xem trước & xác nhận…</button>
           <button className="b" onClick={() => onClose(false)}>Đóng</button>
         </div>
       </div>

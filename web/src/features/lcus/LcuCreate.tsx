@@ -2,13 +2,14 @@ import { useEffect, useState } from 'react';
 import { listDeviceTypes, listModels, modelProtocols, previewLcuSave, sendLcuSave, type ModelProto } from '../../adapters/fonda';
 import type { DeviceModel } from '../../core/types';
 import ConfirmWrite from '../common/ConfirmWrite';
+import { BodyJsonBox, canSend, finalBody, useBodyJson } from '../common/BodyJson';
 
 // Thêm LCU từ một model (GHI THẬT, chỉ preview): lcuActor/save theo payload đã bắt (docs/15 §7).
 export default function LcuCreate({ pid, onClose }: { pid: string; onClose: (changed: boolean) => void }) {
   const [models, setModels] = useState<DeviceModel[]>([]), [protos, setProtos] = useState<Map<string, ModelProto>>(new Map());
   const [f, setF] = useState({ modelId: '', name: '', uid: '' });
   const [busy, setBusy] = useState(true), [err, setErr] = useState('');
-  const [body, setBody] = useState<Record<string, unknown> | null>(null);
+  const [body, setBody] = useState<Record<string, unknown> | null>(null), [skip, setSkip] = useState(false);
 
   useEffect(() => {
     let live = true;
@@ -26,6 +27,8 @@ export default function LcuCreate({ pid, onClose }: { pid: string; onClose: (cha
 
   const proto = protos.get(f.modelId), uid = f.uid.trim().toUpperCase();
   const uidOk = /^[0-9A-F]{1,12}$/.test(uid), ok = !!proto && !!f.name.trim() && uidOk;
+  const built = proto ? previewLcuSave(pid, { modelId: f.modelId, name: f.name.trim(), uid, protocolValue: proto.value, protocolName: proto.name }) : null;
+  const bj = useBodyJson(built), sendOk = canSend(bj, built, ok, skip);
   if (body) return <ConfirmWrite title={`Thêm LCU "${f.name.trim()}"`} summary={`Model ${models.find(m => m.id === f.modelId)?.name}, UID ${uid}.`} method="POST" path="lcuActor/save" body={body}
     onConfirm={async () => { await sendLcuSave(pid, body); }} onClose={changed => { if (changed) onClose(true); else setBody(null); }} />;
   return (
@@ -39,10 +42,11 @@ export default function LcuCreate({ pid, onClose }: { pid: string; onClose: (cha
           <p className="sub" style={{ margin: '4px 0 0' }}>Model do người dùng tạo bằng công cụ thử có thể bị server từ chối (code 1001); model khai báo từ Fonda thì được.</p>
           <label style={{ display: 'block', marginTop: 8 }}><span className="sub">Tên LCU</span><input style={{ width: '100%' }} value={f.name} onChange={e => setF(x => ({ ...x, name: e.target.value }))} /></label>
           <label style={{ display: 'block', marginTop: 8 }}><span className="sub">UID (hex 1–12 ký tự, chưa dùng)</span><input style={{ width: '100%' }} value={f.uid} onChange={e => setF(x => ({ ...x, uid: e.target.value }))} /></label>
-          {f.uid && !uidOk && <div className="err">UID chỉ gồm 0–9, A–F, tối đa 12 ký tự</div>}
+          {f.uid && !uidOk && !skip && <div className="err">UID chỉ gồm 0–9, A–F, tối đa 12 ký tự</div>}
+          <BodyJsonBox bj={bj} skip={skip} setSkip={setSkip} />
         </>)}
         <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', marginTop: 14 }}>
-          <button disabled={!ok} onClick={() => proto && setBody(previewLcuSave(pid, { modelId: f.modelId, name: f.name.trim(), uid, protocolValue: proto.value, protocolName: proto.name }))}>Xem trước & xác nhận…</button>
+          <button disabled={!sendOk} onClick={() => { const b = skip ? (bj.dirty ? bj.parsed : bj.parsed ?? built) : finalBody(bj, built); if (b) setBody(b); }}>Xem trước & xác nhận…</button>
           <button className="b" onClick={() => onClose(false)}>Đóng</button>
         </div>
       </div>
