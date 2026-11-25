@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { modelCloneBody, modelUpdateBody, modelIdsBody, modelNameError, poleTypeError, poleTypeSaveBody, poleTypeUpdateBody, poleTypeIdsBody, lcuIdsBody, lcuModelCreateBody, lcuSaveBody, modelCreateBody, poleIdsBody, poleUpdateBody } from './writeBodies';
+import { kmDetectSaveBody, meterSaveBody, padUid, rtuSaveBody, smartBoxSaveBody, uidHexError, modelCloneBody, modelUpdateBody, modelIdsBody, modelNameError, poleTypeError, poleTypeSaveBody, poleTypeUpdateBody, poleTypeIdsBody, lcuIdsBody, lcuModelCreateBody, lcuSaveBody, modelCreateBody, poleIdsBody, poleUpdateBody } from './writeBodies';
 
 describe('modelCreateBody', () => {
   it('khớp payload đã bắt (deviceModelId rỗng, deviceConfig là object)', () => {
@@ -144,4 +144,26 @@ describe('lcuSaveBody khớp capture thật 2026-11-23', () => {
     const captured = { connectId: '', deviceModelId: '577d2690116344c2bd9737911a009371', deviceName: 'HAI-TEST_LCU', deviceCode: '', uid: '002020208293', deviceStatus: 1, imei: '', imsi: '', sim: '', ccid: '', areaId: '', roadId: '', roadDirection: '', roadLevelId: null, deviceSource: 1, remark: '', lcuTask: 1, cls: '', fcntbits: '', lwan: '', verifyEnabled: 0, protocolValue: 53, protocolName: 'RF/F2', lightOperated: null, poleSlant: null, temDetection: null, diDetection: null, gps: null, remoteUpgrade: null, energyAccumulation: null, projectId: '9a59bd490ce14e139948fbda5addb2df' };
     expect(lcuSaveBody({ projectId: captured.projectId, modelId: captured.deviceModelId, name: 'HAI-TEST_LCU', uid: '002020208293', protocolValue: 53, protocolName: 'RF/F2' })).toEqual(captured);
   });
+});
+
+describe('thêm thiết bị từ model — khớp capture thật 2026-11-25', () => {
+  const projectId = '9a59bd490ce14e139948fbda5addb2df';
+  it('rtuActor/saveNew (Concentrator): ai đánh số tiếp sau di; uid đệm 0 tới 16', () => {
+    const body = rtuSaveBody({ projectId, modelId: '58decc68800046a38307067244971785', name: 'TEST', code: '', uid: '122412355656', lat: '20.934431453077405', lng: '105.66842477865494', address: '4 Đường Hạnh Phúc KCN, Phú Nghĩa, Hà Nội, Vietnam',
+      kms: [{ name: 'km11', enabled: 0 }, { name: 'km12', enabled: 1 }, { name: 'km13', enabled: 0 }, { name: 'km14', enabled: 1 }], dis: ['DI11', 'DI12', 'DI13', 'DI14', 'DI15', 'DI16'].map(name => ({ name })), ais: [{ name: 'AI11' }, { name: 'AI12' }] });
+    expect(body).toEqual({ kms: [{ name: 'km11', channel: 1, enabled: 0 }, { name: 'km12', channel: 2, enabled: 1 }, { name: 'km13', channel: 3, enabled: 0 }, { name: 'km14', channel: 4, enabled: 1 }],
+      dis: [1, 2, 3, 4, 5, 6].map(n => ({ name: `DI1${n}`, channel: n })), ais: [{ name: 'AI11', channel: 7 }, { name: 'AI12', channel: 8 }], deviceStatus: 1, deviceName: 'TEST', deviceCode: '', sceneType: '',
+      deviceModelId: '58decc68800046a38307067244971785', deviceId: '', uid: '0000122412355656', lat: '20.934431453077405', lng: '105.66842477865494', geographicAddress: '4 Đường Hạnh Phúc KCN, Phú Nghĩa, Hà Nội, Vietnam', projectId, deviceSource: 1 });
+  });
+  it('meterActor/saveNew', () => {
+    expect(meterSaveBody({ projectId, modelId: '1b8f9738e1c64f79a7b9d46c233769c2', name: 'TEST', code: '12354845132145211', mType: 2, madd: 255, remark: '' })).toEqual({ deviceStatus: 1, deviceName: 'TEST', deviceCode: '12354845132145211', mType: 2, madd: 255, remark: '', deviceId: '', deviceModelId: '1b8f9738e1c64f79a7b9d46c233769c2', projectId, deviceSource: 1 });
+  });
+  it('smartBoxActor/save (Gateway)', () => {
+    expect(smartBoxSaveBody({ projectId, modelId: '8e0e8ed7bd7f4127bf7b4b32fd59a811', name: 'TEST', uid: '2151841123147845', protocolValue: 1 })).toEqual({ deviceId: '', deviceModelId: '8e0e8ed7bd7f4127bf7b4b32fd59a811', deviceCode: '', sensorUid: '', deviceStatus: 1, transducerAddr: '', areaId: '', roadId: '', roadDirection: null, useType: null, deviceSource: 1, projectId, protocolValue: 1, deviceName: 'TEST', uid: '2151841123147845' });
+  });
+  it('kmDetectActor/save (Switch): channel là chuỗi', () => {
+    const b = kmDetectSaveBody({ projectId, modelId: 'c66eeea26cff48bf956b5abea698fbef', name: 'TEST', code: '1231484512315', kadd: 255, km: ['KM2551', 'KM2552'], ai: [], di: [] }) as { deviceConfig: { km: unknown[] } };
+    expect(b).toEqual({ deviceStatus: 1, deviceName: 'TEST', deviceCode: '1231484512315', deviceConfig: { km: [{ name: 'KM2551', channel: '1' }, { name: 'KM2552', channel: '2' }], ai: [], di: [] }, kadd: 255, deviceId: '', deviceModelId: 'c66eeea26cff48bf956b5abea698fbef', projectId, deviceSource: 1 });
+  });
+  it('padUid / uidHexError', () => { expect(padUid('ab')).toBe('00000000000000AB'); expect(uidHexError('zz')).toBeTruthy(); expect(uidHexError('1234567890ABCDEF')).toBeNull(); expect(uidHexError('1234567890ABCDEF0')).toBeTruthy(); });
 });

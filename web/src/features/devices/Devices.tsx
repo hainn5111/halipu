@@ -1,10 +1,14 @@
-import { useEffect, useMemo, useState } from 'react';
+import { lazy, Suspense, useEffect, useMemo, useState } from 'react';
+import { DEVICE_CREATE } from '../../adapters/fonda';
+import { WRITE_ENABLED } from '../../core/flags';
 import { countDevices, listDeviceTypes, listDevices, projectIds } from '../../adapters/fonda';
 import { categoryOf, type DeviceCat } from '../../adapters/fonda/mappers';
 import type { DeviceItem } from '../../core/types';
 
 // Chỉ ĐỌC. Mỗi tab = một nhóm loại thiết bị (theo tên loại). Chip hiện số thiết bị; cột nào không có dữ liệu thì ẩn;
 // bấm một hàng để xem toàn bộ trường API trả về.
+// Thêm thiết bị từ model: chỉ nạp khi bật ghi (bản main không chứa mã này)
+const DeviceCreate = WRITE_ENABLED ? lazy(() => import('./DeviceCreate')) : null;
 interface Src { key: string; pid: string; label: string; value: number }
 
 export default function DeviceTab({ cat }: { cat: DeviceCat }) {
@@ -14,7 +18,7 @@ export default function DeviceTab({ cat }: { cat: DeviceCat }) {
   const [items, setItems] = useState<DeviceItem[]>([]);
   const [row, setRow] = useState<DeviceItem | null>(null);
   const [busy, setBusy] = useState(true);
-  const [err, setErr] = useState('');
+  const [err, setErr] = useState(''), [adding, setAdding] = useState(false), [reload, setReload] = useState(0);
 
   useEffect(() => {
     let live = true;
@@ -46,7 +50,7 @@ export default function DeviceTab({ cat }: { cat: DeviceCat }) {
     setBusy(true); setErr(''); setItems([]); setRow(null);
     listDevices(cur.pid, cur.value).then(r => { if (live) setItems(r); }).catch(e => { if (live) setErr((e as Error).message); }).finally(() => { if (live) setBusy(false); });
     return () => { live = false; };
-  }, [cur?.key]);   // eslint-disable-line react-hooks/exhaustive-deps
+  }, [cur?.key, reload]);   // eslint-disable-line react-hooks/exhaustive-deps
 
   const has = useMemo(() => ({
     uid: items.some(d => d.uid), code: items.some(d => d.code), model: items.some(d => d.model), status: items.some(d => d.status !== undefined),
@@ -58,7 +62,7 @@ export default function DeviceTab({ cat }: { cat: DeviceCat }) {
   return (
     <div className="lcus">
       <div className="listwrap">
-        <p className="sub">{busy ? 'Đang tải…' : cur ? `${items.length} ${cur.label}` : ''}</p>
+        <p className="sub">{busy ? 'Đang tải…' : cur ? `${items.length} ${cur.label}` : ''}{DeviceCreate && cur && DEVICE_CREATE[cur.value] && <button style={{ marginLeft: 12 }} onClick={() => setAdding(true)}>+ Thêm thiết bị…</button>}</p>
         {err && <div className="err">{err}</div>}
         {!busy && !err && !srcs.length && <p className="sub">Dự án không có loại thiết bị này.</p>}
         {shown.length > 0 && <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginBottom: 12 }}>
@@ -81,6 +85,7 @@ export default function DeviceTab({ cat }: { cat: DeviceCat }) {
           <table className="kv"><tbody>{Object.entries(row.raw).filter(([, v]) => v !== null && v !== '').map(([k, v]) => <tr key={k}><td>{k}</td><td>{typeof v === 'object' ? JSON.stringify(v) : String(v)}</td></tr>)}</tbody></table>
         </aside>
       )}
+      {adding && DeviceCreate && cur && <Suspense fallback={null}><DeviceCreate pid={cur.pid} typeValue={cur.value} typeLabel={cur.label} onClose={changed => { setAdding(false); if (changed) setReload(n => n + 1); }} /></Suspense>}
     </div>
   );
 }

@@ -3,7 +3,7 @@ import { call } from '../../core/api';
 import { config } from '../../core/config';
 import type { PoleLinks, DeviceItem, DeviceModel, DeviceType, LampCommand, LightStatus, Lcu, Measurement } from '../../core/types';
 import { WRITE_ENABLED } from '../../core/flags';
-import { modelCloneBody, modelUpdateBody, modelIdsBody, poleTypeSaveBody, poleTypeUpdateBody, poleTypeIdsBody, type PoleTypeIn, type ProtoIn, lcuIdsBody, lcuModelCreateBody, lcuSaveBody, modelCreateBody, poleIdsBody, poleUpdateBody, type GroupInput } from './writeBodies';
+import { kmDetectSaveBody, meterSaveBody, rtuSaveBody, smartBoxSaveBody, modelCloneBody, modelUpdateBody, modelIdsBody, poleTypeSaveBody, poleTypeUpdateBody, poleTypeIdsBody, type PoleTypeIn, type ProtoIn, lcuIdsBody, lcuModelCreateBody, lcuSaveBody, modelCreateBody, poleIdsBody, poleUpdateBody, type GroupInput } from './writeBodies';
 import { lcuSlotCount, mapLcuLamps, mapPoleLinks, mapTypeProtocols, mapFunctions, mapPoleTypes, mapDictionary, type DictItem, type PoleType, mapModels, mapDeviceRow, mapDeviceTypes, mapLight, mapListRow, mapPageRow, mapTrend, mergeLcus, pickGeo, ratedPowerOf, validGeo, type LcuRow } from './mappers';
 
 const PID_KEY = 'pid';
@@ -180,6 +180,16 @@ export const previewModelClone = (projectId: string, base: { typeId: string; typ
 /** Body nhân bản model LCU (xem trước). */
 export const previewLcuModelClone = (projectId: string, base: { typeId: string; config: Record<string, unknown>; protocol: ModelProto }, name: string, remark = '') => lcuModelCreateBody({ typeId: base.typeId, config: base.config, protocol: base.protocol }, name, projectId, remark);
 export const sendModelCreate = (projectId: string, body: Record<string, unknown>) => { assertWrite(); return call('POST', 'deviceModel/saveNew', { projectId, body }); };
+
+// Thêm THIẾT BỊ từ model (payload bắt 2026-11-25): loại → API
+export const DEVICE_CREATE: Record<number, { kind: 'meter' | 'gateway' | 'rtu' | 'switch'; path: string }> = {
+  1: { kind: 'meter', path: 'meterActor/saveNew' }, 3: { kind: 'gateway', path: 'smartBoxActor/save' }, 4: { kind: 'rtu', path: 'rtuActor/saveNew' }, 9: { kind: 'switch', path: 'kmDetectActor/save' },
+};
+export { kmDetectSaveBody, meterSaveBody, rtuSaveBody, smartBoxSaveBody };
+export const sendDeviceCreate = (projectId: string, typeValue: number, body: Record<string, unknown>) => {
+  assertWrite(); const d = DEVICE_CREATE[typeValue]; if (!d) throw new Error('Loại thiết bị này chưa có payload thêm thiết bị');
+  return call('POST', d.path, { projectId, body });
+};
 
 // Template mọi loại + loại cột (payload bắt 2026-11-20, docs/15 §7)
 export { modelCloneBody, modelUpdateBody, modelIdsBody, poleTypeSaveBody, poleTypeUpdateBody, poleTypeIdsBody };

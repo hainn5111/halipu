@@ -317,6 +317,15 @@ Producer (`factoryId`) hiện ở loại 9, 16, 17, 18, 60, 64 và `hasFactoryDe
 
 **Thêm template — cấu hình ban đầu (`templateDefaults.ts`):** gửi cả bộ khoá như Fonda; ô không thuộc loại lấy **giá trị mặc định của Fonda** (`lampLifetime 6000, lampPower 88, nominalPower 110, ratedCurrent 0.4, …`) thay vì 0 của model hệ thống; ô thuộc loại giữ giá trị mẫu (rỗng → mặc định); `extensions`, `functionList`, `poleTypeId`… giữ nguyên.
 
+**Thêm THIẾT BỊ từ model (bắt 2026-11-25) — web: nút "+ Thêm thiết bị…" ở tab loại tương ứng (chỉ preview), `features/devices/DeviceCreate.tsx`, body ở `writeBodies.ts`:**
+| Loại | API | Body (khoá chính) | Phản hồi |
+|---|---|---|---|
+| 4 Concentrator/RTU | `POST rtuActor/saveNew` | `kms[{name,channel,enabled}]`, `dis[{name,channel}]`, `ais[{name,channel}]`, `deviceName/Code`, `sceneType:""`, `deviceModelId`, `deviceId:""`, `uid` (đệm 0 tới 16), `lat/lng` (chuỗi), `geographicAddress`, `deviceStatus:1`, `deviceSource:1`, `projectId` | thiết bị + mỗi kênh có `deviceId`, `atype` (1 = DI, 2 = AI); `uid` bị cắt còn 12 |
+| 1 Electric Meter | `POST meterActor/saveNew` | `deviceName`, `deviceCode`, `mType` (capture 2), `madd` (capture 255), `remark`, `deviceModelId`, `deviceId:""` | `meterId` (không phải deviceId) |
+| 3 Gateway | `POST smartBoxActor/save` | `deviceModelId`, `deviceName`, `uid` (16), `protocolValue` (của model), `sensorUid/transducerAddr/areaId/roadId:""`, `roadDirection/useType:null` | `data` = deviceId (chuỗi) |
+| 9 Switch and detection | `POST kmDetectActor/save` | `deviceName/Code`, `kadd` (capture 255), `deviceConfig:{km[], ai[], di[]}` (mỗi phần tử `{name, channel:"1"…}`) | `deviceConfig` có thêm `id` mỗi kênh |
+Số kênh RTU theo `rtuType` của model (nhãn i18n Fonda): RTU 200 = 4 DO·6 DI·2 AI; RTU 700 = 4 DO·4 AI·2 DI; RTU 200-6DO = 6 DO·4 DI·2 AI; RTU 150 = 4 DO·6 DI; RTU 190 = 1 DO·2 DI; kênh AI đánh số TIẾP sau DI (6 DI → AI 7, 8). `enabled` của km (0/1) — ý nghĩa chưa rõ. Điểm sáng (Lamp Pole) và LCU thêm ở tab riêng (xem trên).
+
 ## 8. Việc còn mở (cập nhật 2026-11-20)
 
 **Đã xong trong đợt này:** thêm/sửa/xoá template mọi loại (`saveNew/updateNew/delete`), thêm/sửa/xoá PoleType, enum theo loại + lọc theo giao thức (§4), giao thức/chức năng theo loại, xác nhận enum nào ở server/front-end, thêm/xoá LCU riêng lẻ (`lcuActor/save`; xoá theo quy ước, chưa bắt).

@@ -176,3 +176,40 @@ export function lcuSaveBody(i: { projectId: string; modelId: string; name: strin
     lightOperated: null, poleSlant: null, temDetection: null, diDetection: null, gps: null, remoteUpgrade: null, energyAccumulation: null, projectId: i.projectId,
   };
 }
+
+// ---- Thêm THIẾT BỊ từ model (bắt 2026-11-25, docs/15 §7): Concentrator/RTU, Công tơ, Gateway, Switch and detection ----
+/** UID: Fonda đệm số 0 phía trước tới độ dài cố định (RTU/Gateway 16 ký tự hex; LCU 12). */
+export const padUid = (u: string, n = 16) => u.trim().toUpperCase().padStart(n, '0');
+export const uidHexError = (u: string, max = 16): string | null => (/^[0-9A-Fa-f]{1,16}$/.test(u.trim()) && u.trim().length <= max ? null : `UID chỉ gồm 0–9, A–F, tối đa ${max} ký tự`);
+
+/** Số kênh của từng loại Concentrator (`rtuType`; nhãn i18n Fonda: RTU200 4DO·6DI·2AI, RTU700 4DO·2DI·4AI, RTU200-6DO 6DO·4DI·2AI, RTU150 4DO·6DI, RTU190 1DO·2DI). */
+export const RTU_CHANNELS: Record<number, { km: number; di: number; ai: number }> = { 1: { km: 4, di: 6, ai: 2 }, 2: { km: 4, di: 2, ai: 4 }, 5: { km: 6, di: 4, ai: 2 }, 4: { km: 4, di: 6, ai: 0 }, 3: { km: 1, di: 2, ai: 0 } };
+
+export interface RtuSaveInput { projectId: string; modelId: string; name: string; code: string; uid: string; lat: string; lng: string; address: string; kms: Array<{ name: string; enabled: number }>; dis: Array<{ name: string }>; ais: Array<{ name: string }> }
+/** rtuActor/saveNew — kênh km/di đánh số 1..n; ai đánh số TIẾP sau di (vd 6 DI → AI là 7, 8). */
+export function rtuSaveBody(i: RtuSaveInput): Rec {
+  return {
+    kms: i.kms.map((k, n) => ({ name: k.name, channel: n + 1, enabled: k.enabled })),
+    dis: i.dis.map((d, n) => ({ name: d.name, channel: n + 1 })),
+    ais: i.ais.map((a, n) => ({ name: a.name, channel: i.dis.length + n + 1 })),
+    deviceStatus: 1, deviceName: i.name, deviceCode: i.code, sceneType: '', deviceModelId: i.modelId, deviceId: '', uid: padUid(i.uid),
+    lat: i.lat.trim(), lng: i.lng.trim(), geographicAddress: i.address.trim(), projectId: i.projectId, deviceSource: 1,
+  };
+}
+export interface MeterSaveInput { projectId: string; modelId: string; name: string; code: string; mType: number; madd: number; remark: string }
+/** meterActor/saveNew */
+export const meterSaveBody = (i: MeterSaveInput): Rec => ({ deviceStatus: 1, deviceName: i.name, deviceCode: i.code, mType: i.mType, madd: i.madd, remark: i.remark, deviceId: '', deviceModelId: i.modelId, projectId: i.projectId, deviceSource: 1 });
+
+export interface SmartBoxSaveInput { projectId: string; modelId: string; name: string; uid: string; protocolValue: number }
+/** smartBoxActor/save (Gateway) — `data` trả thẳng deviceId (chuỗi). */
+export const smartBoxSaveBody = (i: SmartBoxSaveInput): Rec => ({
+  deviceId: '', deviceModelId: i.modelId, deviceCode: '', sensorUid: '', deviceStatus: 1, transducerAddr: '', areaId: '', roadId: '', roadDirection: null, useType: null, deviceSource: 1,
+  projectId: i.projectId, protocolValue: i.protocolValue, deviceName: i.name, uid: padUid(i.uid),
+});
+
+export interface KmDetectSaveInput { projectId: string; modelId: string; name: string; code: string; kadd: number; km: string[]; ai: string[]; di: string[] }
+/** kmDetectActor/save (Switch and detection) — `channel` là CHUỖI "1".."n". */
+export const kmDetectSaveBody = (i: KmDetectSaveInput): Rec => {
+  const ch = (names: string[]) => names.map((name, n) => ({ name, channel: String(n + 1) }));
+  return { deviceStatus: 1, deviceName: i.name, deviceCode: i.code, deviceConfig: { km: ch(i.km), ai: ch(i.ai), di: ch(i.di) }, kadd: i.kadd, deviceId: '', deviceModelId: i.modelId, projectId: i.projectId, deviceSource: 1 };
+};
