@@ -213,3 +213,15 @@ export const kmDetectSaveBody = (i: KmDetectSaveInput): Rec => {
   const ch = (names: string[]) => names.map((name, n) => ({ name, channel: String(n + 1) }));
   return { deviceStatus: 1, deviceName: i.name, deviceCode: i.code, deviceConfig: { km: ch(i.km), ai: ch(i.ai), di: ch(i.di) }, kadd: i.kadd, deviceId: '', deviceModelId: i.modelId, projectId: i.projectId, deviceSource: 1 };
 };
+
+// ---- Xoá thiết bị & liên kết RTU (bắt 2026-11-25) ----
+/** Body chung của kiểm tra liên quan / xoá thiết bị: `{deviceIdList:[id…], deviceTypeValue}`. */
+export const deviceIdsBody = (ids: string[], typeValue: number): Rec => ({ deviceIdList: ids, deviceTypeValue: typeValue });
+
+export type RtuLinkKind = 'lcu' | 'meter' | 'km';
+/** `<actor>/updateRtuId`: gắn thiết bị vào RTU (Concentrator) hoặc gỡ (`rtu` rỗng → `rtuId:null`). LCU/km gửi kèm `cuid` = UID của RTU; công tơ không có `cuid`. */
+export function rtuLinkBody(kind: RtuLinkKind, ids: string[], rtu?: { id: string; uid: string }): Rec {
+  const key = kind === 'lcu' ? 'lcuIds' : kind === 'meter' ? 'meterIds' : 'kmIds';
+  if (rtu) return kind === 'meter' ? { rtuId: rtu.id, [key]: ids } : { rtuId: rtu.id, cuid: rtu.uid, [key]: ids };
+  return kind === 'km' ? { rtuId: null, cuid: null, [key]: ids } : { rtuId: null, [key]: ids };
+}

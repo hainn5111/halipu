@@ -326,6 +326,23 @@ Producer (`factoryId`) hiện ở loại 9, 16, 17, 18, 60, 64 và `hasFactoryDe
 | 9 Switch and detection | `POST kmDetectActor/save` | `deviceName/Code`, `kadd` (địa chỉ — người dùng tự nhập), `deviceConfig:{km[], ai[], di[]}` (mỗi phần tử `{name, channel:"1"…}`) | `deviceConfig` có thêm `id` mỗi kênh |
 Số kênh RTU theo `rtuType` của model (nhãn i18n Fonda): RTU 200 = 4 DO·6 DI·2 AI; RTU 700 = 4 DO·4 AI·2 DI; RTU 200-6DO = 6 DO·4 DI·2 AI; RTU 150 = 4 DO·6 DI; RTU 190 = 1 DO·2 DI; kênh AI đánh số TIẾP sau DI (6 DI → AI 7, 8). `enabled` của km (0/1) — ý nghĩa chưa rõ (DO/DI chưa dùng, bổ sung sau). **Mọi form thêm thiết bị (và Thêm LCU) có khung "Body JSON (sửa tay)" + tick "Bỏ qua kiểm tra"** để gửi body tuỳ ý (thử vượt ràng buộc của hệ thống). Điểm sáng (Lamp Pole) và LCU thêm ở tab riêng (xem trên).
 
+**Xoá thiết bị và liên kết RTU (bắt 2026-11-25).** Web (chỉ preview): nút "Xoá thiết bị đã chọn…" và "Liên kết RTU…" ở tab loại tương ứng (và "Liên kết RTU…" ở tab Danh sách LCU); `features/devices/RtuLink.tsx`.
+- **Xoá = kiểm tra liên quan rồi xoá**, cùng body `{deviceIdList:[id], deviceTypeValue}`; kiểm tra trả số đối tượng liên quan (0 = xoá được):
+  | Loại | Kiểm tra | Xoá |
+  |---|---|---|
+  | 4 Concentrator/RTU | `device/checkDeviceRelatedNew` | `rtuActor/deleteNew` |
+  | 1 Electric Meter | `device/checkDeviceRelatedNew` | `meterActor/deleteNew` |
+  | 3 Gateway | `device/checkDeviceRelated` | `smartBoxActor/delete` |
+  | 9 Switch and detection | `device/checkDeviceRelatedNew` | `kmDetectActor/delete` |
+  Mẫu này củng cố giả định của `lcuActor/delete` (cùng dạng `<actor>/delete` + `{deviceIdList, deviceTypeValue:2}`, chưa bắt riêng LCU). Phản hồi xoá `data:null`.
+- **Liên kết thiết bị ↔ RTU (Concentrator)** — `POST <actor>/updateRtuId`, trả `data:1` (thông báo tiếng Trung `操作成功!` vì thiếu `lang`):
+  | Thiết bị | API | Gắn | Gỡ |
+  |---|---|---|---|
+  | LCU (2) | `lcuActor/updateRtuId` | `{rtuId, cuid, lcuIds:[…]}` | `{rtuId:null, lcuIds}` |
+  | Công tơ (1) | `meterActor/updateRtuId` | `{rtuId, meterIds:[…]}` | `{rtuId:null, meterIds}` |
+  | Switch (9) | `kmDetectActor/updateRtuId` | `{rtuId, cuid, kmIds:[…]}` | `{rtuId:null, cuid:null, kmIds}` |
+  `rtuId` = deviceId của RTU; `cuid` = UID của RTU (12 ký tự, đã cắt số 0 đầu). Đọc `rtuId` hiện tại từ trường `rtuId` của bản ghi thiết bị.
+
 ## 8. Việc còn mở (cập nhật 2026-11-20)
 
 **Đã xong trong đợt này:** thêm/sửa/xoá template mọi loại (`saveNew/updateNew/delete`), thêm/sửa/xoá PoleType, enum theo loại + lọc theo giao thức (§4), giao thức/chức năng theo loại, xác nhận enum nào ở server/front-end, thêm/xoá LCU riêng lẻ (`lcuActor/save`; xoá theo quy ước, chưa bắt).

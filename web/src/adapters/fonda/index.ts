@@ -3,7 +3,7 @@ import { call } from '../../core/api';
 import { config } from '../../core/config';
 import type { PoleLinks, DeviceItem, DeviceModel, DeviceType, LampCommand, LightStatus, Lcu, Measurement } from '../../core/types';
 import { WRITE_ENABLED } from '../../core/flags';
-import { kmDetectSaveBody, meterSaveBody, rtuSaveBody, smartBoxSaveBody, modelCloneBody, modelUpdateBody, modelIdsBody, poleTypeSaveBody, poleTypeUpdateBody, poleTypeIdsBody, type PoleTypeIn, type ProtoIn, lcuIdsBody, lcuModelCreateBody, lcuSaveBody, modelCreateBody, poleIdsBody, poleUpdateBody, type GroupInput } from './writeBodies';
+import { deviceIdsBody, rtuLinkBody, kmDetectSaveBody, meterSaveBody, rtuSaveBody, smartBoxSaveBody, modelCloneBody, modelUpdateBody, modelIdsBody, poleTypeSaveBody, poleTypeUpdateBody, poleTypeIdsBody, type PoleTypeIn, type ProtoIn, lcuIdsBody, lcuModelCreateBody, lcuSaveBody, modelCreateBody, poleIdsBody, poleUpdateBody, type GroupInput } from './writeBodies';
 import { lcuSlotCount, mapLcuLamps, mapPoleLinks, mapTypeProtocols, mapFunctions, mapPoleTypes, mapDictionary, type DictItem, type PoleType, mapModels, mapDeviceRow, mapDeviceTypes, mapLight, mapListRow, mapPageRow, mapTrend, mergeLcus, pickGeo, ratedPowerOf, validGeo, type LcuRow } from './mappers';
 
 const PID_KEY = 'pid';
@@ -186,6 +186,21 @@ export const DEVICE_CREATE: Record<number, { kind: 'meter' | 'gateway' | 'rtu' |
   1: { kind: 'meter', path: 'meterActor/saveNew' }, 3: { kind: 'gateway', path: 'smartBoxActor/save' }, 4: { kind: 'rtu', path: 'rtuActor/saveNew' }, 9: { kind: 'switch', path: 'kmDetectActor/save' },
 };
 export { kmDetectSaveBody, meterSaveBody, rtuSaveBody, smartBoxSaveBody };
+// Xoá thiết bị: kiểm tra liên quan rồi xoá (bắt 2026-11-25). Lưu ý RTU/Công tơ dùng `checkDeviceRelatedNew` + `deleteNew`; Gateway/Switch/LCU dùng `checkDeviceRelated` (Switch: New) + `delete`.
+export const DEVICE_DELETE: Record<number, { check: string; del: string }> = {
+  1: { check: 'device/checkDeviceRelatedNew', del: 'meterActor/deleteNew' }, 3: { check: 'device/checkDeviceRelated', del: 'smartBoxActor/delete' },
+  4: { check: 'device/checkDeviceRelatedNew', del: 'rtuActor/deleteNew' }, 9: { check: 'device/checkDeviceRelatedNew', del: 'kmDetectActor/delete' },
+};
+export const deviceRelatedCount = async (projectId: string, typeValue: number, id: string): Promise<number> => {
+  const d = DEVICE_DELETE[typeValue]; if (!d) throw new Error('Loại này chưa có payload xoá');
+  return Number(await call('POST', d.check, { projectId, body: deviceIdsBody([id], typeValue) })) || 0;
+};
+export const sendDeviceDelete = (projectId: string, typeValue: number, id: string) => { assertWrite(); const d = DEVICE_DELETE[typeValue]; if (!d) throw new Error('Loại này chưa có payload xoá'); return call('POST', d.del, { projectId, body: deviceIdsBody([id], typeValue) }); };
+// Liên kết thiết bị ↔ RTU: loại thiết bị → API
+export const RTU_LINK: Record<number, { kind: 'lcu' | 'meter' | 'km'; path: string }> = { 2: { kind: 'lcu', path: 'lcuActor/updateRtuId' }, 1: { kind: 'meter', path: 'meterActor/updateRtuId' }, 9: { kind: 'km', path: 'kmDetectActor/updateRtuId' } };
+export { deviceIdsBody, rtuLinkBody };
+export const sendRtuLink = (projectId: string, typeValue: number, body: Record<string, unknown>) => { assertWrite(); const d = RTU_LINK[typeValue]; if (!d) throw new Error('Loại này chưa có payload liên kết RTU'); return call('POST', d.path, { projectId, body }); };
+
 export const sendDeviceCreate = (projectId: string, typeValue: number, body: Record<string, unknown>) => {
   assertWrite(); const d = DEVICE_CREATE[typeValue]; if (!d) throw new Error('Loại thiết bị này chưa có payload thêm thiết bị');
   return call('POST', d.path, { projectId, body });

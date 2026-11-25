@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { kmDetectSaveBody, meterSaveBody, padUid, rtuSaveBody, smartBoxSaveBody, uidHexError, modelCloneBody, modelUpdateBody, modelIdsBody, modelNameError, poleTypeError, poleTypeSaveBody, poleTypeUpdateBody, poleTypeIdsBody, lcuIdsBody, lcuModelCreateBody, lcuSaveBody, modelCreateBody, poleIdsBody, poleUpdateBody } from './writeBodies';
+import { deviceIdsBody, rtuLinkBody, kmDetectSaveBody, meterSaveBody, padUid, rtuSaveBody, smartBoxSaveBody, uidHexError, modelCloneBody, modelUpdateBody, modelIdsBody, modelNameError, poleTypeError, poleTypeSaveBody, poleTypeUpdateBody, poleTypeIdsBody, lcuIdsBody, lcuModelCreateBody, lcuSaveBody, modelCreateBody, poleIdsBody, poleUpdateBody } from './writeBodies';
 
 describe('modelCreateBody', () => {
   it('khớp payload đã bắt (deviceModelId rỗng, deviceConfig là object)', () => {
@@ -166,4 +166,19 @@ describe('thêm thiết bị từ model — khớp capture thật 2026-11-25', (
     expect(b).toEqual({ deviceStatus: 1, deviceName: 'TEST', deviceCode: '1231484512315', deviceConfig: { km: [{ name: 'KM2551', channel: '1' }, { name: 'KM2552', channel: '2' }], ai: [], di: [] }, kadd: 255, deviceId: '', deviceModelId: 'c66eeea26cff48bf956b5abea698fbef', projectId, deviceSource: 1 });
   });
   it('padUid / uidHexError', () => { expect(padUid('ab')).toBe('00000000000000AB'); expect(uidHexError('zz')).toBeTruthy(); expect(uidHexError('1234567890ABCDEF')).toBeNull(); expect(uidHexError('1234567890ABCDEF0')).toBeTruthy(); });
+});
+
+describe('xoá thiết bị & liên kết RTU — khớp capture 2026-11-25', () => {
+  const rtu = { id: '1209ceea3db64dbda3181f6ca825f05c', uid: '122412355656' };
+  it('deviceIdsBody', () => { expect(deviceIdsBody(['x'], 4)).toEqual({ deviceIdList: ['x'], deviceTypeValue: 4 }); });
+  it('gắn vào RTU', () => {
+    expect(rtuLinkBody('lcu', ['L'], rtu)).toEqual({ rtuId: rtu.id, cuid: '122412355656', lcuIds: ['L'] });
+    expect(rtuLinkBody('meter', ['M'], rtu)).toEqual({ rtuId: rtu.id, meterIds: ['M'] });
+    expect(rtuLinkBody('km', ['K'], rtu)).toEqual({ rtuId: rtu.id, cuid: '122412355656', kmIds: ['K'] });
+  });
+  it('gỡ khỏi RTU', () => {
+    expect(rtuLinkBody('lcu', ['L'])).toEqual({ rtuId: null, lcuIds: ['L'] });
+    expect(rtuLinkBody('meter', ['M'])).toEqual({ rtuId: null, meterIds: ['M'] });
+    expect(rtuLinkBody('km', ['K'])).toEqual({ rtuId: null, cuid: null, kmIds: ['K'] });
+  });
 });
