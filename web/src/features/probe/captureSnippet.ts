@@ -96,7 +96,7 @@ export function installCapture(win: any): any {
       const a = win.document.createElement('a'); a.href = URL.createObjectURL(blob);
       a.download = `fonda-capture-${new Date().toISOString().replace(/[:.]/g, '-')}.json`; a.click(); URL.revokeObjectURL(a.href);
     },
-    clear() { log.length = 0; badge(); },
+    clear() { log.length = 0; wsCount = 0; badge(); },
   };
   win.__capture = api; badge();
   return api;
