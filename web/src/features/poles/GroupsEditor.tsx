@@ -26,7 +26,7 @@ export default function GroupsEditor({ groups, onChange, catalog, takenLcuIds = 
               <button className="b" style={{ marginLeft: 'auto' }} onClick={() => onChange(groups.filter((_, k) => k !== i))}>Bỏ bộ</button>
             </div>
             {g.kind === 'existing' && (free.length
-              ? <select style={{ ...w, marginTop: 8 }} value={g.lcuId} onChange={e => upd(i, { lcuId: e.target.value })}>{free.map(l => <option key={l.id} value={l.id}>{l.uid} — {l.name} ({l.model}, {l.slots} đầu đèn)</option>)}</select>
+              ? <select style={{ ...w, marginTop: 8 }} value={g.lcuId} onChange={e => upd(i, { lcuId: e.target.value })}>{free.map(l => <option key={l.id} value={l.id}>{l.uid} — {l.name} (model {l.model}, {l.slots} đầu đèn)</option>)}</select>
               : <p className="err" style={{ margin: '8px 0 0' }}>Không còn LCU nào chưa gắn điểm sáng.</p>)}
             {g.kind === 'new' && (
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginTop: 8 }}>

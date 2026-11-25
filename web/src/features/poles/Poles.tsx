@@ -30,7 +30,7 @@ function ChannelStrip({ lcuSlots, lcuLamps, attrLamps }: { lcuSlots?: number; lc
       <div style={{ display: 'grid', gridTemplateColumns: 'auto 1fr', gap: '2px 8px', fontSize: 13 }}>
         {rows.map(r => (<span key={r.channel} style={{ display: 'contents' }}>
           <span style={{ color: 'var(--muted)' }}>kênh {r.channel}</span>
-          <span>{r.lamps.map(l => `${l.name}${l.model ? ` — ${l.model}` : ''}`).join(' · ') || <i style={{ color: 'var(--muted)' }}>(trống)</i>}</span>
+          <span>{r.lamps.map(l => `${l.name}${l.model ? ` — model ${l.model}` : ''}`).join(' · ') || <i style={{ color: 'var(--muted)' }}>(trống)</i>}</span>
         </span>))}
       </div>
       {diff && <div className="sub" style={{ margin: '4px 0 0', color: 'var(--bad)' }}>Đèn của LCU khác danh sách trên điểm sáng — đang hiện theo dữ liệu của LCU.</div>}
@@ -117,7 +117,7 @@ export default function Poles() {
         {err && <div className="err">{err}</div>}
         {!busy && !err && !poles.length && <p className="sub">Dự án chưa có điểm sáng.</p>}
         {poles.length > 0 && (
-          <table><thead><tr><th>#</th><th>Tên</th><th>Mã</th><th>Model điểm sáng</th><th>Toạ độ</th><th>Địa chỉ</th></tr></thead>
+          <table><thead><tr><th>#</th><th>Tên</th><th>Mã</th><th>Model cột</th><th>Toạ độ</th><th>Địa chỉ</th></tr></thead>
             <tbody>{poles.map((p, i) => (
               <tr key={p.id} className={'lrow' + (p.id === sel?.id ? ' sel' : '')} onClick={() => setSel(p)}>
                 <td>{i + 1}</td><td><b>{p.name}</b></td><td>{p.code}</td><td>{p.model}</td>
@@ -128,7 +128,7 @@ export default function Poles() {
         <aside className="drawer">
           <button className="x" onClick={() => setSel(null)}>✕</button>
           <h2>{sel.name}</h2>
-          <p className="sub" style={{ margin: '4px 0 0' }}>{sel.model}{sel.address ? ` · ${sel.address}` : ''}</p>
+          <p className="sub" style={{ margin: '4px 0 0' }}>{sel.model ? `Model cột: ${sel.model}` : ''}{sel.address ? ` · ${sel.address}` : ''}</p>
           {linkBusy && <p className="sub">Đang đọc liên kết…</p>}
           {linkErr && <div className="err">{linkErr}</div>}
           {links && <>
@@ -141,7 +141,7 @@ export default function Poles() {
             {links.groups.map((g, i) => (
               <div key={i} style={{ marginBottom: 10, paddingLeft: 8, borderLeft: `3px solid ${g.lcu ? 'var(--accent)' : 'var(--line)'}` }}>
                 <b>{g.lcu ? `LCU ${g.lcu.uid}` : 'LCU N/A'}</b>{WRITE_ENABLED && <button className="b" style={{ marginLeft: 8, padding: '1px 8px', fontSize: 11 }} onClick={() => void askRemoveGroup(i)}>Gỡ bộ…</button>}
-                <div className="sub" style={{ margin: 0 }}>{g.lcu ? `${g.lcu.model}${g.lcu.slots ? ` · ${g.lcu.slots} đầu đèn` : ''}` : 'Đèn gắn thẳng điểm sáng (chưa gắn LCU)'}</div>
+                <div className="sub" style={{ margin: 0 }}>{g.lcu ? `Model ${g.lcu.model}${g.lcu.slots ? ` · ${g.lcu.slots} đầu đèn` : ''}` : 'Đèn gắn thẳng điểm sáng (chưa gắn LCU)'}</div>
                 {g.lcu
                   ? <ChannelStrip lcuSlots={g.lcu.slots} lcuLamps={g.lcuLamps} attrLamps={g.lamps} />
                   : <div style={{ marginTop: 4 }}>
@@ -149,7 +149,7 @@ export default function Poles() {
                       <div style={{ display: 'grid', gridTemplateColumns: 'auto 1fr', gap: '2px 8px', fontSize: 13 }}>
                         {g.lamps.map(l => (<span key={l.id} style={{ display: 'contents', opacity: l.checked ? 1 : .5 }}>
                           <span style={{ color: 'var(--muted)' }}>kênh N/A</span>
-                          <span>{l.name}{l.model ? ` — ${l.model}` : ''}{l.checked ? '' : ' (ô chưa chọn)'}</span>
+                          <span>{l.name}{l.model ? ` — model ${l.model}` : ''}{l.checked ? '' : ' (ô chưa chọn)'}</span>
                         </span>))}
                       </div>
                     </div>}

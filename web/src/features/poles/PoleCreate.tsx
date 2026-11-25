@@ -24,7 +24,7 @@ export default function PoleCreate({ pid, onClose }: { pid: string; onClose: (ch
   }, [pid]);
 
   const built = useMemo(() => cat ? poleCreateBody({ projectId: pid, poleModelId: f.model, name: f.name, code: f.code, lat: f.lat, lng: f.lng, address: f.address, groups: groups.map(g => toInput(g, cat)) }) : null, [cat, f, groups, pid]);
-  if (confirm) return <ConfirmWrite title={`Thêm điểm sáng "${f.name.trim()}"`} summary={`Template điểm sáng: ${cat?.poleModels.find(m => m.id === f.model)?.name}. ${groups.length} bộ đèn–LCU.`}
+  if (confirm) return <ConfirmWrite title={`Thêm điểm sáng "${f.name.trim()}"`} summary={`Model cột: ${cat?.poleModels.find(m => m.id === f.model)?.name}. ${groups.length} bộ đèn–LCU.`}
     method="POST" path="poleActor/save" body={confirm} onConfirm={async () => { await sendPoleCreate(pid, confirm); }} onClose={changed => { if (changed) onClose(true); else setConfirm(null); }} />;
   const field = (label: string, el: JSX.Element) => <label style={{ display: 'block', marginTop: 8 }}><span className="sub">{label}</span>{el}</label>;
   return (
@@ -34,7 +34,7 @@ export default function PoleCreate({ pid, onClose }: { pid: string; onClose: (ch
         <p className="sub" style={{ margin: 0 }}>Mỗi “bộ” là đèn kèm LCU (có sẵn / tạo mới) hoặc đèn gắn thẳng điểm sáng không LCU.</p>
         {!cat && !err && <p className="sub">Đang tải…</p>}{err && <div className="err">{err}</div>}
         {cat && (<>
-          {field('Template điểm sáng', <select style={{ width: '100%' }} value={f.model} onChange={e => set('model', e.target.value)}>{cat.poleModels.map(m => <option key={m.id} value={m.id}>{m.name}</option>)}</select>)}
+          {field('Model cột', <select style={{ width: '100%' }} value={f.model} onChange={e => set('model', e.target.value)}>{cat.poleModels.map(m => <option key={m.id} value={m.id}>{m.name}</option>)}</select>)}
           {field('Tên điểm sáng', <input style={{ width: '100%' }} value={f.name} onChange={e => set('name', e.target.value)} />)}
           {field('Mã điểm sáng (để trống = dùng tên)', <input style={{ width: '100%' }} value={f.code} onChange={e => set('code', e.target.value)} />)}
           <div style={{ display: 'flex', gap: 8 }}>
