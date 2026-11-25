@@ -67,7 +67,7 @@ export function installCapture(win: any): any {
     const origSend = WSC.prototype.send;
     WSC.prototype.send = function (this: any, d: any) { try { hookWs(this); wsRec('send', this.__capUrl || '', d); } catch { /* bỏ qua */ } return origSend.call(this, d); };
   }
-  let el: any = null, el2: any = null;
+  let el: any = null, el2: any = null, el3: any = null;
   function badge() {
     try {
       if (!win.document?.body) return;
@@ -81,6 +81,12 @@ export function installCapture(win: any): any {
         el2.style.cssText = 'position:fixed;right:12px;bottom:52px;z-index:2147483647;padding:6px 10px;border:0;border-radius:8px;background:#38bdf8;color:#111;font:600 12px sans-serif;cursor:pointer';
         el2.onclick = () => api.download(true);
         win.document.body.appendChild(el2);
+        // Nút thứ ba: xoá toàn bộ bản ghi để bắt lại từ đầu
+        el3 = win.document.createElement('button');
+        el3.style.cssText = 'position:fixed;right:12px;bottom:86px;z-index:2147483647;padding:6px 10px;border:0;border-radius:8px;background:#f87171;color:#111;font:600 12px sans-serif;cursor:pointer';
+        el3.textContent = '🗑 Xoá bản ghi';
+        el3.onclick = () => api.clear();
+        win.document.body.appendChild(el3);
       }
       el.textContent = `⬇ Capture: ${log.filter(x => x.write).length} ghi / ${log.length} tổng`;
       if (el2) el2.textContent = `⬇ Tải tất cả (${log.length}: ${log.filter(x => x.method === 'WS').length} WS, gồm truy vấn)`;
