@@ -1,8 +1,8 @@
 import type { PoleCatalog } from '../../adapters/fonda';
 import { emptyGroup, type GroupForm, type LampForm } from './groups';
 
-// Danh sách các "bộ" đèn–LCU của một cột (giống form Fonda): mỗi bộ chọn kiểu LCU (không có / có sẵn / tạo mới) và khai các đèn.
-interface Props { groups: GroupForm[]; onChange: (g: GroupForm[]) => void; catalog: PoleCatalog; /** LCU đã dùng ở nơi khác (cột hiện có) */ takenLcuIds?: string[] }
+// Danh sách các "bộ" đèn–LCU của một điểm sáng (giống form Fonda): mỗi bộ chọn kiểu LCU (không có / có sẵn / tạo mới) và khai các đèn.
+interface Props { groups: GroupForm[]; onChange: (g: GroupForm[]) => void; catalog: PoleCatalog; /** LCU đã dùng ở nơi khác (điểm sáng hiện có) */ takenLcuIds?: string[] }
 
 export default function GroupsEditor({ groups, onChange, catalog, takenLcuIds = [] }: Props) {
   const upd = (i: number, patch: Partial<GroupForm>) => onChange(groups.map((g, k) => (k === i ? { ...g, ...patch } : g)));
@@ -19,7 +19,7 @@ export default function GroupsEditor({ groups, onChange, catalog, takenLcuIds = 
             <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
               <b>Bộ #{i + 1}</b>
               <select value={g.kind} onChange={e => upd(i, { kind: e.target.value as GroupForm['kind'], lcuId: g.lcuId || free[0]?.id || '', lamps: e.target.value === 'none' ? g.lamps.slice(0, 1).map(l => ({ ...l, channel: 1 })) : g.lamps })}>
-                <option value="none">Đèn không LCU (gắn thẳng cột)</option>
+                <option value="none">Đèn không LCU (gắn thẳng điểm sáng)</option>
                 <option value="existing">LCU có sẵn</option>
                 <option value="new">Tạo LCU mới</option>
               </select>
@@ -27,14 +27,14 @@ export default function GroupsEditor({ groups, onChange, catalog, takenLcuIds = 
             </div>
             {g.kind === 'existing' && (free.length
               ? <select style={{ ...w, marginTop: 8 }} value={g.lcuId} onChange={e => upd(i, { lcuId: e.target.value })}>{free.map(l => <option key={l.id} value={l.id}>{l.uid} — {l.name} ({l.model}, {l.slots} đầu đèn)</option>)}</select>
-              : <p className="err" style={{ margin: '8px 0 0' }}>Không còn LCU nào chưa gắn cột.</p>)}
+              : <p className="err" style={{ margin: '8px 0 0' }}>Không còn LCU nào chưa gắn điểm sáng.</p>)}
             {g.kind === 'new' && (
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginTop: 8 }}>
                 <select style={{ gridColumn: '1 / -1' }} value={g.newModel} onChange={e => upd(i, { newModel: e.target.value })}>{catalog.lcuModels.map(m => <option key={m.id} value={m.id}>{m.name} ({m.slots} đầu đèn{Number.isNaN(m.protocolValue) ? ', thiếu giao thức' : ''})</option>)}</select>
                 <input placeholder="Tên LCU" value={g.newName} onChange={e => upd(i, { newName: e.target.value })} />
                 <input placeholder="UID (hex, vd 789DDD)" value={g.newUid} onChange={e => upd(i, { newUid: e.target.value })} />
               </div>)}
-            {g.kind === 'none' && <p className="sub" style={{ margin: '8px 0 0' }}>LCU: <b>N/A</b> — đèn gắn thẳng cột, 1 đèn.</p>}
+            {g.kind === 'none' && <p className="sub" style={{ margin: '8px 0 0' }}>LCU: <b>N/A</b> — đèn gắn thẳng điểm sáng, 1 đèn.</p>}
             {g.kind !== 'none' && <p className="sub" style={{ margin: '8px 0 0' }}>LCU này có <b>{slots}</b> đầu đèn (cố định theo model) — tối đa {slots} đèn, kênh 1..{slots}.</p>}
             {g.lamps.map((l, j) => (
               <div key={j} style={{ display: 'flex', gap: 6, marginTop: 8, alignItems: 'center' }}>

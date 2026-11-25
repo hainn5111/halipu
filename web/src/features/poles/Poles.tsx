@@ -4,16 +4,16 @@ import { channelRows, lcuSlotCount } from '../../adapters/fonda/mappers';
 import { poleIdsBody } from '../../adapters/fonda/writeBodies';
 import { WRITE_ENABLED } from '../../core/flags';
 import ConfirmWrite from '../common/ConfirmWrite';
-// Form thêm cột chỉ nạp khi bật ghi: bản main không chứa mã này (hằng số WRITE_ENABLED được gập lúc build).
+// Form thêm điểm sáng chỉ nạp khi bật ghi: bản main không chứa mã này (hằng số WRITE_ENABLED được gập lúc build).
 const PoleCreate = WRITE_ENABLED ? lazy(() => import('./PoleCreate')) : null;
-// Thêm bộ vào cột có sẵn = PUT poleActor/update với bộ mới nối vào attributeDevice (đã bắt: bộ dùng LCU có sẵn). Lần thử đầu bị từ chối
+// Thêm bộ vào điểm sáng có sẵn = PUT poleActor/update với bộ mới nối vào attributeDevice (đã bắt: bộ dùng LCU có sẵn). Lần thử đầu bị từ chối
 // ("Parameter deviceId cannot be empty") vì thiếu `checkNum` ở đèn mới — đã sửa theo capture (docs/15 §7).
 const ADD_GROUP_TO_EXISTING = true;
 const PoleAddGroups = WRITE_ENABLED && ADD_GROUP_TO_EXISTING ? lazy(() => import('./PoleAddGroups')) : null;
 import type { DeviceItem, PoleLamp, PoleLinks } from '../../core/types';
 
-// Điểm sáng và liên kết (cột – LCU – đèn) — chỉ ĐỌC. Danh sách cột; bấm một cột để xem cái gì đang gắn trên nó:
-// LCU kèm đèn theo kênh, đèn gắn thẳng vào cột (chưa có LCU), và thiết bị khác (camera, cảm biến…).
+// Điểm sáng và liên kết (điểm sáng – LCU – đèn) — chỉ ĐỌC. Danh sách điểm sáng; bấm một điểm sáng để xem cái gì đang gắn trên nó:
+// LCU kèm đèn theo kênh, đèn gắn thẳng vào điểm sáng (chưa có LCU), và thiết bị khác (camera, cảm biến…).
 type Pole = DeviceItem & { pid: string };
 const POLE_TYPE = /lamp\s*pole/i;
 
@@ -33,7 +33,7 @@ function ChannelStrip({ lcuSlots, lcuLamps, attrLamps }: { lcuSlots?: number; lc
           <span>{r.lamps.map(l => `${l.name}${l.model ? ` — ${l.model}` : ''}`).join(' · ') || <i style={{ color: 'var(--muted)' }}>(trống)</i>}</span>
         </span>))}
       </div>
-      {diff && <div className="sub" style={{ margin: '4px 0 0', color: 'var(--bad)' }}>Đèn của LCU khác danh sách trên cột — đang hiện theo dữ liệu của LCU.</div>}
+      {diff && <div className="sub" style={{ margin: '4px 0 0', color: 'var(--bad)' }}>Đèn của LCU khác danh sách trên điểm sáng — đang hiện theo dữ liệu của LCU.</div>}
     </div>
   );
 }
@@ -85,7 +85,7 @@ export default function Poles() {
     try {
       const r = await previewPoleUpdate(sel.pid, sel.id, { deviceName: edit.name.trim(), deviceCode: edit.code.trim() });
       if (!r.ok) { setWriteMsg(r.reason); return; }
-      setConfirm({ title: `Sửa cột "${sel.name}"`, summary: `Tên: "${edit.name.trim()}" · Mã: "${edit.code.trim()}". Các LCU/đèn đang gắn được gửi lại nguyên vẹn.`, method: 'PUT', path: 'poleActor/update', body: r.body, run: async () => { await sendPoleUpdate(sel.pid, r.body); } });
+      setConfirm({ title: `Sửa điểm sáng "${sel.name}"`, summary: `Tên: "${edit.name.trim()}" · Mã: "${edit.code.trim()}". Các LCU/đèn đang gắn được gửi lại nguyên vẹn.`, method: 'PUT', path: 'poleActor/update', body: r.body, run: async () => { await sendPoleUpdate(sel.pid, r.body); } });
     } catch (e) { setWriteMsg((e as Error).message); }
   }
   async function askRemoveGroup(i: number) {
@@ -94,17 +94,17 @@ export default function Poles() {
     try {
       const r = await previewPoleUpdate(sel.pid, sel.id, {}, [], [i]);
       if (!r.ok) { setWriteMsg(r.reason); return; }
-      setConfirm({ title: `Gỡ bộ #${i + 1} khỏi cột "${sel.name}"`, summary: 'Đánh dấu bộ này là remove:true (đúng cách web Fonda gốc gỡ; bộ có LCU hay không đều như nhau). Chưa rõ Fonda xoá luôn đèn/LCU hay chỉ gỡ khỏi cột — kiểm tra lại sau khi thực hiện.', method: 'PUT', path: 'poleActor/update', body: r.body, danger: true, run: async () => { await sendPoleUpdate(sel.pid, r.body); } });
+      setConfirm({ title: `Gỡ bộ #${i + 1} khỏi điểm sáng "${sel.name}"`, summary: 'Đánh dấu bộ này là remove:true (đúng cách web Fonda gốc gỡ; bộ có LCU hay không đều như nhau). Chưa rõ Fonda xoá luôn đèn/LCU hay chỉ gỡ khỏi điểm sáng — kiểm tra lại sau khi thực hiện.', method: 'PUT', path: 'poleActor/update', body: r.body, danger: true, run: async () => { await sendPoleUpdate(sel.pid, r.body); } });
     } catch (e) { setWriteMsg((e as Error).message); }
   }
   async function askDelete() {
     if (!sel || !links) return;
     setListMsg('');
-    if (links.groups.length > 0 || links.others.length > 0) { setListMsg('Cột còn thiết bị gắn trên đó — không xoá (chưa kiểm chứng việc xoá cột có LCU/đèn). Gỡ thiết bị trước.'); return; }
+    if (links.groups.length > 0 || links.others.length > 0) { setListMsg('Điểm sáng còn thiết bị gắn trên đó — không xoá (chưa kiểm chứng việc xoá điểm sáng có LCU/đèn). Gỡ thiết bị trước.'); return; }
     try {
       const n = await poleRelatedCount(sel.pid, sel.id);
-      if (n !== 0) { setListMsg(`Fonda báo cột còn ${n} thiết bị liên quan — không xoá.`); return; }
-      setConfirm({ title: `Xoá cột "${sel.name}"`, summary: 'Cột không có thiết bị liên quan (đã kiểm tra bằng device/checkDeviceRelated). Không hoàn tác được.', method: 'POST', path: 'poleActor/delete', body: poleIdsBody([sel.id]), danger: true, run: async () => { await sendPoleDelete(sel.pid, sel.id); } });
+      if (n !== 0) { setListMsg(`Fonda báo điểm sáng còn ${n} thiết bị liên quan — không xoá.`); return; }
+      setConfirm({ title: `Xoá điểm sáng "${sel.name}"`, summary: 'Điểm sáng không có thiết bị liên quan (đã kiểm tra bằng device/checkDeviceRelated). Không hoàn tác được.', method: 'POST', path: 'poleActor/delete', body: poleIdsBody([sel.id]), danger: true, run: async () => { await sendPoleDelete(sel.pid, sel.id); } });
     } catch (e) { setListMsg((e as Error).message); }
   }
 
@@ -112,12 +112,12 @@ export default function Poles() {
   return (
     <div className="lcus">
       <div className="listwrap">
-        <p className="sub">{busy ? 'Đang tải…' : `${poles.length} cột đèn`}{WRITE_ENABLED && <button style={{ marginLeft: 12 }} onClick={() => setAdding(true)}>+ Thêm cột…</button>}{WRITE_ENABLED && <button className="b" style={{ marginLeft: 8 }} disabled={!sel || !links} title={sel ? '' : 'Chọn một cột trong danh sách'} onClick={() => void askDelete()}>Xoá cột đã chọn…</button>}</p>
+        <p className="sub">{busy ? 'Đang tải…' : `${poles.length} điểm sáng`}{WRITE_ENABLED && <button style={{ marginLeft: 12 }} onClick={() => setAdding(true)}>+ Thêm điểm sáng…</button>}{WRITE_ENABLED && <button className="b" style={{ marginLeft: 8 }} disabled={!sel || !links} title={sel ? '' : 'Chọn một điểm sáng trong danh sách'} onClick={() => void askDelete()}>Xoá điểm sáng đã chọn…</button>}</p>
         {listMsg && <div className="err">{listMsg}</div>}
         {err && <div className="err">{err}</div>}
-        {!busy && !err && !poles.length && <p className="sub">Dự án chưa có cột đèn.</p>}
+        {!busy && !err && !poles.length && <p className="sub">Dự án chưa có điểm sáng.</p>}
         {poles.length > 0 && (
-          <table><thead><tr><th>#</th><th>Tên</th><th>Mã</th><th>Model cột</th><th>Toạ độ</th><th>Địa chỉ</th></tr></thead>
+          <table><thead><tr><th>#</th><th>Tên</th><th>Mã</th><th>Model điểm sáng</th><th>Toạ độ</th><th>Địa chỉ</th></tr></thead>
             <tbody>{poles.map((p, i) => (
               <tr key={p.id} className={'lrow' + (p.id === sel?.id ? ' sel' : '')} onClick={() => setSel(p)}>
                 <td>{i + 1}</td><td><b>{p.name}</b></td><td>{p.code}</td><td>{p.model}</td>
@@ -134,14 +134,14 @@ export default function Poles() {
           {links && <>
             <div style={{ border: '1px solid var(--line)', borderRadius: 8, padding: '4px 12px 10px', marginTop: 14 }}>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
-              <h3 style={{ margin: '8px 0' }}>Gắn trên cột ({links.groups.filter(g => g.lcu).length} LCU · {lampCount} đèn)</h3>
+              <h3 style={{ margin: '8px 0' }}>Gắn trên điểm sáng ({links.groups.filter(g => g.lcu).length} LCU · {lampCount} đèn)</h3>
               {WRITE_ENABLED && PoleAddGroups && <button className="b" onClick={() => setAddingGroups(true)}>+ Thêm bộ đèn–LCU…</button>}
             </div>
-            {!links.groups.length && <p className="sub">Chưa có thiết bị nào gắn trên cột này.</p>}
+            {!links.groups.length && <p className="sub">Chưa có thiết bị nào gắn trên điểm sáng này.</p>}
             {links.groups.map((g, i) => (
               <div key={i} style={{ marginBottom: 10, paddingLeft: 8, borderLeft: `3px solid ${g.lcu ? 'var(--accent)' : 'var(--line)'}` }}>
                 <b>{g.lcu ? `LCU ${g.lcu.uid}` : 'LCU N/A'}</b>{WRITE_ENABLED && <button className="b" style={{ marginLeft: 8, padding: '1px 8px', fontSize: 11 }} onClick={() => void askRemoveGroup(i)}>Gỡ bộ…</button>}
-                <div className="sub" style={{ margin: 0 }}>{g.lcu ? `${g.lcu.model}${g.lcu.slots ? ` · ${g.lcu.slots} đầu đèn` : ''}` : 'Đèn gắn thẳng cột (chưa gắn LCU)'}</div>
+                <div className="sub" style={{ margin: 0 }}>{g.lcu ? `${g.lcu.model}${g.lcu.slots ? ` · ${g.lcu.slots} đầu đèn` : ''}` : 'Đèn gắn thẳng điểm sáng (chưa gắn LCU)'}</div>
                 {g.lcu
                   ? <ChannelStrip lcuSlots={g.lcu.slots} lcuLamps={g.lcuLamps} attrLamps={g.lamps} />
                   : <div style={{ marginTop: 4 }}>
@@ -154,12 +154,12 @@ export default function Poles() {
                       </div>
                     </div>}
               </div>))}
-            {links.others.length > 0 && <h3>Thiết bị khác gắn trên cột</h3>}
+            {links.others.length > 0 && <h3>Thiết bị khác gắn trên điểm sáng</h3>}
             {links.others.map(o => <div key={o.kind}><b>{o.kind}</b> ({o.items.length}): {o.items.map(x => x.name).join(', ')}</div>)}
             </div>
           </>}
           {WRITE_ENABLED && sel && (<>
-            <h3>Sửa cột (ghi thật · chỉ bản preview)</h3>
+            <h3>Sửa điểm sáng (ghi thật · chỉ bản preview)</h3>
             <label className="sub" style={{ display: 'block' }}>Tên</label><input style={{ width: '100%' }} value={edit.name} onChange={e => setEdit(v => ({ ...v, name: e.target.value }))} />
             <label className="sub" style={{ display: 'block', marginTop: 8 }}>Mã</label><input style={{ width: '100%' }} value={edit.code} onChange={e => setEdit(v => ({ ...v, code: e.target.value }))} />
             <div style={{ display: 'flex', gap: 8, marginTop: 10 }}>
