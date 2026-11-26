@@ -8,7 +8,7 @@ export interface AppConfig {
   projectId: string;
   /** Khoá RSA công khai của Fonda (công khai, được phép nằm trong cấu hình). */
   rsaPublicKey: string;
-  /** Nguồn ô bản đồ (Leaflet): URL mẫu {s}/{z}/{x}/{y}{r}. Trống = CARTO Voyager (nhanh hơn OSM). Ví dụ OSM: https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png */
+  /** Nguồn ô bản đồ (Leaflet): URL mẫu {s}/{z}/{x}/{y}{r}. Trống = OpenStreetMap (không cần key). Nhà cung cấp khác thường cần API key (CARTO, MapTiler, Stadia); Esri không cần key: https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x} */
   mapTileUrl: string;
   mapAttribution: string;
   /** Danh sách subdomain cho {s}, vd "abcd" hoặc "abc". */
