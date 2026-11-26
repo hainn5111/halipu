@@ -23,6 +23,10 @@ Tools → Options → Custom Actions → Add:
 Dùng: **chuột phải vào commit trong danh sách log → Custom Actions → Preview commit local**. Script không đổi nhánh/thư mục làm việc của bạn: nó tạo `git worktree` riêng ở `.local-build\<sha7>`, `npm ci` (lần đầu cho commit đó), build với `VITE_BUILD_INFO=<nhánh>@<sha7>` (hiện ở chân trang), rồi mở trình duyệt. Đóng cửa sổ console để dừng; cổng được in trong console (mặc định 8080, bận thì tự nhảy cổng kế).
 Bấm đúp `preview-commit-local.bat` (không tham số) = chạy commit HEAD hiện tại. Dọn bản cũ: xoá thư mục `.local-build` rồi `git worktree prune`.
 
+## Thử project khác (GIS + scan.html)
+- **GIS**: ô "ProjectID" ở góc trên bên trái bản đồ. **Chỉ có ở bản preview/dev** (`PREVIEW_TOOLS`, giống tab Dò API); bản deploy chính thức từ `main` không hiện. Nhập một hoặc nhiều ID (cách nhau dấu phẩy) → **Tải**: ghim ID vào `localStorage` (`pid_fixed`), tải lại trang và chỉ nạp LCU của các dự án đó. Header hiện "Dự án cố định xxxxxxxx" và nút **Bỏ** để quay lại tự dò. Chạy y hệt ở `dev-local.bat` (http://localhost:5173/#/gis).
+- **Trang ẩn `scan.html`**: mở `http://localhost:5173/scan.html` (dev) hoặc `<gốc trang>/scan.html` (bản deploy). Dùng chung phiên đăng nhập với app, nên đăng nhập app trước. Danh sách dự án lấy từ hồ sơ, có ô nhập ID tay, "Quét", "Chọn" (ghim rồi nhảy sang `#/lcus`).
+
 ## Lưu ý
 - `localhost` được coi là nguồn an toàn nên không bị chặn mixed content khi gọi API http của Fonda.
 - Lệnh điều khiển đèn thật vẫn phải có hộp xác nhận.
