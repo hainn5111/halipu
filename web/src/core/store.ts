@@ -17,6 +17,7 @@ interface LcuState {
 }
 
 const CONCURRENCY = 4;
+const DETAIL_FALLBACK_MAX = 300;   // chỉ lấy chi tiết từng LCU (dự phòng toạ độ) khi số LCU thiếu toạ độ không quá lớn — với hàng chục nghìn LCU sẽ bỏ qua
 const triedDetail = new Set<string>();   // LCU đã thử lấy chi tiết trong phiên: LCU thật sự chưa có toạ độ không bị gọi lại mỗi lần mở tab
 
 export const useLcus = create<LcuState>((set, get) => ({
@@ -35,6 +36,7 @@ export const useLcus = create<LcuState>((set, get) => ({
       set({ lcus, report, status: 'ready', progress: '' });
       // Toạ độ đã lấy hàng loạt trong listLcus; chỉ LCU CHƯA có toạ độ mới gọi chi tiết (dự phòng, mỗi uid một lần). Công suất định mức lấy khi chọn LCU (LcuPanel).
       let next = 0;
+      if (lcus.filter(l => l.lat === undefined).length > DETAIL_FALLBACK_MAX) return;
       await Promise.all(Array.from({ length: CONCURRENCY }, async () => {
         while (next < lcus.length) {
           const l = lcus[next++];

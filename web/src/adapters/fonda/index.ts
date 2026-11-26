@@ -4,6 +4,7 @@ import { config, parseProjectIds } from '../../core/config';
 import type { PoleLinks, DeviceItem, DeviceModel, DeviceType, LampCommand, LightStatus, Lcu, Measurement } from '../../core/types';
 import { WRITE_ENABLED } from '../../core/flags';
 import { lcuDeleteBody, supplyLinkBody, deviceIdsBody, rtuLinkBody, kmDetectSaveBody, meterSaveBody, rtuSaveBody, smartBoxSaveBody, modelCloneBody, modelUpdateBody, modelIdsBody, poleTypeSaveBody, poleTypeUpdateBody, poleTypeIdsBody, type PoleTypeIn, type ProtoIn, lcuIdsBody, lcuModelCreateBody, lcuSaveBody, modelCreateBody, poleIdsBody, poleUpdateBody, type GroupInput } from './writeBodies';
+import { fetchPages } from './paging';
 import { lcuSlotCount, mapLcuLamps, mapPoleLinks, mapTypeProtocols, mapFunctions, mapPoleTypes, mapDictionary, type DictItem, type PoleType, mapModels, mapDeviceRow, mapDeviceTypes, mapLight, mapListRow, mapPageRow, mapTrend, mergeLcus, applyGeo, pickGeo, ratedPowerOf, validGeo, type LcuRow } from './mappers';
 
 const PID_KEY = 'pid';
@@ -46,13 +47,8 @@ export async function projectIds(): Promise<string[]> {
   return [...ids];
 }
 
-async function pageAll(path: string, projectId: string, size = 100): Promise<Array<Record<string, unknown>>> {
-  const out: Array<Record<string, unknown>> = []; let current = 1, pages = 1;
-  do {
-    const d = await call<{ records?: Array<Record<string, unknown>>; pages?: number }>('POST', path, { projectId, body: { current, size, projectId, integratedQuery: '' } });
-    out.push(...(d.records || [])); pages = d.pages || 1; current++;
-  } while (current <= pages && current < 100);
-  return out;
+async function pageAll(path: string, projectId: string, size = 100, onProgress?: (done: number, total: number) => void): Promise<Array<Record<string, unknown>>> {
+  return fetchPages<Record<string, unknown>>(current => call('POST', path, { projectId, body: { current, size, projectId, integratedQuery: '' } }), onProgress);
 }
 
 export interface LcuListResult { lcus: Lcu[]; report: string[] }
@@ -62,7 +58,7 @@ export async function listLcus(onProgress?: (m: string) => void): Promise<LcuLis
   const pids = await projectIds(), rows: Array<LcuRow & { projectId: string }> = [], report: string[] = [];
   for (const [i, pid] of pids.entries()) {
     onProgress?.(`Đang tải dự án ${i + 1}/${pids.length}…`);
-    try { for (const r of await pageAll('lcuActor/page', pid)) { const m = mapPageRow(r); if (m) rows.push({ ...m, projectId: pid }); } report.push(`${pid}: lcuActor/page ok`); }
+    try { for (const r of await pageAll('lcuActor/page', pid, 100, (d, t) => onProgress?.(`Danh sách LCU: trang ${d}/${t}…`))) { const m = mapPageRow(r); if (m) rows.push({ ...m, projectId: pid }); } report.push(`${pid}: lcuActor/page ok`); }
     catch (e) { report.push((e as Error).message); }
     try {
       const list = await call<Array<Record<string, unknown>>>('POST', 'lcuActor/getLcuListByProjectId', { projectId: pid, body: { projectId: pid } });
@@ -73,7 +69,7 @@ export async function listLcus(onProgress?: (m: string) => void): Promise<LcuLis
   let lcus = mergeLcus(rows);
   // Toạ độ HÀNG LOẠT: device/queryDevicePage (loại 2) trả lat/lng cho cả trang 100 LCU — thay cho 1 lần gọi/LCU (N+1). Lỗi thì bỏ qua, store sẽ lấy chi tiết từng LCU như cũ.
   for (const pid of pids) {
-    try { const devs = await listDevices(pid, 2); lcus = applyGeo(lcus, devs.map(d => ({ uid: d.uid, lat: d.lat, lng: d.lng }))); report.push(`${pid}: toạ độ hàng loạt ok (${devs.length})`); }
+    try { onProgress?.('Toạ độ LCU…'); const devs = await listDevices(pid, 2, (d, t) => onProgress?.(`Toạ độ LCU: trang ${d}/${t}…`)); lcus = applyGeo(lcus, devs.map(d => ({ uid: d.uid, lat: d.lat, lng: d.lng }))); report.push(`${pid}: toạ độ hàng loạt ok (${devs.length})`); }
     catch (e) { report.push(`${pid}: toạ độ hàng loạt lỗi — ${(e as Error).message}`); }
   }
   return { lcus, report };
@@ -111,13 +107,9 @@ export async function listDeviceTypes(projectId: string): Promise<DeviceType[]> 
 }
 
 /** Thiết bị của một loại trong một dự án (chỉ đọc, phân trang hết). */
-export async function listDevices(projectId: string, typeValue: number): Promise<DeviceItem[]> {
-  const out: DeviceItem[] = []; let current = 1, pages = 1;
-  do {
-    const d = await call<{ records?: Array<Record<string, unknown>>; pages?: number }>('POST', 'device/queryDevicePage', { projectId, body: { projectId, current, size: 100, deviceTypeValue: typeValue } });
-    for (const r of d.records || []) { const m = mapDeviceRow(r); if (m) out.push({ ...m, typeValue: m.typeValue < 0 ? typeValue : m.typeValue }); }
-    pages = d.pages || 1; current++;
-  } while (current <= pages && current < 100);
+export async function listDevices(projectId: string, typeValue: number, onProgress?: (done: number, total: number) => void): Promise<DeviceItem[]> {
+  const rows = await fetchPages<Record<string, unknown>>(current => call('POST', 'device/queryDevicePage', { projectId, body: { projectId, current, size: 100, deviceTypeValue: typeValue } }), onProgress);
+  const out: DeviceItem[] = []; for (const r of rows) { const m = mapDeviceRow(r); if (m) out.push({ ...m, typeValue: m.typeValue < 0 ? typeValue : m.typeValue }); }
   return out;
 }
 

@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { lcuSpec, channelRows, lcuSlotCount, mapLcuLamps, mapPoleLinks, categoryOf, configEntries, mapModels, mapTypeProtocols, mapFunctions, safeJson, mapPoleTypes, mapDictionary, mapDeviceRow, mapDeviceTypes, mapLight, mapListRow, mapPageRow, mapTrend, mergeLcus, pickGeo, ratedPowerOf, toCsv, validGeo } from './mappers';
 import { applyGeo } from './mappers';
+import { fetchPages } from './paging';
 
 describe('pickGeo / validGeo', () => {
   it('đọc lat/lng dạng chuỗi', () => expect(pickGeo({ lat: '20.93271', lng: '105.67026' })).toEqual({ lat: 20.93271, lng: 105.67026 }));
@@ -170,5 +171,17 @@ describe('applyGeo', () => {
   it('gắn toạ độ hợp lệ theo uid (không phân biệt hoa/thường), bỏ toạ độ rỗng/0,0, giữ toạ độ có sẵn', () => {
     const r = applyGeo([l('AB12'), l('CD34'), l('EF56'), l('GH78', { lat: 1, lng: 2 })], [{ uid: 'ab12', lat: 20.9, lng: 105.6 }, { uid: 'CD34', lat: 0, lng: 0 }, { uid: 'EF56' }, { uid: 'GH78', lat: 9, lng: 9 }]) as Array<{ uid: string; lat?: number; lng?: number }>;
     expect(r.map(x => [x.uid, x.lat, x.lng])).toEqual([['AB12', 20.9, 105.6], ['CD34', undefined, undefined], ['EF56', undefined, undefined], ['GH78', 1, 2]]);
+  });
+});
+
+describe('fetchPages', () => {
+  it('lấy trang 1 rồi các trang còn lại song song, giữ đúng thứ tự, tiến độ tăng dần', async () => {
+    const calls: number[] = [], prog: number[] = [];
+    const rows = await fetchPages<number>(async n => { calls.push(n); await new Promise(r => setTimeout(r, (7 - n) * 2)); return { records: [n * 10, n * 10 + 1], pages: 6 }; }, d => prog.push(d), 3);
+    expect(rows).toEqual([10, 11, 20, 21, 30, 31, 40, 41, 50, 51, 60, 61]);   // đúng thứ tự trang dù trả về lộn xộn
+    expect(calls[0]).toBe(1); expect(new Set(calls).size).toBe(6); expect(prog[prog.length - 1]).toBe(6);
+  });
+  it('không còn trần 99 trang', async () => {
+    let n = 0; const rows = await fetchPages<number>(async () => { n++; return { records: [1], pages: 250 }; }, undefined, 16); expect(n).toBe(250); expect(rows).toHaveLength(250);
   });
 });
