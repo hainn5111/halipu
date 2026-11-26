@@ -23,6 +23,16 @@ export function mergeConfig(raw: unknown): AppConfig {
   return { apiBase: s('apiBase').replace(/\/+$/, ''), wsUrl: s('wsUrl'), projectId: s('projectId'), rsaPublicKey: s('rsaPublicKey'), mapTileUrl: s('mapTileUrl'), mapAttribution: s('mapAttribution'), mapSubdomains: s('mapSubdomains') };
 }
 
+/** Chuỗi projectId nhập tay (phân tách bằng dấu phẩy/khoảng trắng/chấm phẩy) → danh sách không trùng. */
+export const parseProjectIds = (s: string): string[] => [...new Set(s.split(/[\s,;]+/).map(x => x.trim()).filter(Boolean))];
+
+/** Ghim projectId (có thể nhiều ID) vào localStorage rồi tải lại trang để mọi màn hình dùng cùng cấu hình. Rỗng = bỏ ghim. */
+export function applyFixedProjects(input: string): void {
+  const ids = parseProjectIds(input);
+  try { ids.length ? localStorage.setItem(FIXED_KEY, ids.join(',')) : localStorage.removeItem(FIXED_KEY); } catch { /* bị chặn */ }
+  location.reload();
+}
+
 export function wsUrlOf(c: AppConfig): string {
   if (c.wsUrl) return c.wsUrl;
   return `${c.apiBase.replace(/^http/, 'ws').replace(/:\d+$/, '')}:81/clesws`;

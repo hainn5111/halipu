@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { mergeConfig, wsUrlOf } from './config';
+import { mergeConfig, parseProjectIds, wsUrlOf } from './config';
 
 describe('config', () => {
   it('bỏ dấu / cuối apiBase và dùng mặc định khi thiếu', () => {
@@ -13,5 +13,9 @@ describe('config', () => {
     expect(tileOptions(mergeConfig(null)).url).toBe(DEFAULT_TILES.url);
     const o = tileOptions(mergeConfig({ mapTileUrl: 'https://t/{z}/{x}/{y}.png', mapAttribution: 'X', mapSubdomains: 'abc' }));
     expect(o).toEqual({ url: 'https://t/{z}/{x}/{y}.png', attribution: 'X', subdomains: 'abc' });
+  });
+  it('parseProjectIds: tách theo dấu phẩy/khoảng trắng, bỏ trống và trùng', () => {
+    expect(parseProjectIds(' a1, b2;a1\n c3 ')).toEqual(['a1', 'b2', 'c3']);
+    expect(parseProjectIds('  ')).toEqual([]);
   });
 });
