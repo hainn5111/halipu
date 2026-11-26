@@ -1,6 +1,6 @@
 // Nguồn dữ liệu Fonda. Giao diện (features/) chỉ gọi các hàm này và nhận kiểu của mình; đổi backend = viết adapter khác cùng chữ ký.
 import { call } from '../../core/api';
-import { config } from '../../core/config';
+import { config, parseProjectIds } from '../../core/config';
 import type { PoleLinks, DeviceItem, DeviceModel, DeviceType, LampCommand, LightStatus, Lcu, Measurement } from '../../core/types';
 import { WRITE_ENABLED } from '../../core/flags';
 import { lcuIdsBody, lcuModelCreateBody, lcuSaveBody, modelCreateBody, poleIdsBody, poleUpdateBody, type GroupInput } from './writeBodies';
@@ -32,7 +32,7 @@ async function discoverProjectId(): Promise<string> {
 
 /** Tất cả projectId (dự án cha + con). Có projectId cố định trong cấu hình thì dùng đúng nó. */
 export async function projectIds(): Promise<string[]> {
-  const fixed = config().projectId; if (fixed) return [fixed];
+  const fixed = parseProjectIds(config().projectId); if (fixed.length) return fixed;   // có thể ghim nhiều ID (cách nhau dấu phẩy)
   const first = await discoverProjectId();
   const ids = new Set<string>([first]);
   const walk = (v: unknown): void => {
