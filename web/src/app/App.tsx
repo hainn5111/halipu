@@ -1,7 +1,7 @@
 import { Suspense, useEffect, useState } from 'react';
 import { HashRouter, Navigate, NavLink, Route, Routes, useLocation } from 'react-router-dom';
 import { useAuth } from '../core/auth';
-import { config, FIXED_KEY, fixedSource } from '../core/config';
+import { config, FIXED_KEY, fixedSource, parseProjectIds } from '../core/config';
 import { useRealtime, type RtStatus } from '../core/realtime';
 import Login from '../features/login/Login';
 import { ALL_TABS, TABS } from './tabs';
@@ -18,6 +18,8 @@ function RealtimeBadge() {
 const NAV_KEY = 'nav_open';
 function loadOpen(): Record<string, boolean> { try { return JSON.parse(localStorage.getItem(NAV_KEY) || '{}'); } catch { return {}; } }
 
+function fixedLabel() { const ids = parseProjectIds(config().projectId); return ids.length ? ids[0].slice(0, 8) + (ids.length > 1 ? ` +${ids.length - 1}` : '') : ''; }
+
 function Shell() {
   const startRt = useRealtime(s => s.start), stopRt = useRealtime(s => s.stop);
   useEffect(() => { startRt(); return stopRt; }, [startRt, stopRt]);   // một kết nối WebSocket dùng chung, sống cùng phiên đăng nhập
@@ -29,8 +31,8 @@ function Shell() {
   const toggle = (g: string) => setOpen(o => { const n = { ...o, [g]: !(o[g] ?? false) }; try { localStorage.setItem(NAV_KEY, JSON.stringify(n)); } catch { /* bị chặn */ } return n; });
   return (
     <div className="app">
-      <header className="top"><b>SLCP</b><small>{BUILD}</small><RealtimeBadge />{fixedSource === 'scan' && (
-          <span className="fixed" title="Đang khoá theo dự án chọn ở trang scan">Dự án cố định {config().projectId.slice(0, 8)}
+      <header className="top"><b>SLCP</b><small>{BUILD}</small><RealtimeBadge />{(fixedSource === 'scan' || fixedSource === 'url') && (
+          <span className="fixed" title="Đang khoá theo projectId nhập ở GIS / chọn ở scan.html / ?pid=">Dự án cố định {fixedLabel()}
             <button className="b" onClick={() => { try { localStorage.removeItem(FIXED_KEY); } catch { /* bị chặn */ } location.reload(); }}>Bỏ</button></span>
         )}
         <span>Xin chào, <b>{user}</b></span><button onClick={signOut}>Đăng xuất</button></header>
