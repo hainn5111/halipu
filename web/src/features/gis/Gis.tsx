@@ -3,6 +3,7 @@ import 'leaflet/dist/leaflet.css';
 import { useEffect, useRef, useState } from 'react';
 import { validGeo } from '../../adapters/fonda/mappers';
 import { applyFixedProjects, config, fixedSource } from '../../core/config';
+import { PREVIEW_TOOLS } from '../../core/flags';
 import { useLcus } from '../../core/store';
 import LcuPanel from '../lcu-panel/LcuPanel';
 
@@ -50,11 +51,11 @@ export default function Gis() {
     <div className="gis">
       <div ref={el} className="map" />
       <div className="dd">
-        <form className="pidbar" onSubmit={e => { e.preventDefault(); applyFixedProjects(pidText); }}>
+        {PREVIEW_TOOLS && <form className="pidbar" onSubmit={e => { e.preventDefault(); applyFixedProjects(pidText); }}>
           <input value={pidText} onChange={e => setPidText(e.target.value)} placeholder="ProjectID (nhiều ID: cách nhau dấu phẩy)" spellCheck={false} autoComplete="off" />
           <button type="submit" title="Ghim projectId rồi tải lại LCU của dự án đó">Tải</button>
           {fixedSource && <button type="button" className="b" title="Bỏ ghim, quay về tự dò toàn bộ dự án" onClick={() => applyFixedProjects('')}>Bỏ</button>}
-        </form>
+        </form>}
         <button id="ddb" onClick={() => setOpen(o => !o)}>Danh sách LCU ({lcus.length}) ▾</button>
         {open && <div className="menu">
           {status === 'loading' && <div className="empty">{progress || 'Đang tải…'}</div>}
