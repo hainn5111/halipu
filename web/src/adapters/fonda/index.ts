@@ -4,7 +4,7 @@ import { config, parseProjectIds } from '../../core/config';
 import type { PoleLinks, DeviceItem, DeviceModel, DeviceType, LampCommand, LightStatus, Lcu, Measurement } from '../../core/types';
 import { WRITE_ENABLED } from '../../core/flags';
 import { lcuDeleteBody, supplyLinkBody, deviceIdsBody, rtuLinkBody, kmDetectSaveBody, meterSaveBody, rtuSaveBody, smartBoxSaveBody, modelCloneBody, modelUpdateBody, modelIdsBody, poleTypeSaveBody, poleTypeUpdateBody, poleTypeIdsBody, type PoleTypeIn, type ProtoIn, lcuIdsBody, lcuModelCreateBody, lcuSaveBody, modelCreateBody, poleIdsBody, poleUpdateBody, type GroupInput } from './writeBodies';
-import { lcuSlotCount, mapLcuLamps, mapPoleLinks, mapTypeProtocols, mapFunctions, mapPoleTypes, mapDictionary, type DictItem, type PoleType, mapModels, mapDeviceRow, mapDeviceTypes, mapLight, mapListRow, mapPageRow, mapTrend, mergeLcus, pickGeo, ratedPowerOf, validGeo, type LcuRow } from './mappers';
+import { lcuSlotCount, mapLcuLamps, mapPoleLinks, mapTypeProtocols, mapFunctions, mapPoleTypes, mapDictionary, type DictItem, type PoleType, mapModels, mapDeviceRow, mapDeviceTypes, mapLight, mapListRow, mapPageRow, mapTrend, mergeLcus, applyGeo, pickGeo, ratedPowerOf, validGeo, type LcuRow } from './mappers';
 
 const PID_KEY = 'pid';
 
@@ -70,7 +70,13 @@ export async function listLcus(onProgress?: (m: string) => void): Promise<LcuLis
       report.push(`${pid}: getLcuListByProjectId ok`);
     } catch (e) { report.push((e as Error).message); }
   }
-  return { lcus: mergeLcus(rows), report };
+  let lcus = mergeLcus(rows);
+  // Toạ độ HÀNG LOẠT: device/queryDevicePage (loại 2) trả lat/lng cho cả trang 100 LCU — thay cho 1 lần gọi/LCU (N+1). Lỗi thì bỏ qua, store sẽ lấy chi tiết từng LCU như cũ.
+  for (const pid of pids) {
+    try { const devs = await listDevices(pid, 2); lcus = applyGeo(lcus, devs.map(d => ({ uid: d.uid, lat: d.lat, lng: d.lng }))); report.push(`${pid}: toạ độ hàng loạt ok (${devs.length})`); }
+    catch (e) { report.push(`${pid}: toạ độ hàng loạt lỗi — ${(e as Error).message}`); }
+  }
+  return { lcus, report };
 }
 
 /** Toạ độ + công suất định mức từ lcuActor/queryLcuAndRelatedByUid. */

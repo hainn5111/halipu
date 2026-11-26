@@ -14,7 +14,7 @@ const SEL = { color: '#ffffff', weight: 4, radius: 11, fillColor: '#ef4444' };
 export default function Gis() {
   const { lcus, status, progress, error, selectedUid, load, select } = useLcus();
   const el = useRef<HTMLDivElement>(null), map = useRef<L.Map | null>(null), layer = useRef<L.LayerGroup | null>(null);
-  const markers = useRef(new Map<string, L.CircleMarker>());
+  const markers = useRef(new Map<string, L.CircleMarker>()), canvas = useRef<L.Canvas | null>(null);
   const fitted = useRef(false);
   const [open, setOpen] = useState(false);
   const [pidText, setPidText] = useState(fixedSource ? config().projectId : '');
@@ -26,19 +26,22 @@ export default function Gis() {
     tileLayer().addTo(m);
     layer.current = L.layerGroup().addTo(m); map.current = m;
     setTimeout(() => m.invalidateSize(), 0);
-    return () => { m.remove(); map.current = null; markers.current.clear(); fitted.current = false; };
+    return () => { m.remove(); map.current = null; markers.current.clear(); canvas.current = null; fitted.current = false; };
   }, []);
 
   useEffect(() => {   // đồng bộ marker theo kho dữ liệu
     const m = map.current, g = layer.current; if (!m || !g) return;
-    g.clearLayers(); markers.current.clear();
-    const pts: L.LatLngTuple[] = [], cv = L.canvas({ padding: 0.5 });
+    // Đồng bộ VI SAI: chỉ thêm/dời/xoá marker thay đổi (trước đây xoá và vẽ lại toàn bộ mỗi lần một LCU có thêm dữ liệu → O(N²))
+    const pts: L.LatLngTuple[] = [], seen = new Set<string>(), cv = canvas.current ?? (canvas.current = L.canvas({ padding: 0.5 }));
     for (const l of lcus) {
       if (!validGeo(l.lat === undefined || l.lng === undefined ? null : { lat: l.lat, lng: l.lng })) continue;
-      const p: L.LatLngTuple = [l.lat!, l.lng!]; pts.push(p);
+      const p: L.LatLngTuple = [l.lat!, l.lng!]; pts.push(p); seen.add(l.uid);
+      const old = markers.current.get(l.uid);
+      if (old) { const ll = old.getLatLng(); if (ll.lat !== p[0] || ll.lng !== p[1]) old.setLatLng(p); old.setTooltipContent(l.name || l.uid); continue; }
       const mk = L.circleMarker(p, { renderer: cv, fillOpacity: 0.95, ...BASE }).bindTooltip(l.name || l.uid).on('click', () => select(l.uid));
       mk.addTo(g); markers.current.set(l.uid, mk);
     }
+    for (const [uid, mk] of [...markers.current]) if (!seen.has(uid)) { g.removeLayer(mk); markers.current.delete(uid); }
     if (pts.length && !fitted.current) { m.fitBounds(pts, { padding: [40, 40], maxZoom: 18 }); fitted.current = true; }
   }, [lcus, select]);
 

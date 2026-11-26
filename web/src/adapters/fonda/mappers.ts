@@ -1,5 +1,5 @@
 // Hàm THUẦN chuyển DTO Fonda → kiểu của mình. Mọi đặc thù của Fonda (tên trường, epoch ms, danh sách LCU từ 2 API…) nằm ở đây.
-import type { PoleLamp, PoleGroup, PoleLinks, ConfigEntry, DeviceItem, DeviceModel, DeviceType, LightStatus, Measurement } from '../../core/types';
+import type { Lcu, PoleLamp, PoleGroup, PoleLinks, ConfigEntry, DeviceItem, DeviceModel, DeviceType, LightStatus, Measurement } from '../../core/types';
 
 type Rec = Record<string, unknown>;
 const num = (v: unknown): number | undefined => { const x = typeof v === 'number' ? v : parseFloat(String(v ?? '')); return Number.isFinite(x) ? x : undefined; };
@@ -17,6 +17,13 @@ export function safeJson(v: unknown): unknown {
 export interface Geo { lat: number; lng: number }
 
 /** Toạ độ hợp lệ: trong khoảng địa lý và không phải (0,0). */
+/** Gắn toạ độ từ danh sách thiết bị (device/queryDevicePage trả `lat/lng` cho cả trang) vào LCU theo `uid`; chỉ ghi khi hợp lệ và LCU chưa có. */
+export function applyGeo(lcus: Lcu[], geo: Array<{ uid: string; lat?: number; lng?: number }>): Lcu[] {
+  const by = new Map<string, { lat: number; lng: number }>();
+  for (const g of geo) if (g.uid && g.lat !== undefined && g.lng !== undefined && validGeo({ lat: g.lat, lng: g.lng })) by.set(g.uid.toUpperCase(), { lat: g.lat, lng: g.lng });
+  return lcus.map(l => { if (l.lat !== undefined) return l; const g = by.get(l.uid.toUpperCase()); return g ? { ...l, lat: g.lat, lng: g.lng } : l; });
+}
+
 export function validGeo(g: Geo | undefined | null): g is Geo {
   return !!g && g.lat >= -90 && g.lat <= 90 && g.lng >= -180 && g.lng <= 180 && (g.lat !== 0 || g.lng !== 0);
 }

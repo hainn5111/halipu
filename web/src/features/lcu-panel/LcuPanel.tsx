@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { lightStatus, trend, unicast } from '../../adapters/fonda';
+import { lightStatus, loadDetail, trend, unicast } from '../../adapters/fonda';
+import { useLcus } from '../../core/store';
 import { toCsv } from '../../adapters/fonda/mappers';
 import { useRealtime } from '../../core/realtime';
 import type { LampCommand, Lcu, LightStatus, Measurement } from '../../core/types';
@@ -34,6 +35,13 @@ export default function LcuPanel({ lcu, onClose }: { lcu: Lcu; onClose: () => vo
       setStatus(s ? { text: statusLine(s, l.ratedPower), kind: 'good' } : { text: 'Chưa có dữ liệu đèn', kind: '' });
     } catch (x) { if (alive.current && cur.current.uid === l.uid) setStatus({ text: (x as Error).message, kind: 'bad' }); }
   }, [num]);
+
+  // Công suất định mức: lấy một lần khi chọn LCU (trước đây gọi cho mọi LCU lúc tải GIS)
+  useEffect(() => {
+    if (lcu.ratedPower !== undefined) return;
+    let ok = true; loadDetail(lcu).then(d => { if (ok && d.ratedPower !== undefined) useLcus.getState().patch(lcu.uid, { ratedPower: d.ratedPower }); }).catch(() => undefined);
+    return () => { ok = false; };
+  }, [lcu.uid]);   // eslint-disable-line react-hooks/exhaustive-deps
 
   // Mở LCU khác / đổi kênh: đọc ngay, rồi tự làm mới mỗi 20 giây (im lặng, không nháy "Waiting....")
   useEffect(() => {

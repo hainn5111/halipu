@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { lcuSpec, channelRows, lcuSlotCount, mapLcuLamps, mapPoleLinks, categoryOf, configEntries, mapModels, mapTypeProtocols, mapFunctions, safeJson, mapPoleTypes, mapDictionary, mapDeviceRow, mapDeviceTypes, mapLight, mapListRow, mapPageRow, mapTrend, mergeLcus, pickGeo, ratedPowerOf, toCsv, validGeo } from './mappers';
+import { applyGeo } from './mappers';
 
 describe('pickGeo / validGeo', () => {
   it('đọc lat/lng dạng chuỗi', () => expect(pickGeo({ lat: '20.93271', lng: '105.67026' })).toEqual({ lat: 20.93271, lng: 105.67026 }));
@@ -161,5 +162,13 @@ describe('giao thức theo loại', () => {
     const r = mapTypeProtocols([{ protocolValue: 56, protocolId: 'P', protocolName: 'RTU/SDMP-X', enable: 1, protocolVersion: 'SDMP-RTU v1.0' }, { protocolName: 'x' }]);
     expect(r).toEqual([{ id: 'P', value: 56, name: 'RTU/SDMP-X', version: 'SDMP-RTU v1.0', enable: true }]);
     expect(mapFunctions([1, 2, '3', 'x'])).toEqual([1, 2, 3]); expect(mapFunctions(null)).toEqual([]);
+  });
+});
+
+describe('applyGeo', () => {
+  const l = (uid: string, extra: object = {}) => ({ uid, lcuId: uid, name: uid, code: '', projectId: 'P', ...extra }) as never;
+  it('gắn toạ độ hợp lệ theo uid (không phân biệt hoa/thường), bỏ toạ độ rỗng/0,0, giữ toạ độ có sẵn', () => {
+    const r = applyGeo([l('AB12'), l('CD34'), l('EF56'), l('GH78', { lat: 1, lng: 2 })], [{ uid: 'ab12', lat: 20.9, lng: 105.6 }, { uid: 'CD34', lat: 0, lng: 0 }, { uid: 'EF56' }, { uid: 'GH78', lat: 9, lng: 9 }]) as Array<{ uid: string; lat?: number; lng?: number }>;
+    expect(r.map(x => [x.uid, x.lat, x.lng])).toEqual([['AB12', 20.9, 105.6], ['CD34', undefined, undefined], ['EF56', undefined, undefined], ['GH78', 1, 2]]);
   });
 });
