@@ -34,6 +34,8 @@ if not exist "!WT!\web" (echo Commit !SHA! khong co thu muc web & pause & exit /
 
 cd /d "!WT!\web" || (pause & exit /b 1)
 if not exist node_modules (call npm ci || (pause & exit /b 1))
+rem Cai them thu vien moi neu package.json/package-lock.json doi sau khi keo ve (nhanh khi da du):
+call npm install --no-audit --no-fund --prefer-offline || (pause & exit /b 1)
 set "VITE_BUILD_INFO=!INFO!"
 set "VITE_ENABLE_PROBE=1"
 echo Build !INFO! ...
