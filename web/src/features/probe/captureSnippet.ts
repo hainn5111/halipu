@@ -73,17 +73,17 @@ export function installCapture(win: any): any {
       if (!win.document?.body) return;
       if (!el) {
         el = win.document.createElement('button');
-        el.style.cssText = 'position:fixed;right:12px;bottom:12px;z-index:2147483647;padding:8px 12px;border:0;border-radius:8px;background:#f59e0b;color:#111;font:600 13px sans-serif;cursor:pointer';
+        el.style.cssText = 'position:fixed;left:12px;bottom:12px;z-index:2147483647;padding:8px 12px;border:0;border-radius:8px;background:#f59e0b;color:#111;font:600 13px sans-serif;cursor:pointer';
         el.onclick = () => api.download();
         win.document.body.appendChild(el);
         // Nút thứ hai: tải TẤT CẢ request (kể cả truy vấn/đọc) — để xem dữ liệu mà màn hình không hiện trực tiếp
         el2 = win.document.createElement('button');
-        el2.style.cssText = 'position:fixed;right:12px;bottom:52px;z-index:2147483647;padding:6px 10px;border:0;border-radius:8px;background:#38bdf8;color:#111;font:600 12px sans-serif;cursor:pointer';
+        el2.style.cssText = 'position:fixed;left:12px;bottom:52px;z-index:2147483647;padding:6px 10px;border:0;border-radius:8px;background:#38bdf8;color:#111;font:600 12px sans-serif;cursor:pointer';
         el2.onclick = () => api.download(true);
         win.document.body.appendChild(el2);
         // Nút thứ ba: xoá toàn bộ bản ghi để bắt lại từ đầu
         el3 = win.document.createElement('button');
-        el3.style.cssText = 'position:fixed;right:12px;bottom:86px;z-index:2147483647;padding:6px 10px;border:0;border-radius:8px;background:#f87171;color:#111;font:600 12px sans-serif;cursor:pointer';
+        el3.style.cssText = 'position:fixed;left:12px;bottom:86px;z-index:2147483647;padding:6px 10px;border:0;border-radius:8px;background:#f87171;color:#111;font:600 12px sans-serif;cursor:pointer';
         el3.textContent = '🗑 Xoá bản ghi';
         el3.onclick = () => api.clear();
         win.document.body.appendChild(el3);

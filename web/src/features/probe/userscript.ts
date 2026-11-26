@@ -20,7 +20,7 @@ export function userScript(version: string, match = DEFAULT_MATCH): string {
   var installCapture = ${installCapture.toString()};
   var scanFrontend = ${scanFrontend.toString()};
   var scanForms = ${scanForms.toString()};
-  installCapture(window);                                  // nút cam/xanh ở góc phải dưới; log nằm trong window.__capture
+  installCapture(window);                                  // nút cam/xanh ở góc trái dưới; log nằm trong window.__capture
   window.__scanFrontend = function () { return scanFrontend(window); };   // gõ trong Console: __scanFrontend()  → tải fonda-frontend-scan-….json
   window.__scanForms = function () { return scanForms(window); };         // gõ trong Console: __scanForms()     → tải fonda-form-scan-….json
   console.log('[SLCP] đã nạp công cụ: __capture, __scanFrontend(), __scanForms()');
