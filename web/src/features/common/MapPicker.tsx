@@ -1,4 +1,5 @@
 import L from 'leaflet';
+import { tileLayer } from '../../core/mapTiles';
 import 'leaflet/dist/leaflet.css';
 import { useEffect, useRef } from 'react';
 
@@ -10,7 +11,7 @@ export default function MapPicker({ lat, lng, onPick, center }: { lat: string; l
 
   useEffect(() => {
     const m = L.map(el.current!).setView(ok ? [la, ln] : center ?? [16, 106], ok ? 17 : center ? 15 : 5);
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19, attribution: '© OpenStreetMap' }).addTo(m);
+    tileLayer().addTo(m);
     const fmt = (p: L.LatLng) => cb.current(p.lat.toFixed(6), p.lng.toFixed(6));
     m.on('click', e => fmt(e.latlng));
     map.current = m; setTimeout(() => m.invalidateSize(), 0);

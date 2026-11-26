@@ -8,14 +8,19 @@ export interface AppConfig {
   projectId: string;
   /** Khoá RSA công khai của Fonda (công khai, được phép nằm trong cấu hình). */
   rsaPublicKey: string;
+  /** Nguồn ô bản đồ (Leaflet): URL mẫu {s}/{z}/{x}/{y}{r}. Trống = CARTO Voyager (nhanh hơn OSM). Ví dụ OSM: https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png */
+  mapTileUrl: string;
+  mapAttribution: string;
+  /** Danh sách subdomain cho {s}, vd "abcd" hoặc "abc". */
+  mapSubdomains: string;
 }
 
-export const DEFAULT_CONFIG: AppConfig = { apiBase: '', wsUrl: '', projectId: '', rsaPublicKey: '' };
+export const DEFAULT_CONFIG: AppConfig = { apiBase: '', wsUrl: '', projectId: '', rsaPublicKey: '', mapTileUrl: '', mapAttribution: '', mapSubdomains: '' };
 
 export function mergeConfig(raw: unknown): AppConfig {
   const r = (raw && typeof raw === 'object' ? raw : {}) as Record<string, unknown>;
   const s = (k: keyof AppConfig) => (typeof r[k] === 'string' ? (r[k] as string).trim() : DEFAULT_CONFIG[k]);
-  return { apiBase: s('apiBase').replace(/\/+$/, ''), wsUrl: s('wsUrl'), projectId: s('projectId'), rsaPublicKey: s('rsaPublicKey') };
+  return { apiBase: s('apiBase').replace(/\/+$/, ''), wsUrl: s('wsUrl'), projectId: s('projectId'), rsaPublicKey: s('rsaPublicKey'), mapTileUrl: s('mapTileUrl'), mapAttribution: s('mapAttribution'), mapSubdomains: s('mapSubdomains') };
 }
 
 export function wsUrlOf(c: AppConfig): string {

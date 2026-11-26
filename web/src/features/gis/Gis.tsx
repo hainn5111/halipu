@@ -1,4 +1,5 @@
 import L from 'leaflet';
+import { tileLayer } from '../../core/mapTiles';
 import 'leaflet/dist/leaflet.css';
 import { useEffect, useRef, useState } from 'react';
 import { validGeo } from '../../adapters/fonda/mappers';
@@ -19,7 +20,7 @@ export default function Gis() {
 
   useEffect(() => {   // bản đồ: tạo 1 lần
     const m = L.map(el.current!).setView([16, 106], 5);
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19, attribution: '© OpenStreetMap' }).addTo(m);
+    tileLayer().addTo(m);
     layer.current = L.layerGroup().addTo(m); map.current = m;
     setTimeout(() => m.invalidateSize(), 0);
     return () => { m.remove(); map.current = null; markers.current.clear(); fitted.current = false; };
